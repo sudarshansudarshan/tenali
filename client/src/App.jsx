@@ -1,27 +1,24 @@
 import './App.css'
 
 function App() {
-  const host = window.location.hostname
-  const protocol = window.location.protocol
-
   const apps = [
     {
       name: 'General Knowledge',
       subtitle: 'Chitragupta quiz',
       color: 'purple',
-      url: `${protocol}//${host}:4001/`,
+      url: '/general-knowledge/',
     },
     {
       name: 'Addition',
       subtitle: '20-question addition practice',
       color: 'blue',
-      url: `${protocol}//${host}:4002/`,
+      url: '/addition/',
     },
     {
       name: 'Square Root',
       subtitle: 'Nearest-integer square root drill',
       color: 'green',
-      url: `${protocol}//${host}:4003/`,
+      url: '/squareroot/',
     },
   ]
 

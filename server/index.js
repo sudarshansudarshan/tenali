@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -10,56 +11,35 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(clientDistPath));
 
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function digitRange(digits) {
-  if (digits === 1) return { min: 0, max: 9 };
-  if (digits === 2) return { min: 10, max: 99 };
-  return { min: 100, max: 999 };
-}
-
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/question', (req, res) => {
-  const digits = Number(req.query.digits || 1);
-  const safeDigits = [1, 2, 3].includes(digits) ? digits : 1;
-  const range = digitRange(safeDigits);
+app.use('/general-knowledge', createProxyMiddleware({
+  target: 'http://127.0.0.1:4001',
+  changeOrigin: true,
+  ws: false,
+  pathRewrite: { '^/general-knowledge': '' },
+}));
 
-  const a = randomInt(range.min, range.max);
-  const b = randomInt(range.min, range.max);
+app.use('/addition', createProxyMiddleware({
+  target: 'http://127.0.0.1:4002',
+  changeOrigin: true,
+  ws: false,
+  pathRewrite: { '^/addition': '' },
+}));
 
-  res.json({
-    digits: safeDigits,
-    a,
-    b,
-    prompt: `${a} + ${b}`,
-    answer: a + b,
-  });
-});
-
-app.post('/api/check', (req, res) => {
-  const { a, b, answer } = req.body || {};
-  const numericA = Number(a);
-  const numericB = Number(b);
-  const numericAnswer = Number(answer);
-  const correctAnswer = numericA + numericB;
-  const correct = numericAnswer === correctAnswer;
-
-  res.json({
-    correct,
-    correctAnswer,
-    message: correct ? 'Correct! 🎉' : 'Try again 🙂',
-  });
-});
+app.use('/squareroot', createProxyMiddleware({
+  target: 'http://127.0.0.1:4003',
+  changeOrigin: true,
+  ws: false,
+  pathRewrite: { '^/squareroot': '' },
+}));
 
 app.get(/.*/, (_req, res) => {
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Aryabhata server running on http://0.0.0.0:${PORT}`);
+  console.log(`Tenali launcher running on http://0.0.0.0:${PORT}`);
 });

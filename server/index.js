@@ -15,25 +15,25 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
 
-app.use('/general-knowledge', createProxyMiddleware({
+app.use('/gk-api', createProxyMiddleware({
   target: 'http://127.0.0.1:4001',
   changeOrigin: true,
   ws: false,
-  pathRewrite: { '^/general-knowledge': '' },
+  pathRewrite: { '^/gk-api': '/api' },
 }));
 
-app.use('/addition', createProxyMiddleware({
+app.use('/addition-api', createProxyMiddleware({
   target: 'http://127.0.0.1:4002',
   changeOrigin: true,
   ws: false,
-  pathRewrite: { '^/addition': '' },
+  pathRewrite: { '^/addition-api': '/api' },
 }));
 
-app.use('/squareroot', createProxyMiddleware({
+app.use('/sqrt-api', createProxyMiddleware({
   target: 'http://127.0.0.1:4003',
   changeOrigin: true,
   ws: false,
-  pathRewrite: { '^/squareroot': '' },
+  pathRewrite: { '^/sqrt-api': '/api' },
 }));
 
 app.get(/.*/, (_req, res) => {
@@ -41,5 +41,5 @@ app.get(/.*/, (_req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Tenali launcher running on http://0.0.0.0:${PORT}`);
+  console.log(`Tenali app running on http://0.0.0.0:${PORT}`);
 });

@@ -70,6 +70,20 @@ function GKApp({ onBack }) {
     loadQuestion()
   }, [])
 
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== 'Enter') return
+      event.preventDefault()
+      if (feedback) {
+        loadQuestion()
+      } else if (selected) {
+        submit()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [selected, feedback, question])
+
   const submit = async () => {
     if (!question || !selected) return
     const res = await fetch(`${apiBase(4001)}/check`, {
@@ -139,6 +153,16 @@ function AdditionApp({ onBack }) {
     setQuestionNumber(1)
     await fetchQuestion(digits)
   }
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== 'Enter' || !started || finished) return
+      event.preventDefault()
+      handleSubmitOrNext()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [started, finished, question, answer, revealed, score, questionNumber, digits, loading])
 
   const handleSubmitOrNext = async () => {
     if (!question) return
@@ -219,6 +243,16 @@ function SqrtApp({ onBack }) {
     setQuestionNumber(1)
     await fetchQuestion(1)
   }
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== 'Enter' || !started) return
+      event.preventDefault()
+      handleSubmitOrNext()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [started, question, answer, revealed, questionNumber, loading])
 
   const handleSubmitOrNext = async () => {
     if (!question) return

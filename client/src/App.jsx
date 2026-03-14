@@ -54,12 +54,14 @@ function GKApp({ onBack }) {
   const [isCorrect, setIsCorrect] = useState(null)
   const [loading, setLoading] = useState(false)
   const [score, setScore] = useState(0)
+  const [revealed, setRevealed] = useState(false)
 
   const loadQuestion = async () => {
     setLoading(true)
     setSelected('')
     setFeedback('')
     setIsCorrect(null)
+    setRevealed(false)
     const res = await fetch(`${apiBase(4001)}/question`)
     const data = await res.json()
     setQuestion(data)
@@ -70,32 +72,36 @@ function GKApp({ onBack }) {
     loadQuestion()
   }, [])
 
+  const handleSubmitOrNext = async () => {
+    if (!question) return
+
+    if (!revealed) {
+      if (!selected) return
+      const res = await fetch(`${apiBase(4001)}/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: question.id, answerOption: selected }),
+      })
+      const data = await res.json()
+      setIsCorrect(data.correct)
+      if (data.correct) setScore((s) => s + 1)
+      setFeedback(data.correct ? data.message : `${data.message} Correct answer: ${data.correctAnswer}) ${data.correctAnswerText}`)
+      setRevealed(true)
+      return
+    }
+
+    await loadQuestion()
+  }
+
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.key !== 'Enter') return
       event.preventDefault()
-      if (feedback) {
-        loadQuestion()
-      } else if (selected) {
-        submit()
-      }
+      handleSubmitOrNext()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [selected, feedback, question])
-
-  const submit = async () => {
-    if (!question || !selected) return
-    const res = await fetch(`${apiBase(4001)}/check`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: question.id, answerOption: selected }),
-    })
-    const data = await res.json()
-    setIsCorrect(data.correct)
-    if (data.correct) setScore((s) => s + 1)
-    setFeedback(data.correct ? data.message : `${data.message} Correct answer: ${data.correctAnswer}) ${data.correctAnswerText}`)
-  }
+  }, [question, selected, revealed, loading])
 
   return (
     <QuizLayout title="General Knowledge" subtitle="Random question picker" onBack={onBack}>
@@ -107,7 +113,7 @@ function GKApp({ onBack }) {
             const letter = ['A', 'B', 'C', 'D'][idx]
             return (
               <label key={letter} className={`option-card ${selected === letter ? 'selected' : ''}`}>
-                <input type="radio" name="gk" checked={selected === letter} onChange={() => setSelected(letter)} />
+                <input type="radio" name="gk" checked={selected === letter} onChange={() => !revealed && setSelected(letter)} disabled={revealed} />
                 <span><strong>{letter})</strong> {option}</span>
               </label>
             )
@@ -116,8 +122,7 @@ function GKApp({ onBack }) {
       )}
       {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
       <div className="button-row">
-        <button onClick={submit} disabled={!selected}>Submit</button>
-        <button className="secondary" onClick={loadQuestion}>Next Question</button>
+        <button onClick={handleSubmitOrNext} disabled={loading || (!revealed && !selected)}>{revealed ? 'Next Question' : 'Submit'}</button>
       </div>
     </QuizLayout>
   )

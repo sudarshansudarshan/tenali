@@ -7,6 +7,9 @@
 }
 
 * { box-sizing: border-box; }
+* {
+  accent-color: #5f5f5f;
+}
 body {
   margin: 0;
   min-width: 320px;
@@ -60,7 +63,7 @@ button:hover,
 }
 
 button.secondary {
-  background: linear-gradient(180deg, #b0b0b0 0%, #7f7f7f 100%);
+  background: linear-gradient(180deg, #c7c7c7 0%, #8e8e8e 100%);
   color: #171717;
 }
 

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 const TOTAL_ADDITION = 20
+const apiBase = (port) => `http://${window.location.hostname}:${port}/api`
 
 function App() {
   const [mode, setMode] = useState(null)
@@ -58,19 +59,19 @@ function GKApp({ onBack }) {
     setSelected('')
     setFeedback('')
     setIsCorrect(null)
-    const res = await fetch('/gk-api/question')
+    const res = await fetch(`${apiBase(4001)}/question`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
   }
 
-  useState(() => {
+  useEffect(() => {
     loadQuestion()
-  })
+  }, [])
 
   const submit = async () => {
     if (!question || !selected) return
-    const res = await fetch('/gk-api/check', {
+    const res = await fetch(`${apiBase(4001)}/check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: question.id, answerOption: selected }),
@@ -120,7 +121,7 @@ function AdditionApp({ onBack }) {
     setLoading(true)
     setFeedback('')
     setAnswer('')
-    const res = await fetch(`/addition-api/question?digits=${selectedDigits}`)
+    const res = await fetch(`${apiBase(4002)}/question?digits=${selectedDigits}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -136,7 +137,7 @@ function AdditionApp({ onBack }) {
 
   const submitAnswer = async () => {
     if (!question || answer === '') return
-    const res = await fetch('/addition-api/check', {
+    const res = await fetch(`${apiBase(4002)}/check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ a: question.a, b: question.b, answer: Number(answer) }),
@@ -196,7 +197,7 @@ function SqrtApp({ onBack }) {
     setAnswer('')
     setFeedback('')
     setRevealed(false)
-    const res = await fetch(`/sqrt-api/question?step=${step}`)
+    const res = await fetch(`${apiBase(4003)}/question?step=${step}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -213,7 +214,7 @@ function SqrtApp({ onBack }) {
     if (!question) return
     if (!revealed) {
       if (answer === '') return
-      const res = await fetch('/sqrt-api/check', {
+      const res = await fetch(`${apiBase(4003)}/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ q: question.q, answer: Number(answer) }),

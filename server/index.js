@@ -1,11 +1,14 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(clientDistPath));
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -51,6 +54,10 @@ app.post('/api/check', (req, res) => {
     correctAnswer,
     message: correct ? 'Correct! 🎉' : 'Try again 🙂',
   });
+});
+
+app.get(/.*/, (_req, res) => {
+  res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {

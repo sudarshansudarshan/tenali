@@ -53,6 +53,7 @@ function GKApp({ onBack }) {
   const [feedback, setFeedback] = useState('')
   const [isCorrect, setIsCorrect] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [score, setScore] = useState(0)
 
   const loadQuestion = async () => {
     setLoading(true)
@@ -78,11 +79,13 @@ function GKApp({ onBack }) {
     })
     const data = await res.json()
     setIsCorrect(data.correct)
+    if (data.correct) setScore((s) => s + 1)
     setFeedback(data.correct ? data.message : `${data.message} Correct answer: ${data.correctAnswer}) ${data.correctAnswerText}`)
   }
 
   return (
     <QuizLayout title="General Knowledge" subtitle="Random question picker" onBack={onBack}>
+      <div className="top-mini-row"><div className="score-pill">Score: {score}</div></div>
       <div className="question-box">{loading || !question ? 'Loading question…' : question.question}</div>
       {question && (
         <div className="options-list">

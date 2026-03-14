@@ -119,11 +119,13 @@ function AdditionApp({ onBack }) {
   const [questionNumber, setQuestionNumber] = useState(0)
   const [feedback, setFeedback] = useState('')
   const [loading, setLoading] = useState(false)
+  const [revealed, setRevealed] = useState(false)
 
   const fetchQuestion = async (selectedDigits = digits) => {
     setLoading(true)
     setFeedback('')
     setAnswer('')
+    setRevealed(false)
     const res = await fetch(`${apiBase(4002)}/question?digits=${selectedDigits}`)
     const data = await res.json()
     setQuestion(data)
@@ -138,27 +140,32 @@ function AdditionApp({ onBack }) {
     await fetchQuestion(digits)
   }
 
-  const submitAnswer = async () => {
-    if (!question || answer === '') return
-    const res = await fetch(`${apiBase(4002)}/check`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ a: question.a, b: question.b, answer: Number(answer) }),
-    })
-    const data = await res.json()
-    const newScore = score + (data.correct ? 1 : 0)
-    setScore(newScore)
-    setFeedback(data.correct ? 'Correct' : `Incorrect. Right answer: ${data.correctAnswer}`)
+  const handleSubmitOrNext = async () => {
+    if (!question) return
 
-    setTimeout(async () => {
-      if (questionNumber >= TOTAL_ADDITION) {
-        setFinished(true)
-        setQuestion(null)
-        return
-      }
-      setQuestionNumber((n) => n + 1)
-      await fetchQuestion(digits)
-    }, 700)
+    if (!revealed) {
+      if (answer === '') return
+      const res = await fetch(`${apiBase(4002)}/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ a: question.a, b: question.b, answer: Number(answer) }),
+      })
+      const data = await res.json()
+      const newScore = score + (data.correct ? 1 : 0)
+      setScore(newScore)
+      setFeedback(data.correct ? 'Correct' : `Incorrect. Right answer: ${data.correctAnswer}`)
+      setRevealed(true)
+      return
+    }
+
+    if (questionNumber >= TOTAL_ADDITION) {
+      setFinished(true)
+      setQuestion(null)
+      return
+    }
+
+    setQuestionNumber((n) => n + 1)
+    await fetchQuestion(digits)
   }
 
   return (
@@ -176,8 +183,8 @@ function AdditionApp({ onBack }) {
       {started && !finished && <>
         <div className="progress-pill center">Question {questionNumber}/{TOTAL_ADDITION}</div>
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
-        <input className="answer-input" type="number" inputMode="numeric" value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Type your answer" />
-        <div className="button-row"><button onClick={submitAnswer} disabled={answer === '' || loading}>Submit</button></div>
+        <input className="answer-input" type="number" inputMode="numeric" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="Type your answer" />
+        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_ADDITION ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
       </>}
       {finished && <div className="welcome-box"><p className="welcome-text">Quiz complete.</p><p className="final-score">Final score: {score}/{TOTAL_ADDITION}</p><button onClick={startQuiz}>Play Again</button></div>}

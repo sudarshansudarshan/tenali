@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 
 const TOTAL_ADDITION = 20
+const TOTAL_QUADRATIC = 20
 
 function App() {
   const [mode, setMode] = useState(null)
@@ -15,6 +16,8 @@ function App() {
           <GKApp onBack={() => setMode(null)} />
         ) : mode === 'addition' ? (
           <AdditionApp onBack={() => setMode(null)} />
+        ) : mode === 'quadratic' ? (
+          <QuadraticApp onBack={() => setMode(null)} />
         ) : (
           <SqrtApp onBack={() => setMode(null)} />
         )}
@@ -27,6 +30,7 @@ function Home({ onSelect }) {
   const apps = [
     { key: 'gk', name: 'General Knowledge', subtitle: 'Chitragupta quiz', color: 'purple' },
     { key: 'addition', name: 'Addition', subtitle: '20-question addition practice', color: 'blue' },
+    { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
     { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
   ]
 
@@ -216,6 +220,90 @@ function AdditionApp({ onBack }) {
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
       </>}
       {finished && <div className="welcome-box"><p className="welcome-text">Quiz complete.</p><p className="final-score">Final score: {score}/{TOTAL_ADDITION}</p><button onClick={startQuiz}>Play Again</button></div>}
+    </QuizLayout>
+  )
+}
+
+
+function QuadraticApp({ onBack }) {
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [score, setScore] = useState(0)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [feedback, setFeedback] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+
+  const fetchQuestion = async () => {
+    setLoading(true)
+    setAnswer('')
+    setFeedback('')
+    setRevealed(false)
+    const res = await fetch('/quadratic-api/question')
+    const data = await res.json()
+    setQuestion(data)
+    setLoading(false)
+  }
+
+  const startQuiz = async () => {
+    setStarted(true)
+    setFinished(false)
+    setScore(0)
+    setQuestionNumber(1)
+    await fetchQuestion()
+  }
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== 'Enter' || !started || finished) return
+      event.preventDefault()
+      handleSubmitOrNext()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [started, finished, question, answer, revealed, questionNumber, loading])
+
+  const handleSubmitOrNext = async () => {
+    if (!question) return
+
+    if (!revealed) {
+      if (answer === '') return
+      const res = await fetch('/quadratic-api/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ a: question.a, b: question.b, c: question.c, x: question.x, answer: Number(answer) }),
+      })
+      const data = await res.json()
+      if (data.correct) setScore((s) => s + 1)
+      setFeedback(data.correct ? 'Correct ✅' : `Incorrect. Right answer: ${data.correctAnswer}`)
+      setRevealed(true)
+      return
+    }
+
+    if (questionNumber >= TOTAL_QUADRATIC) {
+      setFinished(true)
+      setQuestion(null)
+      return
+    }
+
+    setQuestionNumber((n) => n + 1)
+    await fetchQuestion()
+  }
+
+  return (
+    <QuizLayout title="Quadratic" subtitle="Given x, find y = ax² + bx + c" onBack={onBack}>
+      <div className="top-mini-row"><div className="score-pill">Score: {score}</div></div>
+      {!started && !finished && <div className="welcome-box"><p className="welcome-text">You will get 20 quadratic substitution questions.</p><button onClick={startQuiz}>Start Quiz</button></div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{TOTAL_QUADRATIC}</div>
+        <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
+        <input className="answer-input" type="number" inputMode="numeric" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="Type your answer" />
+        {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_QUADRATIC ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
+      </>}
+      {finished && <div className="welcome-box"><p className="welcome-text">Quiz complete.</p><p className="final-score">Final score: {score}/{TOTAL_QUADRATIC}</p><button onClick={startQuiz}>Play Again</button></div>}
     </QuizLayout>
   )
 }

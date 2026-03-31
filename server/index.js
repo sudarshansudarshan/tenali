@@ -88,6 +88,54 @@ app.post('/addition-api/check', (req, res) => {
   res.json({ correct, correctAnswer, message: correct ? 'Correct' : 'Incorrect' });
 });
 
+
+function randomSignedDigit() {
+  return randomInt(-9, 9);
+}
+
+function formatSignedTerm(value, variablePart, isFirst = false) {
+  if (value === 0) {
+    return isFirst ? `0${variablePart}` : `+ 0${variablePart}`;
+  }
+
+  const sign = value < 0 ? '-' : '+';
+  const absValue = Math.abs(value);
+  if (isFirst) {
+    return `${value}${variablePart}`;
+  }
+  return `${sign} ${absValue}${variablePart}`;
+}
+
+function buildQuadraticPrompt(a, b, c, x) {
+  const expression = `${formatSignedTerm(a, 'x²', true)} ${formatSignedTerm(b, 'x')} ${formatSignedTerm(c, '')}`;
+  return `If x = ${x}, find y for y = ${expression}`;
+}
+
+app.get('/quadratic-api/question', (_req, res) => {
+  const a = randomSignedDigit();
+  const b = randomSignedDigit();
+  const c = randomSignedDigit();
+  const x = randomSignedDigit();
+  const answer = a * x * x + b * x + c;
+
+  res.json({
+    id: `quadratic-${Date.now()}-${Math.random()}`,
+    a,
+    b,
+    c,
+    x,
+    prompt: buildQuadraticPrompt(a, b, c, x),
+    answer,
+  });
+});
+
+app.post('/quadratic-api/check', (req, res) => {
+  const { a, b, c, x, answer } = req.body || {};
+  const correctAnswer = Number(a) * Number(x) * Number(x) + Number(b) * Number(x) + Number(c);
+  const correct = Number(answer) === correctAnswer;
+  res.json({ correct, correctAnswer, message: correct ? 'Correct' : 'Incorrect' });
+});
+
 app.get('/sqrt-api/question', (req, res) => {
   const step = Math.max(1, Number(req.query.step || 1));
   const band = bandForStep(step);

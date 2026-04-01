@@ -36,6 +36,9 @@ function Home({ onSelect }) {
     { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
   ]
 
+  const totalSlots = 16
+  const emptySlots = totalSlots - apps.length
+
   return (
     <>
       <h1>Tenali</h1>
@@ -46,6 +49,11 @@ function Home({ onSelect }) {
             <span className="menu-title">{app.name}</span>
             <span className="menu-subtitle">{app.subtitle}</span>
           </button>
+        ))}
+        {Array.from({ length: emptySlots }, (_, i) => (
+          <div key={`empty-${i}`} className="menu-card placeholder">
+            <span className="menu-title placeholder-text">Coming soon</span>
+          </div>
         ))}
       </div>
     </>
@@ -90,7 +98,9 @@ function GKApp({ onBack }) {
       const data = await res.json()
       setIsCorrect(data.correct)
       if (data.correct) setScore((s) => s + 1)
-      setFeedback(data.correct ? data.message : `${data.message} Correct answer: ${data.correctAnswer}) ${data.correctAnswerText}`)
+      setFeedback(data.correct
+        ? `Correct! The answer is ${data.correctAnswer}) ${data.correctAnswerText}`
+        : `Incorrect. The correct answer is ${data.correctAnswer}) ${data.correctAnswerText}`)
       setRevealed(true)
       return
     }
@@ -187,7 +197,10 @@ function AdditionApp({ onBack }) {
       const data = await res.json()
       const newScore = score + (data.correct ? 1 : 0)
       setScore(newScore)
-      setFeedback(data.correct ? 'Correct' : `Incorrect. Right answer: ${data.correctAnswer}`)
+      const reasoning = `${question.a} + ${question.b} = ${data.correctAnswer}`
+      setFeedback(data.correct
+        ? `Correct! ${reasoning}`
+        : `Incorrect. ${reasoning}`)
       setRevealed(true)
       return
     }
@@ -228,6 +241,7 @@ function AdditionApp({ onBack }) {
 
 
 function QuadraticApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
   const [question, setQuestion] = useState(null)
@@ -238,12 +252,12 @@ function QuadraticApp({ onBack }) {
   const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
 
-  const fetchQuestion = async () => {
+  const fetchQuestion = async (selectedDifficulty = difficulty) => {
     setLoading(true)
     setAnswer('')
     setFeedback('')
     setRevealed(false)
-    const res = await fetch(`${API}/quadratic-api/question`)
+    const res = await fetch(`${API}/quadratic-api/question?difficulty=${selectedDifficulty}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -254,7 +268,7 @@ function QuadraticApp({ onBack }) {
     setFinished(false)
     setScore(0)
     setQuestionNumber(1)
-    await fetchQuestion()
+    await fetchQuestion(difficulty)
   }
 
   useEffect(() => {
@@ -279,7 +293,15 @@ function QuadraticApp({ onBack }) {
       })
       const data = await res.json()
       if (data.correct) setScore((s) => s + 1)
-      setFeedback(data.correct ? 'Correct ✅' : `Incorrect. Right answer: ${data.correctAnswer}`)
+      const { a, b, c, x } = question
+      const xSq = x * x
+      const termA = a * xSq
+      const termB = b * x
+      const sign = (v) => v >= 0 ? `+ ${v}` : `− ${Math.abs(v)}`
+      const reasoning = `y = ${a}(${x})² ${sign(b)}(${x}) ${sign(c)}\n= ${a}(${xSq}) ${sign(termB)} ${sign(c)}\n= ${termA} ${sign(termB)} ${sign(c)}\n= ${data.correctAnswer}`
+      setFeedback(data.correct
+        ? `Correct!\n${reasoning}`
+        : `Incorrect.\n${reasoning}`)
       setRevealed(true)
       return
     }
@@ -297,11 +319,26 @@ function QuadraticApp({ onBack }) {
   return (
     <QuizLayout title="Quadratic" subtitle="Given x, find y = ax² + bx + c" onBack={onBack}>
       <div className="top-mini-row"><div className="score-pill">Score: {score}</div></div>
+      <div className="radio-group">
+        {['easy', 'medium', 'hard'].map((level) => (
+          <label key={level} className={`radio-pill ${difficulty === level ? 'active' : ''}`}>
+            <input type="radio" checked={difficulty === level} onChange={() => setDifficulty(level)} disabled={started && !finished} />
+            {level.charAt(0).toUpperCase() + level.slice(1)}
+          </label>
+        ))}
+      </div>
       {!started && !finished && <div className="welcome-box"><p className="welcome-text">You will get 20 quadratic substitution questions.</p><button onClick={startQuiz}>Start Quiz</button></div>}
       {started && !finished && <>
         <div className="progress-pill center">Question {questionNumber}/{TOTAL_QUADRATIC}</div>
-        <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
-        <input className="answer-input" type="number" inputMode="numeric" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="Type your answer" />
+        <div className="question-box">
+          {loading || !question ? 'Loading question…' : (
+            <>
+              <span className="given">x = {question.x}</span>
+              <span className="equation">y = {question.a}x² {question.b >= 0 ? '+' : '−'} {Math.abs(question.b)}x {question.c >= 0 ? '+' : '−'} {Math.abs(question.c)}</span>
+            </>
+          )}
+        </div>
+        <input className="answer-input" type="number" inputMode="numeric" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="y = ?" />
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_QUADRATIC ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
       </>}
@@ -359,7 +396,10 @@ function SqrtApp({ onBack }) {
       })
       const data = await res.json()
       if (data.correct) setScore((s) => s + 1)
-      setFeedback(data.correct ? `Correct ✅ √${question.q} ≈ ${data.sqrtRounded}` : `Incorrect. √${question.q} ≈ ${data.sqrtRounded}, so acceptable answers are ${data.floorAnswer} or ${data.ceilAnswer}.`)
+      const reasoning = `√${question.q} = ${data.sqrtRounded}\n⌊${data.sqrtRounded}⌋ = ${data.floorAnswer}, ⌈${data.sqrtRounded}⌉ = ${data.ceilAnswer}`
+      setFeedback(data.correct
+        ? `Correct!\n${reasoning}`
+        : `Incorrect.\n${reasoning}\nAcceptable answers: ${data.floorAnswer} or ${data.ceilAnswer}`)
       setRevealed(true)
       return
     }

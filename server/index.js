@@ -93,6 +93,16 @@ function randomSignedDigit() {
   return randomInt(-9, 9);
 }
 
+function quadraticRange(difficulty) {
+  if (difficulty === 'easy') return { min: -3, max: 3 };
+  if (difficulty === 'medium') return { min: -6, max: 6 };
+  return { min: -9, max: 9 };
+}
+
+function randomInRange(min, max) {
+  return randomInt(min, max);
+}
+
 function formatSignedTerm(value, variablePart, isFirst = false) {
   if (value === 0) {
     return isFirst ? `0${variablePart}` : `+ 0${variablePart}`;
@@ -111,11 +121,13 @@ function buildQuadraticPrompt(a, b, c, x) {
   return `If x = ${x}, find y for y = ${expression}`;
 }
 
-app.get('/quadratic-api/question', (_req, res) => {
-  const a = randomSignedDigit();
-  const b = randomSignedDigit();
-  const c = randomSignedDigit();
-  const x = randomSignedDigit();
+app.get('/quadratic-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'hard';
+  const range = quadraticRange(difficulty);
+  const a = randomInRange(range.min, range.max);
+  const b = randomInRange(range.min, range.max);
+  const c = randomInRange(range.min, range.max);
+  const x = randomInRange(range.min, range.max);
   const answer = a * x * x + b * x + c;
 
   res.json({

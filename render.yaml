@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: tenali
+    env: static
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: client/dist
+    routes:
+      - type: rewrite
+        source: /**
+        destination: /index.html

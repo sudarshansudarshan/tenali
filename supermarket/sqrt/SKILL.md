@@ -1,71 +1,22 @@
-# Square Root
+# Square Root — Formal Specification
 
-A continuous drill for estimating square roots to the nearest integer, with progressive difficulty.
+## 1. Purpose
 
-## Overview
+A continuous drill for estimating square roots to the nearest integer. The player is given a number and must provide an integer estimate. Both the floor and ceiling of the true square root are accepted as correct. There is no fixed question limit — the drill continues until the player navigates away. Difficulty increases automatically based on the question number. A running results table with per-question timing is displayed below the quiz.
 
-The Square Root app presents a number and asks the player to estimate its square root. Both the floor and ceiling of the true square root are accepted as correct answers. There is no fixed question limit — the drill continues indefinitely until the player navigates back to the home menu. Difficulty increases progressively as the player advances through questions, with numbers growing larger over time.
+## 2. Progressive Difficulty
 
-## User Flow
+Difficulty scales automatically based on the question number (`step`):
 
-1. Player enters the Square Root app from the home menu
-2. Welcome message: "The square-root drill will keep going until you stop."
-3. Player clicks "Start Drill"
-4. Progress pill shows "Question 1" (no total, since it's unlimited)
-5. The problem is displayed (e.g., "√47 = ?")
-6. Player types their estimate in the input field
-7. Player clicks "Submit" (or presses Enter)
-8. Step-by-step feedback appears:
-   ```
-   Correct!
-   √47 = 6.86
-   ⌊6.86⌋ = 6, ⌈6.86⌉ = 7
-   ```
-   Or if incorrect:
-   ```
-   Incorrect.
-   √47 = 6.86
-   ⌊6.86⌋ = 6, ⌈6.86⌉ = 7
-   Acceptable answers: 6 or 7
-   ```
-9. Button shows "Next Question" — player continues indefinitely
-10. Player clicks "← Home" to exit at any time
+| Step range | Number range (q) | Approximate √ range |
+|-----------|-----------------|---------------------|
+| 1–10 | 2 to 50 | 1.4 to 7.1 |
+| 11–20 | 51 to 150 | 7.1 to 12.2 |
+| 21–35 | 151 to 350 | 12.3 to 18.7 |
+| 36–60 | 351 to 700 | 18.7 to 26.5 |
+| 61+ | 701 to 999 | 26.5 to 31.6 |
 
-## Component: SqrtApp
-
-**File**: `client/src/App.jsx`
-
-**State variables:**
-- `started` (boolean) — whether the drill has begun
-- `question` (object | null) — current question data from API `{ q, step, prompt, floorAnswer, ceilAnswer, sqrtRounded }`
-- `answer` (string) — player's typed answer
-- `score` (number) — cumulative correct answers
-- `questionNumber` (number) — current question count (1, 2, 3, ...)
-- `feedback` (string) — feedback text with reasoning (uses \n for line breaks)
-- `loading` (boolean) — whether a question is being fetched
-- `revealed` (boolean) — whether the answer has been revealed
-
-**Behavior:**
-- No `finished` state — the drill never ends
-- `fetchQuestion(step)` passes the current question number as the step parameter
-- The step controls difficulty via server-side `bandForStep()` function
-- Score and question number only go up; there's no reset without going back to home and re-entering
-
-**Key difference from other quizzes**: No difficulty selector (difficulty is automatic), no fixed question count, no finish screen.
-
-## Progressive Difficulty
-
-Difficulty scales automatically based on the question number (step):
-
-| Questions | Number Range | Example | Typical √ Range |
-|-----------|-------------|---------|-----------------|
-| 1–10 | 2 to 50 | √37 | 1.4 to 7.1 |
-| 11–20 | 51 to 150 | √89 | 7.1 to 12.2 |
-| 21–35 | 151 to 350 | √247 | 12.3 to 18.7 |
-| 36–60 | 351 to 700 | √512 | 18.7 to 26.5 |
-| 61+ | 701 to 999 | √843 | 26.5 to 31.6 |
-
-**Server-side band function:**
+**Server-side implementation:**
 ```javascript
 function bandForStep(step) {
   if (step <= 10) return { min: 2, max: 50 };
@@ -76,25 +27,114 @@ function bandForStep(step) {
 }
 ```
 
-## Answer Acceptance
+The number `q` is generated using `randomInt(band.min, band.max)`.
 
-Both the floor and ceiling of the true square root are accepted:
+## 3. Answer Acceptance Logic
 
-- √47 = 6.856... → accepted answers: **6** or **7**
-- √49 = 7.000 → accepted answers: **7** (floor and ceiling are the same)
-- √2 = 1.414... → accepted answers: **1** or **2**
+Both floor and ceiling of the true square root are accepted:
 
-**Server-side validation:**
 ```javascript
 const sqrt = Math.sqrt(Number(q));
 const floorAnswer = Math.floor(sqrt);
 const ceilAnswer = Math.ceil(sqrt);
-const correct = numericAnswer === floorAnswer || numericAnswer === ceilAnswer;
+const correct = (numericAnswer === floorAnswer) || (numericAnswer === ceilAnswer);
 ```
 
-## Step-by-Step Feedback
+**Examples:**
+- √47 = 6.856 → accept 6 or 7
+- √49 = 7.000 → accept 7 only (floor === ceiling)
+- √2 = 1.414 → accept 1 or 2
 
-The reasoning is computed client-side using values returned by the server:
+## 4. API Specification
+
+### 4.1 GET /sqrt-api/question
+
+**Query parameters:**
+- `step` (integer, optional): question number, determines difficulty band. Default: 1. Minimum: 1.
+
+**Response (200):**
+```json
+{
+  "id": "5-1775067701647-0.857",
+  "q": 47,
+  "step": 5,
+  "prompt": "√47",
+  "floorAnswer": 6,
+  "ceilAnswer": 7,
+  "sqrtRounded": "6.86"
+}
+```
+
+**Notes:**
+- `sqrtRounded` is `Math.sqrt(q).toFixed(2)` — a string with 2 decimal places
+- Both `floorAnswer` and `ceilAnswer` are returned for client-side feedback
+
+### 4.2 POST /sqrt-api/check
+
+**Request body:**
+```json
+{ "q": 47, "answer": 7 }
+```
+
+**Response (200):**
+```json
+{
+  "correct": true,
+  "floorAnswer": 6,
+  "ceilAnswer": 7,
+  "sqrtRounded": "6.86",
+  "message": "Correct"
+}
+```
+
+**Note:** Server recomputes sqrt, floor, and ceiling from `q`. Does not trust client values.
+
+## 5. Frontend Component Specification
+
+### 5.1 Component: SqrtApp
+
+**Props:** `onBack` (function)
+
+**State:**
+
+| Variable | Type | Initial | Description |
+|----------|------|---------|-------------|
+| started | boolean | false | Drill has begun |
+| question | object/null | null | `{ q, step, prompt, floorAnswer, ceilAnswer, sqrtRounded }` |
+| answer | string | '' | Player's typed answer |
+| score | number | 0 | Correct answers count |
+| questionNumber | number | 0 | Current question count |
+| feedback | string | '' | Multi-line feedback |
+| loading | boolean | false | Fetching question |
+| revealed | boolean | false | Answer shown |
+| results | array | [] | Result objects |
+
+**Key difference from other quizzes:** No `finished` state, no difficulty selector, no finish screen.
+
+### 5.2 User Flow
+
+```
+[Show "The square-root drill will keep going until you stop."]
+[Show "Start Drill" button]
+        ↓ (click Start)
+[started=true, score=0, questionNumber=1, results=[]]
+[fetchQuestion(1)]
+        ↓
+[Display: "Question N" (no total)]
+[Display: "√47 = ?"]
+[Timer counting]
+        ↓ (submit)
+[POST /sqrt-api/check]
+[Stop timer, record result]
+[Show feedback with reasoning]
+        ↓ (next)
+[questionNumber++, fetchQuestion(next)]
+[Loop indefinitely]
+
+[User clicks "← Home" to exit at any time]
+```
+
+### 5.3 Step-by-Step Feedback
 
 ```javascript
 const reasoning = `√${question.q} = ${data.sqrtRounded}\n⌊${data.sqrtRounded}⌋ = ${data.floorAnswer}, ⌈${data.sqrtRounded}⌉ = ${data.ceilAnswer}`
@@ -115,60 +155,64 @@ Incorrect.
 Acceptable answers: 6 or 7
 ```
 
-Uses floor (⌊⌋) and ceiling (⌈⌉) mathematical notation to teach the concepts.
+Uses mathematical floor (⌊⌋) and ceiling (⌈⌉) notation.
 
-## API Endpoints
+### 5.4 Results Record
 
-### GET /sqrt-api/question?step=N
-
-Generates a random square root problem with difficulty based on the step.
-
-**Query parameters:**
-- `step` (number, optional) — the question number, used to determine difficulty band. Defaults to 1. Minimum is 1.
-
-**Response:**
-```json
+```javascript
 {
-  "id": "5-1775067701647-0.857",
-  "q": 47,
-  "step": 5,
-  "prompt": "√47",
-  "floorAnswer": 6,
-  "ceilAnswer": 7,
-  "sqrtRounded": "6.86"
+  question: `√${question.q}`,           // e.g., "√47"
+  userAnswer: answer,                    // e.g., "7"
+  correctAnswer: `${data.floorAnswer} or ${data.ceilAnswer}`,  // e.g., "6 or 7"
+  correct: data.correct,
+  time: timeTaken
 }
 ```
 
-**Notes:**
-- `q` is the number to find the square root of
-- `sqrtRounded` is the true square root rounded to 2 decimal places (string)
-- `floorAnswer` and `ceilAnswer` are both returned for the client to use in feedback
-- ID format: `{step}-{timestamp}-{random}`
+### 5.5 Results Display
 
-### POST /sqrt-api/check
+Unlike fixed-length quizzes, the results table is displayed **below the quiz area** at all times (not on a finish screen). It grows with each answered question, showing the full history of the session.
 
-Verifies the player's answer.
+### 5.6 UI Layout
 
-**Request body:**
-```json
-{
-  "q": 47,
-  "answer": 7
-}
+```
+┌─────────────────────────────────┐
+│ [← Home]                        │
+│          Square Root             │
+│    Floor or ceiling is accepted  │
+│                    [5s] [Score]  │
+│                                  │
+│         Question 14              │
+│          √247 = ?                │
+│       ┌──────────────┐           │
+│       │  Type answer  │           │
+│       └──────────────┘           │
+│                                  │
+│ ┌─ Correct!                    ─┐│
+│ │ √247 = 15.72                  ││
+│ │ ⌊15.72⌋ = 15, ⌈15.72⌉ = 16   ││
+│ └────────────────────────────────┘│
+│        [Next Question]           │
+│                                  │
+│ ┌── Results Table ─────────────┐ │
+│ │ # │ Question │ Ans │ ✓/✗ │ t │ │
+│ │ 1 │ √37      │  6  │  ✓  │3s│ │
+│ │...│ ...      │ ... │ ... │..│ │
+│ │14 │ √247     │ 16  │  ✓  │5s│ │
+│ └──────────────────────────────┘ │
+│ Total: 87s · Avg: 6.2s          │
+└─────────────────────────────────┘
 ```
 
-**Response:**
-```json
-{
-  "correct": true,
-  "floorAnswer": 6,
-  "ceilAnswer": 7,
-  "sqrtRounded": "6.86",
-  "message": "Correct"
-}
-```
+### 5.7 Keyboard Support
 
-**Notes:**
-- The server recomputes sqrt, floor, and ceiling from `q` (does not trust client values)
-- Answer is accepted if it matches either floor or ceiling
-- All answer values returned regardless of correctness (for feedback display)
+Enter key listener with dependencies: `[started, question, answer, revealed, questionNumber, loading]`. Active when `started` (always, since there's no finish state).
+
+## 6. Implementation Notes
+
+- `fetchQuestion(step)` uses the current `questionNumber + 1` as the step for the next question
+- The question number is incremented BEFORE fetching the next question
+- `startQuiz()` resets all state and fetches with step=1
+- No "Play Again" button — the drill just keeps going
+- The timer pill is visible whenever `started && !revealed`
+- Uses DM Sans (body/UI) and Source Serif 4 (heading) fonts from Google Fonts

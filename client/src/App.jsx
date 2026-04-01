@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import './App.css'
 
 const API = import.meta.env.VITE_API_BASE_URL || '';
@@ -6,6 +6,73 @@ const API = import.meta.env.VITE_API_BASE_URL || '';
 const TOTAL_ADDITION = 20
 const TOTAL_QUADRATIC = 20
 
+/* ── Timer Hook ──────────────────────────────────────── */
+function useTimer() {
+  const [elapsed, setElapsed] = useState(0)
+  const startRef = useRef(Date.now())
+  const intervalRef = useRef(null)
+
+  const start = () => {
+    startRef.current = Date.now()
+    setElapsed(0)
+    clearInterval(intervalRef.current)
+    intervalRef.current = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000))
+    }, 250)
+  }
+
+  const stop = () => {
+    clearInterval(intervalRef.current)
+    return Math.floor((Date.now() - startRef.current) / 1000)
+  }
+
+  const reset = () => {
+    clearInterval(intervalRef.current)
+    setElapsed(0)
+  }
+
+  useEffect(() => () => clearInterval(intervalRef.current), [])
+
+  return { elapsed, start, stop, reset }
+}
+
+/* ── Results Table ───────────────────────────────────── */
+function ResultsTable({ results }) {
+  if (!results || results.length === 0) return null
+  const totalTime = results.reduce((sum, r) => sum + r.time, 0)
+  const avgTime = (totalTime / results.length).toFixed(1)
+  return (
+    <div className="results-table-wrapper">
+      <table className="results-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Question</th>
+            <th>Your Answer</th>
+            <th>Result</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {results.map((r, i) => (
+            <tr key={i} className={r.correct ? 'row-correct' : 'row-wrong'}>
+              <td>{i + 1}</td>
+              <td>{r.question}</td>
+              <td>{r.userAnswer}</td>
+              <td>{r.correct ? '✓' : `✗ (${r.correctAnswer})`}</td>
+              <td>{r.time}s</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="results-summary">
+        Total time: {totalTime}s &middot; Average: {avgTime}s per question
+      </div>
+    </div>
+  )
+}
+
+/* ── App Shell ───────────────────────────────────────── */
 function App() {
   const [mode, setMode] = useState(null)
 
@@ -28,6 +95,7 @@ function App() {
   )
 }
 
+/* ── Home ────────────────────────────────────────────── */
 function Home({ onSelect }) {
   const apps = [
     { key: 'gk', name: 'General Knowledge', subtitle: 'Chitragupta quiz', color: 'purple' },
@@ -39,11 +107,28 @@ function Home({ onSelect }) {
   const totalSlots = 16
   const emptySlots = totalSlots - apps.length
 
+  const gridRef = useRef(null)
+  const [cols, setCols] = useState(4)
+
+  useEffect(() => {
+    const updateCols = () => {
+      if (!gridRef.current) return
+      const style = window.getComputedStyle(gridRef.current)
+      const columns = style.getPropertyValue('grid-template-columns').split(' ').length
+      setCols(columns)
+    }
+    updateCols()
+    window.addEventListener('resize', updateCols)
+    return () => window.removeEventListener('resize', updateCols)
+  }, [])
+
+  const rows = Math.ceil(totalSlots / cols)
+
   return (
     <>
       <h1>Tenali</h1>
       <p className="subtitle">Choose a learning game to begin</p>
-      <div className="menu-grid">
+      <div className="menu-grid" ref={gridRef}>
         {apps.map((app) => (
           <button key={app.key} className={`menu-card ${app.color}`} onClick={() => onSelect(app.key)}>
             <span className="menu-title">{app.name}</span>
@@ -56,10 +141,12 @@ function Home({ onSelect }) {
           </div>
         ))}
       </div>
+      <div className="grid-dimension">{rows} × {cols}</div>
     </>
   )
 }
 
+/* ── GK App ──────────────────────────────────────────── */
 function GKApp({ onBack }) {
   const [question, setQuestion] = useState(null)
   const [selected, setSelected] = useState('')
@@ -68,6 +155,9 @@ function GKApp({ onBack }) {
   const [loading, setLoading] = useState(false)
   const [score, setScore] = useState(0)
   const [revealed, setRevealed] = useState(false)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
 
   const loadQuestion = async () => {
     setLoading(true)
@@ -78,7 +168,9 @@ function GKApp({ onBack }) {
     const res = await fetch(`${API}/gk-api/question`)
     const data = await res.json()
     setQuestion(data)
+    setQuestionNumber((n) => n + 1)
     setLoading(false)
+    timer.start()
   }
 
   useEffect(() => {
@@ -90,6 +182,7 @@ function GKApp({ onBack }) {
 
     if (!revealed) {
       if (!selected) return
+      const timeTaken = timer.stop()
       const res = await fetch(`${API}/gk-api/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,6 +194,13 @@ function GKApp({ onBack }) {
       setFeedback(data.correct
         ? `Correct! The answer is ${data.correctAnswer}) ${data.correctAnswerText}`
         : `Incorrect. The correct answer is ${data.correctAnswer}) ${data.correctAnswerText}`)
+      setResults((prev) => [...prev, {
+        question: question.question.length > 50 ? question.question.slice(0, 50) + '…' : question.question,
+        userAnswer: selected,
+        correctAnswer: `${data.correctAnswer}) ${data.correctAnswerText}`,
+        correct: data.correct,
+        time: timeTaken,
+      }])
       setRevealed(true)
       return
     }
@@ -120,7 +220,10 @@ function GKApp({ onBack }) {
 
   return (
     <QuizLayout title="General Knowledge" subtitle="Random question picker" onBack={onBack}>
-      <div className="top-mini-row"><div className="score-pill">Score: {score}</div></div>
+      <div className="top-mini-row">
+        {!loading && question && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
       <div className="question-box">{loading || !question ? 'Loading question…' : question.question}</div>
       {question && (
         <div className="options-list">
@@ -139,10 +242,12 @@ function GKApp({ onBack }) {
       <div className="button-row">
         <button onClick={handleSubmitOrNext} disabled={loading || (!revealed && !selected)}>{revealed ? 'Next Question' : 'Submit'}</button>
       </div>
+      {results.length > 0 && <ResultsTable results={results} />}
     </QuizLayout>
   )
 }
 
+/* ── Addition App ────────────────────────────────────── */
 function AdditionApp({ onBack }) {
   const [digits, setDigits] = useState(1)
   const [started, setStarted] = useState(false)
@@ -154,6 +259,8 @@ function AdditionApp({ onBack }) {
   const [feedback, setFeedback] = useState('')
   const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
 
   const fetchQuestion = async (selectedDigits = digits) => {
     setLoading(true)
@@ -164,6 +271,7 @@ function AdditionApp({ onBack }) {
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
+    timer.start()
   }
 
   const startQuiz = async () => {
@@ -171,6 +279,7 @@ function AdditionApp({ onBack }) {
     setFinished(false)
     setScore(0)
     setQuestionNumber(1)
+    setResults([])
     await fetchQuestion(digits)
   }
 
@@ -189,6 +298,7 @@ function AdditionApp({ onBack }) {
 
     if (!revealed) {
       if (answer === '') return
+      const timeTaken = timer.stop()
       const res = await fetch(`${API}/addition-api/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -201,6 +311,13 @@ function AdditionApp({ onBack }) {
       setFeedback(data.correct
         ? `Correct! ${reasoning}`
         : `Incorrect. ${reasoning}`)
+      setResults((prev) => [...prev, {
+        question: `${question.a} + ${question.b}`,
+        userAnswer: answer,
+        correctAnswer: data.correctAnswer,
+        correct: data.correct,
+        time: timeTaken,
+      }])
       setRevealed(true)
       return
     }
@@ -208,6 +325,7 @@ function AdditionApp({ onBack }) {
     if (questionNumber >= TOTAL_ADDITION) {
       setFinished(true)
       setQuestion(null)
+      timer.reset()
       return
     }
 
@@ -217,7 +335,10 @@ function AdditionApp({ onBack }) {
 
   return (
     <QuizLayout title="Addition" subtitle="Choose a level and solve 20 addition questions" onBack={onBack}>
-      <div className="top-mini-row"><div className="score-pill">Score: {score}</div></div>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
       <div className="radio-group">
         {[1, 2, 3].map((value) => (
           <label key={value} className={`radio-pill ${digits === value ? 'active' : ''}`}>
@@ -234,12 +355,17 @@ function AdditionApp({ onBack }) {
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_ADDITION ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
       </>}
-      {finished && <div className="welcome-box"><p className="welcome-text">Quiz complete.</p><p className="final-score">Final score: {score}/{TOTAL_ADDITION}</p><button onClick={startQuiz}>Play Again</button></div>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete.</p>
+        <p className="final-score">Final score: {score}/{TOTAL_ADDITION}</p>
+        <ResultsTable results={results} />
+        <button onClick={startQuiz}>Play Again</button>
+      </div>}
     </QuizLayout>
   )
 }
 
-
+/* ── Quadratic App ───────────────────────────────────── */
 function QuadraticApp({ onBack }) {
   const [difficulty, setDifficulty] = useState('easy')
   const [started, setStarted] = useState(false)
@@ -251,6 +377,8 @@ function QuadraticApp({ onBack }) {
   const [feedback, setFeedback] = useState('')
   const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
 
   const fetchQuestion = async (selectedDifficulty = difficulty) => {
     setLoading(true)
@@ -261,6 +389,7 @@ function QuadraticApp({ onBack }) {
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
+    timer.start()
   }
 
   const startQuiz = async () => {
@@ -268,6 +397,7 @@ function QuadraticApp({ onBack }) {
     setFinished(false)
     setScore(0)
     setQuestionNumber(1)
+    setResults([])
     await fetchQuestion(difficulty)
   }
 
@@ -286,6 +416,7 @@ function QuadraticApp({ onBack }) {
 
     if (!revealed) {
       if (answer === '') return
+      const timeTaken = timer.stop()
       const res = await fetch(`${API}/quadratic-api/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -302,6 +433,13 @@ function QuadraticApp({ onBack }) {
       setFeedback(data.correct
         ? `Correct!\n${reasoning}`
         : `Incorrect.\n${reasoning}`)
+      setResults((prev) => [...prev, {
+        question: `y = ${a}x² ${b >= 0 ? '+' : '−'} ${Math.abs(b)}x ${c >= 0 ? '+' : '−'} ${Math.abs(c)}, x=${x}`,
+        userAnswer: answer,
+        correctAnswer: data.correctAnswer,
+        correct: data.correct,
+        time: timeTaken,
+      }])
       setRevealed(true)
       return
     }
@@ -309,6 +447,7 @@ function QuadraticApp({ onBack }) {
     if (questionNumber >= TOTAL_QUADRATIC) {
       setFinished(true)
       setQuestion(null)
+      timer.reset()
       return
     }
 
@@ -318,7 +457,10 @@ function QuadraticApp({ onBack }) {
 
   return (
     <QuizLayout title="Quadratic" subtitle="Given x, find y = ax² + bx + c" onBack={onBack}>
-      <div className="top-mini-row"><div className="score-pill">Score: {score}</div></div>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
       <div className="radio-group">
         {['easy', 'medium', 'hard'].map((level) => (
           <label key={level} className={`radio-pill ${difficulty === level ? 'active' : ''}`}>
@@ -342,11 +484,17 @@ function QuadraticApp({ onBack }) {
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_QUADRATIC ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
       </>}
-      {finished && <div className="welcome-box"><p className="welcome-text">Quiz complete.</p><p className="final-score">Final score: {score}/{TOTAL_QUADRATIC}</p><button onClick={startQuiz}>Play Again</button></div>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete.</p>
+        <p className="final-score">Final score: {score}/{TOTAL_QUADRATIC}</p>
+        <ResultsTable results={results} />
+        <button onClick={startQuiz}>Play Again</button>
+      </div>}
     </QuizLayout>
   )
 }
 
+/* ── Square Root App ─────────────────────────────────── */
 function SqrtApp({ onBack }) {
   const [started, setStarted] = useState(false)
   const [question, setQuestion] = useState(null)
@@ -356,6 +504,8 @@ function SqrtApp({ onBack }) {
   const [feedback, setFeedback] = useState('')
   const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
 
   const fetchQuestion = async (step) => {
     setLoading(true)
@@ -366,12 +516,14 @@ function SqrtApp({ onBack }) {
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
+    timer.start()
   }
 
   const startQuiz = async () => {
     setStarted(true)
     setScore(0)
     setQuestionNumber(1)
+    setResults([])
     await fetchQuestion(1)
   }
 
@@ -389,6 +541,7 @@ function SqrtApp({ onBack }) {
     if (!question) return
     if (!revealed) {
       if (answer === '') return
+      const timeTaken = timer.stop()
       const res = await fetch(`${API}/sqrt-api/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -400,6 +553,13 @@ function SqrtApp({ onBack }) {
       setFeedback(data.correct
         ? `Correct!\n${reasoning}`
         : `Incorrect.\n${reasoning}\nAcceptable answers: ${data.floorAnswer} or ${data.ceilAnswer}`)
+      setResults((prev) => [...prev, {
+        question: `√${question.q}`,
+        userAnswer: answer,
+        correctAnswer: `${data.floorAnswer} or ${data.ceilAnswer}`,
+        correct: data.correct,
+        time: timeTaken,
+      }])
       setRevealed(true)
       return
     }
@@ -410,7 +570,10 @@ function SqrtApp({ onBack }) {
 
   return (
     <QuizLayout title="Square Root" subtitle="Floor or ceiling is accepted" onBack={onBack}>
-      <div className="top-mini-row"><div className="score-pill">Score: {score}</div></div>
+      <div className="top-mini-row">
+        {started && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
       {!started && <div className="welcome-box"><p className="welcome-text">The square-root drill will keep going until you stop.</p><button onClick={startQuiz}>Start Drill</button></div>}
       {started && <>
         <div className="progress-pill center">Question {questionNumber}</div>
@@ -419,10 +582,12 @@ function SqrtApp({ onBack }) {
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? 'Next Question' : 'Submit'}</button></div>
       </>}
+      {results.length > 0 && <ResultsTable results={results} />}
     </QuizLayout>
   )
 }
 
+/* ── Quiz Layout ─────────────────────────────────────── */
 function QuizLayout({ title, subtitle, onBack, children }) {
   return (
     <>

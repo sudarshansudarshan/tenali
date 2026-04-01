@@ -1,123 +1,227 @@
 # Tenali — The Supermarket of Mathematical Skills
 
-Tenali is an interactive learning platform that presents mathematical and knowledge-building exercises as a "supermarket" of skill games. The home screen displays a 4x4 grid of 16 slots — 4 active apps and 12 reserved for future additions — where each slot is a self-contained learning game that drills a specific skill.
+## Formal Specification
 
-The name "Tenali" is inspired by Tenali Ramakrishna, the legendary Indian mathematician and poet known for his wit and problem-solving abilities.
+### 1. Purpose
 
-## Architecture
+Tenali is a web-based learning platform that hosts a collection of interactive mathematical and knowledge quiz games. It is designed as a "supermarket" where each game occupies a slot in a grid, and new games can be added over time. The platform is aimed at students practicing mental arithmetic and general knowledge.
 
-Tenali is a full-stack monorepo with a React frontend and an Express.js backend.
+### 2. System Architecture
 
-### Frontend (client/)
+#### 2.1 Technology Requirements
 
-- **Framework**: React 19 with Vite 8 as the build tool
-- **Styling**: Single App.css file using CSS custom properties for theming
-- **Font**: Inter (Google Fonts) — clean, professional sans-serif throughout
-- **Design**: Warm cream background (#f5f0eb), white cards (#fffdf9), amber accent (#e07a3a), green for correct (#3a8a5c), red for incorrect (#c24b3a)
-- **Layout**: Centered card (max-width 900px) containing all app views
-- **Routing**: State-based (no React Router) — a `mode` state variable switches between Home and individual apps
-- **Entry point**: `client/src/App.jsx` — contains all components (App, Home, GKApp, AdditionApp, QuadraticApp, SqrtApp, QuizLayout)
-- **Environment variables**: `VITE_API_BASE_URL` — set to empty string for production (relative URLs), or `http://localhost:4000` for development
+- **Frontend**: React 19+, Vite 8+ (build tool)
+- **Backend**: Node.js with Express 5+
+- **Fonts**: DM Sans (body/UI) + Source Serif 4 (display headings), loaded from Google Fonts CDN
+- **Styling**: Single CSS file with CSS custom properties
+- **No external UI libraries** — all components are custom-built
 
-### Backend (server/)
-
-- **Framework**: Express 5 with CORS middleware
-- **Port**: 4000 (default), configurable via `PORT` environment variable
-- **Static serving**: Serves the built React app from `client/dist/`
-- **SPA fallback**: Catch-all route serves `index.html` for client-side routing
-- **Data**: GK questions loaded from JSON files in `chitragupta/questions/` at startup (~991 questions)
-- **Entry point**: `server/index.js` — contains all API route handlers and helper functions
-
-### API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/health` | Health check — returns `{ ok: true, questions: N }` |
-| GET | `/gk-api/question` | Random GK question with id, text, options, genre |
-| POST | `/gk-api/check` | Verify GK answer — accepts `{ id, answerOption }` |
-| GET | `/addition-api/question?digits=N` | Addition problem (N = 1, 2, or 3) |
-| POST | `/addition-api/check` | Verify addition — accepts `{ a, b, answer }` |
-| GET | `/quadratic-api/question?difficulty=D` | Quadratic problem (D = easy, medium, or hard) |
-| POST | `/quadratic-api/check` | Verify quadratic — accepts `{ a, b, c, x, answer }` |
-| GET | `/sqrt-api/question?step=N` | Square root problem (difficulty scales with step) |
-| POST | `/sqrt-api/check` | Verify sqrt — accepts `{ q, answer }` |
-
-### Home Screen
-
-The home screen renders a 4x4 CSS grid. The first 4 cells are active app cards (clickable buttons with hover effects and a colored dot indicator). The remaining 12 cells are placeholder cards with dashed borders and "Coming soon" text. Responsive breakpoints collapse to 2 columns below 860px and 1 column below 500px.
-
-### Shared UI Patterns
-
-Every quiz app follows the same interaction pattern:
-
-1. **QuizLayout wrapper** — provides a back button, title, and subtitle
-2. **Score pill** — top-right corner, tracks cumulative score
-3. **Difficulty selector** (where applicable) — radio pill buttons locked once started
-4. **Welcome screen** — brief description + "Start Quiz" button
-5. **Question display** — styled question box with the problem
-6. **Answer input** — centered text input with focus styling
-7. **Submit/Next flow** — single button toggles between "Submit" and "Next Question"
-8. **Step-by-step feedback** — after every answer, a reasoning panel shows the full worked-out solution (green background for correct, red for incorrect)
-9. **Finish screen** — final score + "Play Again" button (for fixed-length quizzes)
-10. **Keyboard support** — Enter key submits or advances throughout
-
-### Deployment
-
-**Render.com** (primary):
-- Configuration: `render.yaml` at repo root
-- Build: `npm install && cd client && npm install && npm run build`
-- Start: `node server/index.js`
-- Health check: `/api/health`
-- URL: https://tenali.onrender.com
-
-**GitHub Pages** (static fallback):
-- CI/CD workflow: `.github/workflows/deploy.yml`
-- Builds client only, uploads to GitHub Pages
-- Vite base path: `./` (relative assets)
-
-### Development
-
-**Running locally:**
-
-1. Start the server: `cd server && node index.js` (runs on port 4000)
-2. Option A — production build: visit `http://localhost:4000` (Express serves built client)
-3. Option B — dev mode: `cd client && npm run dev` (Vite on port 5173 with hot reload, proxies API calls to port 4000)
-
-**Vite proxy config** (client/vite.config.js): forwards `/api`, `/gk-api`, `/addition-api`, `/quadratic-api`, and `/sqrt-api` to `http://127.0.0.1:4000`.
-
-### Repository Structure
+#### 2.2 Project Structure
 
 ```
 Tenali/
-├── supermarket/              Documentation hub
-│   ├── SKILL.md              This file — project overview
-│   ├── gk/SKILL.md           General Knowledge app docs
-│   ├── addition/SKILL.md     Addition app docs
-│   ├── quadratic/SKILL.md    Quadratic app docs
-│   └── sqrt/SKILL.md         Square Root app docs
+├── supermarket/              Formal specifications (this folder)
+│   ├── SKILL.md              Master specification (this file)
+│   ├── gk/SKILL.md           General Knowledge specification
+│   ├── addition/SKILL.md     Addition specification
+│   ├── quadratic/SKILL.md    Quadratic specification
+│   └── sqrt/SKILL.md         Square Root specification
 ├── client/                   React frontend
 │   ├── src/
-│   │   ├── App.jsx           All components
-│   │   ├── App.css           All styling
-│   │   └── index.css         Minimal reset
-│   ├── index.html            HTML entry point
-│   ├── vite.config.js        Vite configuration
-│   ├── .env                  Dev environment (VITE_API_BASE)
-│   └── .env.production       Production environment (VITE_API_BASE_URL)
+│   │   ├── App.jsx           All components in a single file
+│   │   ├── App.css           All styles in a single file
+│   │   └── index.css         Minimal CSS reset (4 lines)
+│   ├── index.html            HTML shell — loads DM Sans + Source Serif 4 fonts, mounts React
+│   ├── vite.config.js        Dev server config with API proxy rules
+│   ├── .env                  Development: VITE_API_BASE=http://localhost:4000
+│   └── .env.production       Production: VITE_API_BASE_URL= (empty, uses relative URLs)
 ├── server/
-│   ├── index.js              Express server + all API routes
-│   └── package.json          Server dependencies
+│   ├── index.js              Express server — all routes, all logic
+│   └── package.json          Dependencies: express, cors
 ├── chitragupta/
-│   └── questions/            ~991 GK question JSON files
+│   └── questions/            991 JSON files (0001.json to 0991.json)
 ├── render.yaml               Render.com deployment config
 └── .github/workflows/        GitHub Pages CI/CD
 ```
 
-### Current Apps (4 of 16 slots filled)
+#### 2.3 Client-Server Communication
 
-1. **General Knowledge** — Multiple-choice quiz from 991 curated questions
-2. **Addition** — 20-question drill with 1/2/3-digit difficulty levels
-3. **Quadratic** — 20-question substitution quiz with Easy/Medium/Hard difficulty
-4. **Square Root** — Continuous estimation drill with progressive difficulty
+The frontend communicates with the backend via REST API calls using `fetch()`. The API base URL is determined by the environment variable `VITE_API_BASE_URL`. In production, this is empty (meaning relative URLs like `/addition-api/question`), so the Express server serves both the static frontend and the API from the same origin.
 
-See individual SKILL.md files in the subfolders for exhaustive details on each app.
+### 3. Frontend Specification
+
+#### 3.1 App Shell
+
+The root component renders a centered card on a cream-colored background. A `mode` state variable (initially `null`) determines which view is active:
+
+- `null` → Home screen
+- `'gk'` → General Knowledge quiz
+- `'addition'` → Addition quiz
+- `'quadratic'` → Quadratic quiz
+- `'sqrt'` → Square Root drill
+
+Each quiz component receives an `onBack` callback that sets `mode` back to `null`.
+
+#### 3.2 Home Screen
+
+The Home screen displays:
+1. Title "Tenali" in the heading
+2. Subtitle "Choose a learning game to begin"
+3. A **responsive CSS grid** with **16 slots total** using `auto-fill` (columns auto-adjust from 2 on mobile to 5–6 on wide screens):
+   - First 4 slots: active app cards (clickable buttons)
+   - Remaining 12 slots: placeholder cards with dashed borders and "Coming soon" text
+4. A **grid dimension indicator** below the grid showing current rows × columns (e.g., "4 × 4"), styled subtly
+
+**Grid dimension indicator implementation:** A `useRef` on the grid element reads `getComputedStyle().gridTemplateColumns` on mount and window resize to compute the current column count. Rows are derived from `Math.ceil(totalSlots / cols)`. Displayed as "rows × cols" in a subtle, low-opacity label below the grid.
+
+Each active card shows a title, subtitle, and has a color class (`purple`, `blue`, `green`) that controls a small colored dot on hover.
+
+**App registry** (hardcoded array):
+| Key | Name | Subtitle | Color |
+|-----|------|----------|-------|
+| gk | General Knowledge | Chitragupta quiz | purple |
+| addition | Addition | 20-question addition practice | blue |
+| quadratic | Quadratic | Find y for y = ax² + bx + c | blue |
+| sqrt | Square Root | Nearest-integer square root drill | green |
+
+#### 3.3 Shared Quiz Components
+
+**QuizLayout**: Wrapper that renders a "← Home" back button, an `<h1>` title, a `<p>` subtitle, and then the quiz children.
+
+**ResultsTable**: Receives an array of result objects and renders:
+- An HTML `<table>` with columns: #, Question, Your Answer, Result, Time
+- Rows are styled with green text for correct, red for incorrect
+- A summary line below: "Total time: Ns · Average: Ns per question"
+
+**useTimer hook**: Custom hook that provides:
+- `elapsed` (number): seconds since last `start()`, updated every 250ms
+- `start()`: resets and begins counting
+- `stop()`: stops counting, returns seconds elapsed
+- `reset()`: stops counting, sets elapsed to 0
+
+#### 3.4 Per-Question Timer
+
+Every quiz displays a timer pill in the top-right corner (next to the score pill). The timer:
+- Starts when a new question loads
+- Displays elapsed seconds in real-time (e.g., "12s")
+- Stops when the player submits an answer
+- Is hidden after submission (while feedback is shown)
+- The time taken is recorded in the results array
+
+#### 3.5 Results Tracking
+
+Every quiz maintains a `results` state array. After each answer, a result object is appended:
+```
+{
+  question: string,      // short description of the question
+  userAnswer: string,    // what the player typed/selected
+  correctAnswer: string, // the correct answer
+  correct: boolean,      // whether the player was right
+  time: number           // seconds taken for this question
+}
+```
+
+For fixed-length quizzes (Addition, Quadratic), the results table is shown on the finish screen. For unlimited quizzes (GK, Square Root), the results table is shown below the current question (growing as the player progresses).
+
+### 4. Backend Specification
+
+#### 4.1 Server Setup
+
+- Express app with CORS enabled and JSON body parsing
+- Serves static files from `client/dist/`
+- Catch-all `GET /*` serves `index.html` (SPA fallback)
+- Listens on `0.0.0.0:${PORT}` where PORT defaults to 4000
+
+#### 4.2 API Endpoints
+
+| Method | Path | Query Params | Request Body | Response |
+|--------|------|-------------|-------------|----------|
+| GET | `/api/health` | — | — | `{ ok: true, questions: N }` |
+| GET | `/gk-api/question` | — | — | `{ id, question, options[], genre }` |
+| POST | `/gk-api/check` | — | `{ id, answerOption }` | `{ correct, correctAnswer, correctAnswerText, message }` |
+| GET | `/addition-api/question` | `digits` (1/2/3) | — | `{ id, digits, a, b, prompt, answer }` |
+| POST | `/addition-api/check` | — | `{ a, b, answer }` | `{ correct, correctAnswer, message }` |
+| GET | `/quadratic-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, a, b, c, x, prompt, answer }` |
+| POST | `/quadratic-api/check` | — | `{ a, b, c, x, answer }` | `{ correct, correctAnswer, message }` |
+| GET | `/sqrt-api/question` | `step` (number) | — | `{ id, q, step, prompt, floorAnswer, ceilAnswer, sqrtRounded }` |
+| POST | `/sqrt-api/check` | — | `{ q, answer }` | `{ correct, floorAnswer, ceilAnswer, sqrtRounded, message }` |
+
+#### 4.3 Data Loading
+
+GK questions are loaded once at server startup from JSON files in `chitragupta/questions/`. Each file is parsed and stored in an in-memory array.
+
+### 5. Design Specification
+
+#### 5.1 Color Palette
+
+| Variable | Value | Usage |
+|----------|-------|-------|
+| `--clr-bg` | #f5f0eb | Page background |
+| `--clr-card` | #fffdf9 | Card background |
+| `--clr-text` | #2c2420 | Primary text |
+| `--clr-text-soft` | #6b5e54 | Secondary text |
+| `--clr-border` | rgba(60,45,30,0.12) | Borders |
+| `--clr-accent` | #e07a3a | Buttons, active states, timer |
+| `--clr-accent-soft` | rgba(224,122,58,0.10) | Accent backgrounds |
+| `--clr-correct` | #3a8a5c | Correct feedback text |
+| `--clr-correct-bg` | #eaf5ef | Correct feedback background |
+| `--clr-wrong` | #c24b3a | Incorrect feedback text |
+| `--clr-wrong-bg` | #fdf0ee | Incorrect feedback background |
+
+#### 5.2 Typography
+
+- **Display/Headings**: Source Serif 4, `clamp(2.4rem, 5vw, 3.2rem)`, weight 700, letter-spacing -0.02em
+- **Body/UI**: DM Sans, 0.85rem–1.05rem, weight 400–600, letter-spacing 0.01em
+- **Question display**: DM Sans, `clamp(1.4rem, 3.5vw, 1.8rem)`, weight 400
+- Tabular numbers (`font-variant-numeric: tabular-nums`) for the timer
+- Fallback stack: system-ui, -apple-system, 'Segoe UI', sans-serif
+
+#### 5.3 Layout
+
+- Card: max-width 900px, centered with flexbox, 24px border-radius, subtle shadow
+- Grid: `repeat(auto-fill, minmax(180px, 1fr))` — auto-adjusts from 2 columns on mobile to 5–6 on wide screens
+- Card padding: 48px 40px (desktop), 32px 24px (mobile)
+
+#### 5.4 Interactive Elements
+
+- **Buttons**: amber (#e07a3a) with white text, 10px border-radius, hover lifts 1px
+- **Radio pills**: transparent with border, active state fills with accent color
+- **Input fields**: white background, 1.5px border, amber focus ring (3px spread)
+- **Option cards**: white with border, selected fills with accent soft color
+- **Menu cards**: white with border, hover lifts 3px with amber border and colored dot
+
+### 6. Deployment
+
+#### 6.1 Render.com
+
+```yaml
+services:
+  - type: web
+    name: tenali
+    env: node
+    buildCommand: npm install && cd client && npm install && npm run build
+    startCommand: node server/index.js
+    healthCheckPath: /api/health
+```
+
+#### 6.2 Development
+
+1. `cd server && node index.js` — starts Express on port 4000
+2. `cd client && npm run dev` — starts Vite on port 5173 with proxy to 4000
+3. Vite proxy forwards: `/api`, `/gk-api`, `/addition-api`, `/quadratic-api`, `/sqrt-api`
+
+### 7. Adding a New App
+
+To add a new quiz app to the supermarket:
+
+1. Add a new entry to the `apps` array in the `Home` component (the `totalSlots` constant automatically reduces placeholder count)
+2. Add a new condition in the `App` component's mode switch
+3. Create the quiz component following the shared pattern:
+   - Use `QuizLayout` wrapper
+   - Use `useTimer()` hook for per-question timing
+   - Maintain a `results` state array
+   - Include `ResultsTable` on the finish screen
+   - Support Enter key for submit/next
+4. Add API endpoints in `server/index.js` with GET for question generation and POST for answer checking
+5. Add the proxy route in `client/vite.config.js`
+6. Create a formal specification in `supermarket/{app-name}/SKILL.md`

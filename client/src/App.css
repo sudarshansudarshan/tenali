@@ -1,9 +1,9 @@
 /* ── Base ─────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap');
 
 :root {
-  --font-display: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Source Serif 4', 'Georgia', serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --clr-bg: #f5f0eb;
   --clr-card: #fffdf9;
   --clr-text: #2c2420;
@@ -54,30 +54,41 @@ body {
 
 /* ── Typography ──────────────────────────────────────── */
 h1 {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   text-align: center;
   font-family: var(--font-display);
   font-size: clamp(2.4rem, 5vw, 3.2rem);
   font-weight: 700;
   color: var(--clr-text);
-  letter-spacing: -0.01em;
-  line-height: 1.1;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
 .subtitle {
-  margin: 0 0 32px;
+  margin: 0 0 36px;
   text-align: center;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--clr-text-soft);
   font-weight: 400;
-  line-height: 1.5;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
 }
 
 /* ── Home Menu Grid ──────────────────────────────────── */
 .menu-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 14px;
+}
+
+.grid-dimension {
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--clr-text-soft);
+  opacity: 0.45;
+  margin-top: 16px;
+  letter-spacing: 0.06em;
 }
 
 .menu-card {
@@ -243,10 +254,11 @@ button:disabled {
   margin-bottom: 20px;
 }
 
-/* ── Score & Progress Pills ──────────────────────────── */
+/* ── Score, Timer & Progress Pills ────────────────────── */
 .top-mini-row {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-bottom: 8px;
 }
 
@@ -316,19 +328,23 @@ button:disabled {
   padding: 32px 8px;
 }
 
+.welcome-box > button {
+  margin-top: 8px;
+}
+
 .welcome-text {
   font-size: 1.05rem;
   font-weight: 500;
   color: var(--clr-text-soft);
-  margin-bottom: 24px;
-  line-height: 1.5;
+  margin-bottom: 28px;
+  line-height: 1.6;
 }
 
 .final-score {
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--clr-text);
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   font-family: var(--font-display);
 }
 
@@ -426,13 +442,13 @@ button:disabled {
 
 /* ── Feedback ────────────────────────────────────────── */
 .feedback {
-  margin-top: 16px;
-  padding: 14px 18px;
+  margin-top: 20px;
+  padding: 16px 20px;
   border-radius: var(--radius-sm);
   font-size: 0.92rem;
   font-weight: 500;
   text-align: left;
-  line-height: 1.7;
+  line-height: 1.75;
   white-space: pre-line;
 }
 
@@ -455,20 +471,79 @@ button:disabled {
   margin-top: 24px;
 }
 
-/* ── Responsive ──────────────────────────────────────── */
-@media (max-width: 860px) {
-  .menu-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+/* ── Timer Pill ──────────────────────────────────────── */
+.timer-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--clr-accent);
+  background: var(--clr-accent-soft);
+  border-radius: 999px;
+  border: none;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
+/* ── Results Table ───────────────────────────────────── */
+.results-table-wrapper {
+  margin-top: 28px;
+  overflow-x: auto;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.results-table th {
+  padding: 10px 12px;
+  font-weight: 600;
+  color: var(--clr-text-soft);
+  border-bottom: 2px solid var(--clr-border);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.results-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--clr-border);
+  color: var(--clr-text);
+  vertical-align: middle;
+}
+
+.results-table tr.row-correct td:nth-child(4) {
+  color: var(--clr-correct);
+  font-weight: 600;
+}
+
+.results-table tr.row-wrong td:nth-child(4) {
+  color: var(--clr-wrong);
+  font-weight: 600;
+}
+
+.results-table tr:last-child td {
+  border-bottom: none;
+}
+
+.results-summary {
+  margin-top: 16px;
+  margin-bottom: 32px;
+  font-size: 0.85rem;
+  color: var(--clr-text-soft);
+  text-align: center;
+  font-weight: 500;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 500px) {
   .card {
     padding: 32px 24px;
     border-radius: 20px;
-  }
-  .menu-grid {
-    grid-template-columns: 1fr;
   }
   .menu-card {
     min-height: 100px;

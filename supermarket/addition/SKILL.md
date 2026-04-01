@@ -1,63 +1,24 @@
-# Addition
+# Addition — Formal Specification
 
-A 20-question addition practice quiz with three difficulty levels based on the number of digits.
+## 1. Purpose
 
-## Overview
+A 20-question addition quiz where the player selects a difficulty level (1-digit, 2-digit, or 3-digit numbers), then solves randomly generated addition problems. Each answer shows the complete working. A results table with per-question timing is displayed at the end.
 
-The Addition app generates random addition problems. The player selects a difficulty (1-digit, 2-digit, or 3-digit numbers), then solves 20 problems in sequence. After each answer, the full working is shown (e.g., "47 + 83 = 130"). A final score is displayed at the end.
+## 2. Constants
 
-## User Flow
+```javascript
+const TOTAL_ADDITION = 20  // fixed number of questions per quiz
+```
 
-1. Player enters the Addition app from the home menu
-2. Three difficulty radio pills are shown: "One digit", "Two digits", "Three digits"
-3. Player selects a difficulty (default: One digit)
-4. Player clicks "Start Quiz"
-5. Progress pill shows "Question 1/20"
-6. The addition problem is displayed (e.g., "47 + 83 = ?")
-7. Player types their answer in the input field
-8. Player clicks "Submit" (or presses Enter)
-9. Feedback appears:
-   - Correct: "Correct! 47 + 83 = 130" (green background)
-   - Incorrect: "Incorrect. 47 + 83 = 130" (red background)
-10. Button changes to "Next Question" (or "Finish Quiz" on question 20)
-11. After question 20, final score screen: "Quiz complete. Final score: 15/20"
-12. Player can click "Play Again" to restart with the same or different difficulty
+## 3. Difficulty Levels
 
-## Component: AdditionApp
+| Level | digits param | Range min | Range max | Example |
+|-------|-------------|-----------|-----------|---------|
+| One digit | 1 | 0 | 9 | 3 + 7 |
+| Two digits | 2 | 10 | 99 | 47 + 83 |
+| Three digits | 3 | 100 | 999 | 456 + 278 |
 
-**File**: `client/src/App.jsx`
-
-**Constants:**
-- `TOTAL_ADDITION = 20` — fixed number of questions per quiz
-
-**State variables:**
-- `digits` (number) — selected difficulty level (1, 2, or 3)
-- `started` (boolean) — whether the quiz has begun
-- `finished` (boolean) — whether all 20 questions are done
-- `question` (object | null) — current question data from API
-- `answer` (string) — player's typed answer
-- `score` (number) — cumulative correct answers
-- `questionNumber` (number) — current question index (1-20)
-- `feedback` (string) — feedback text to display
-- `loading` (boolean) — whether a question is being fetched
-- `revealed` (boolean) — whether the answer has been revealed
-
-**Behavior:**
-- Difficulty selector is locked once the quiz starts (`disabled={started && !finished}`)
-- `fetchQuestion(selectedDigits)` fetches a new question with the given digit count
-- `handleSubmitOrNext()` manages the submit → reveal → next → finish flow
-- After question 20, sets `finished = true` and shows the final score screen
-- Enter key triggers submit/next throughout
-
-## Difficulty Levels
-
-| Level | Label | Number Range | Example Problem |
-|-------|-------|-------------|-----------------|
-| 1 | One digit | 0 to 9 | 3 + 7 = ? |
-| 2 | Two digits | 10 to 99 | 47 + 83 = ? |
-| 3 | Three digits | 100 to 999 | 456 + 278 = ? |
-
-**Server-side range function:**
+**Server-side implementation:**
 ```javascript
 function digitRange(digits) {
   if (digits === 1) return { min: 0, max: 9 };
@@ -66,16 +27,16 @@ function digitRange(digits) {
 }
 ```
 
-## API Endpoints
+Both operands `a` and `b` are generated independently within the same range using `randomInt(range.min, range.max)`.
 
-### GET /addition-api/question?digits=N
+## 4. API Specification
 
-Generates a random addition problem.
+### 4.1 GET /addition-api/question
 
 **Query parameters:**
-- `digits` (number, optional) — 1, 2, or 3. Defaults to 1. Invalid values fall back to 1.
+- `digits` (integer, optional): 1, 2, or 3. Default: 1. Invalid values fall back to 1.
 
-**Response:**
+**Response (200):**
 ```json
 {
   "id": "2-1775067701647-0.857",
@@ -87,25 +48,14 @@ Generates a random addition problem.
 }
 ```
 
-**Notes:**
-- Both `a` and `b` are generated within the same digit range
-- The `answer` field is included in the response (used for server-side verification too)
-- ID format: `{digits}-{timestamp}-{random}`
-
-### POST /addition-api/check
-
-Verifies the player's answer.
+### 4.2 POST /addition-api/check
 
 **Request body:**
 ```json
-{
-  "a": 47,
-  "b": 83,
-  "answer": 130
-}
+{ "a": 47, "b": 83, "answer": 130 }
 ```
 
-**Response:**
+**Response (200):**
 ```json
 {
   "correct": true,
@@ -114,19 +64,122 @@ Verifies the player's answer.
 }
 ```
 
-## Feedback Format
+**Validation:** `Number(answer) === Number(a) + Number(b)` — server recomputes the sum.
 
-The feedback always shows the complete working:
+## 5. Frontend Component Specification
 
-- **Correct**: `Correct! 47 + 83 = 130`
-- **Incorrect**: `Incorrect. 47 + 83 = 130`
+### 5.1 Component: AdditionApp
 
-The reasoning is computed client-side using the question's `a` and `b` values and the server's `correctAnswer`.
+**Props:** `onBack` (function)
 
-## Styling
+**State:**
 
-- Difficulty selector uses `.radio-group` with `.radio-pill` buttons (`.active` for selected)
-- Progress shown in `.progress-pill.center`
-- Question displayed in `.question-box`
-- Input uses `.answer-input` with `inputMode="numeric"`
-- Feedback uses `.feedback.correct` or `.feedback.wrong`
+| Variable | Type | Initial | Description |
+|----------|------|---------|-------------|
+| digits | number | 1 | Selected difficulty (1/2/3) |
+| started | boolean | false | Quiz has begun |
+| finished | boolean | false | All 20 questions done |
+| question | object/null | null | Current question from API |
+| answer | string | '' | Player's typed answer |
+| score | number | 0 | Correct answers count |
+| questionNumber | number | 0 | Current question (1-20) |
+| feedback | string | '' | Feedback with reasoning |
+| loading | boolean | false | Fetching question |
+| revealed | boolean | false | Answer shown |
+| results | array | [] | Result objects for each question |
+
+**Timer:** `useTimer()` — starts on question load, stops on submit.
+
+### 5.2 User Flow
+
+```
+[Show difficulty selector: One digit / Two digits / Three digits]
+[Show "Start Quiz" button]
+        ↓ (click Start)
+[Lock difficulty selector]
+[Set started=true, questionNumber=1, score=0, results=[]]
+[fetchQuestion(digits)]
+        ↓
+[Display: "Question N/20", question prompt "47 + 83 = ?", input field]
+[Timer starts counting]
+        ↓ (type answer, submit)
+[POST /addition-api/check]
+[Stop timer, record result]
+[Show feedback: "Correct! 47 + 83 = 130" or "Incorrect. 47 + 83 = 130"]
+        ↓ (click Next / press Enter)
+[If questionNumber < 20: increment, fetchQuestion]
+[If questionNumber >= 20: set finished=true]
+        ↓ (finished)
+[Show: "Quiz complete.", "Final score: 15/20"]
+[Show ResultsTable with all 20 results]
+[Show "Play Again" button → restarts quiz]
+```
+
+### 5.3 Feedback Format
+
+Client-side construction:
+```javascript
+const reasoning = `${question.a} + ${question.b} = ${data.correctAnswer}`
+// Correct: "Correct! 47 + 83 = 130"
+// Incorrect: "Incorrect. 47 + 83 = 130"
+```
+
+### 5.4 Results Record
+
+After each answer, append to `results`:
+```javascript
+{
+  question: `${question.a} + ${question.b}`,  // e.g., "47 + 83"
+  userAnswer: answer,                          // e.g., "130"
+  correctAnswer: data.correctAnswer,           // e.g., 130
+  correct: data.correct,                       // true/false
+  time: timeTaken                              // seconds
+}
+```
+
+### 5.5 UI Layout
+
+```
+┌─────────────────────────────────┐
+│ [← Home]                        │
+│            Addition              │
+│  Choose a level and solve 20    │
+│       addition questions         │
+│                    [8s] [Score]  │
+│  [One digit] [Two digits] [Three digits]  │
+│                                  │
+│       Question 7/20              │
+│       47 + 83 = ?                │
+│       ┌──────────────┐           │
+│       │  Type answer  │           │
+│       └──────────────┘           │
+│          [Submit]                │
+│ ┌─ Correct! 47 + 83 = 130 ────┐ │
+└─────────────────────────────────┘
+
+FINISH SCREEN:
+┌─────────────────────────────────┐
+│       Quiz complete.             │
+│    Final score: 15/20            │
+│ ┌── Results Table ─────────────┐ │
+│ │ # │ Question  │ Ans │ ✓/✗ │t│ │
+│ │ 1 │ 47 + 83   │ 130 │  ✓  │4│ │
+│ │ 2 │ 91 + 56   │ 145 │✗(147)│12│ │
+│ └──────────────────────────────┘ │
+│ Total: 180s · Avg: 9.0s         │
+│         [Play Again]             │
+└─────────────────────────────────┘
+```
+
+### 5.6 Keyboard Support
+
+Enter key listener with dependencies: `[started, finished, question, answer, revealed, score, questionNumber, digits, loading]`. Only active when `started && !finished`.
+
+## 6. Implementation Notes
+
+- Difficulty selector is disabled while quiz is in progress (`disabled={started && !finished}`)
+- The `answer` field from the GET response is included but not used client-side for verification — the POST endpoint recomputes it
+- Input uses `type="number"` with `inputMode="numeric"` for mobile keyboard optimization
+- Results array is reset on "Play Again" (`setResults([])`)
+- Finish screen spacing: results summary has `margin-bottom: 32px` before the Play Again button for visual breathing room
+- Uses DM Sans (body/UI) and Source Serif 4 (heading) fonts from Google Fonts

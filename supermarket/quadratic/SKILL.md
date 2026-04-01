@@ -1,71 +1,26 @@
-# Quadratic
+# Quadratic — Formal Specification
 
-A 20-question quiz on evaluating quadratic expressions by substitution, with three difficulty levels.
+## 1. Purpose
 
-## Overview
+A 20-question quiz on evaluating quadratic expressions by substitution. The player selects a difficulty level (Easy, Medium, Hard), then computes y = ax² + bx + c for given values of a, b, c, and x. All values are single-digit integers — difficulty controls the range. After each answer, a full step-by-step substitution chain is displayed. A results table with per-question timing is shown at the end.
 
-The Quadratic app tests mental arithmetic by asking the player to substitute a given value of x into a quadratic expression y = ax² + bx + c and compute y. All coefficients (a, b, c) and x are single-digit integers — difficulty controls the range within that single digit. After every answer, the full step-by-step substitution is shown.
+## 2. Constants
 
-## User Flow
+```javascript
+const TOTAL_QUADRATIC = 20  // fixed number of questions per quiz
+```
 
-1. Player enters the Quadratic app from the home menu
-2. Three difficulty radio pills are shown: "Easy", "Medium", "Hard"
-3. Player selects a difficulty (default: Easy)
-4. Player clicks "Start Quiz"
-5. Progress pill shows "Question 1/20"
-6. The question is displayed in two parts:
-   - Line 1: "x = -3" (the given value)
-   - Line 2: "y = 7x² + 3x − 4" (the expression to evaluate)
-7. Player types their answer in the input field (placeholder: "y = ?")
-8. Player clicks "Submit" (or presses Enter)
-9. Step-by-step feedback appears:
-   ```
-   Correct!
-   y = 7(-3)² + 3(-3) − 4
-   = 7(9) − 9 − 4
-   = 63 − 9 − 4
-   = 50
-   ```
-10. Button changes to "Next Question" (or "Finish Quiz" on question 20)
-11. After question 20, final score screen with "Play Again" option
+## 3. Difficulty Levels
 
-## Component: QuadraticApp
+| Level | Range min | Range max | Typical max product |
+|-------|-----------|-----------|-------------------|
+| Easy | -3 | 3 | 27 (3 × 3²) |
+| Medium | -6 | 6 | 216 (6 × 6²) |
+| Hard | -9 | 9 | 729 (9 × 9²) |
 
-**File**: `client/src/App.jsx`
+**Important constraint:** No coefficient (a, b, c) or x value ever exceeds a single digit in magnitude (0–9). Difficulty comes from the size within that range.
 
-**Constants:**
-- `TOTAL_QUADRATIC = 20` — fixed number of questions per quiz
-
-**State variables:**
-- `difficulty` (string) — 'easy', 'medium', or 'hard'
-- `started` (boolean) — whether the quiz has begun
-- `finished` (boolean) — whether all 20 questions are done
-- `question` (object | null) — current question data from API `{ a, b, c, x, prompt, answer }`
-- `answer` (string) — player's typed answer
-- `score` (number) — cumulative correct answers
-- `questionNumber` (number) — current question index (1-20)
-- `feedback` (string) — feedback text with step-by-step reasoning (uses \n for line breaks)
-- `loading` (boolean) — whether a question is being fetched
-- `revealed` (boolean) — whether the answer has been revealed
-
-**Behavior:**
-- Difficulty selector is locked once the quiz starts
-- `fetchQuestion(selectedDifficulty)` passes difficulty as a query parameter
-- Question display splits into two styled spans: `.given` for x value, `.equation` for the expression
-- Sign formatting in the display: uses ternary to show `+` or `−` with `Math.abs()` for the coefficient
-- Step-by-step reasoning is computed entirely client-side after receiving the server's `correctAnswer`
-
-## Difficulty Levels
-
-| Level | Coefficient Range | x Range | Mental Difficulty |
-|-------|------------------|---------|-------------------|
-| Easy | -3 to 3 | -3 to 3 | Simple products, small sums |
-| Medium | -6 to 6 | -6 to 6 | Moderate products, requires careful tracking |
-| Hard | -9 to 9 | -9 to 9 | Large products (up to 729), challenging mental math |
-
-**Important**: No coefficient or x value ever exceeds a single digit (magnitude 0-9). Difficulty comes from the size within that range.
-
-**Server-side range function:**
+**Server-side implementation:**
 ```javascript
 function quadraticRange(difficulty) {
   if (difficulty === 'easy') return { min: -3, max: 3 };
@@ -74,43 +29,16 @@ function quadraticRange(difficulty) {
 }
 ```
 
-## Step-by-Step Feedback
+All four values (a, b, c, x) are generated independently within the same range.
 
-The reasoning chain is computed client-side with this logic:
+## 4. API Specification
 
-```javascript
-const { a, b, c, x } = question
-const xSq = x * x              // x squared
-const termA = a * xSq           // a * x²
-const termB = b * x             // b * x
-const sign = (v) => v >= 0 ? `+ ${v}` : `− ${Math.abs(v)}`
-
-// Line 1: Substitute x into expression
-// Line 2: Compute x²
-// Line 3: Multiply coefficients
-// Line 4: Final sum
-```
-
-**Example** (a=7, b=3, c=-4, x=-3):
-```
-y = 7(-3)² + 3(-3) − 4
-= 7(9) − 9 − 4
-= 63 − 9 − 4
-= 50
-```
-
-The feedback box uses `white-space: pre-line` CSS to render the `\n` characters as line breaks.
-
-## API Endpoints
-
-### GET /quadratic-api/question?difficulty=D
-
-Generates a random quadratic substitution problem.
+### 4.1 GET /quadratic-api/question
 
 **Query parameters:**
-- `difficulty` (string, optional) — 'easy', 'medium', or 'hard'. Defaults to 'hard'.
+- `difficulty` (string, optional): "easy", "medium", or "hard". Default: "hard".
 
-**Response:**
+**Response (200):**
 ```json
 {
   "id": "quadratic-1775067701647-0.857",
@@ -123,27 +51,23 @@ Generates a random quadratic substitution problem.
 }
 ```
 
-**Notes:**
-- The `prompt` field is formatted server-side using `buildQuadraticPrompt()` with proper sign handling via `formatSignedTerm()`
-- The `answer` is computed as `a * x * x + b * x + c`
-- All values are integers
+**Server-side prompt formatting:**
 
-### POST /quadratic-api/check
+The `prompt` field is built using `formatSignedTerm(value, variablePart, isFirst)`:
+- First term shows its natural sign: `-8x²` or `7x²`
+- Subsequent terms show operator: `+ 3x` or `- 4`
+- Zero values are shown as `+ 0x` or `+ 0`
 
-Verifies the player's answer.
+**Answer computation:** `a * x * x + b * x + c` (integer arithmetic, no floating point)
+
+### 4.2 POST /quadratic-api/check
 
 **Request body:**
 ```json
-{
-  "a": 7,
-  "b": 3,
-  "c": -4,
-  "x": -3,
-  "answer": 50
-}
+{ "a": 7, "b": 3, "c": -4, "x": -3, "answer": 50 }
 ```
 
-**Response:**
+**Response (200):**
 ```json
 {
   "correct": true,
@@ -152,34 +76,121 @@ Verifies the player's answer.
 }
 ```
 
-**Notes:**
-- The server recomputes the answer from a, b, c, x (does not trust any client-sent answer)
-- Comparison is strict numeric equality
+**Validation:** Server recomputes `a*x*x + b*x + c` from the provided values. Does not trust any client-sent answer.
 
-## Question Display
+## 5. Frontend Component Specification
 
-The question is rendered in a structured layout rather than a single text line:
+### 5.1 Component: QuadraticApp
+
+**Props:** `onBack` (function)
+
+**State:**
+
+| Variable | Type | Initial | Description |
+|----------|------|---------|-------------|
+| difficulty | string | 'easy' | 'easy'/'medium'/'hard' |
+| started | boolean | false | Quiz has begun |
+| finished | boolean | false | All 20 questions done |
+| question | object/null | null | `{ a, b, c, x, prompt, answer }` |
+| answer | string | '' | Player's typed answer |
+| score | number | 0 | Correct answers count |
+| questionNumber | number | 0 | Current question (1-20) |
+| feedback | string | '' | Multi-line feedback with reasoning |
+| loading | boolean | false | Fetching question |
+| revealed | boolean | false | Answer shown |
+| results | array | [] | Result objects |
+
+### 5.2 Question Display
+
+The question is rendered as two styled lines (NOT the server's `prompt` string):
 
 ```jsx
 <span className="given">x = {question.x}</span>
 <span className="equation">
-  y = {question.a}x² {question.b >= 0 ? '+' : '−'} {Math.abs(question.b)}x
-  {question.c >= 0 ? '+' : '−'} {Math.abs(question.c)}
+  y = {formatCoeff(question.a)}x² {sign} {formatCoeff(Math.abs(question.b))}x {sign} {Math.abs(question.c)}
 </span>
 ```
 
-- `.given` — same font size and weight as the equation
-- `.equation` — slightly larger with `font-weight: 600`
+**Coefficient display rules:**
+- If coefficient is 1: show just `x²` (not `1x²`)
+- If coefficient is -1: show `−x²` (not `-1x²`)
+- Otherwise: show the number (e.g., `7x²`, `−3x`)
+- Signs between terms: `+` for positive, `−` for negative
 
-## Server-Side Prompt Formatting
+### 5.3 Step-by-Step Feedback
 
-The server formats the expression using two helper functions:
+Computed entirely client-side after receiving `data.correctAnswer`:
 
-**`formatSignedTerm(value, variablePart, isFirst)`**:
-- Handles sign display (+ or -) for each term
-- First term shows its natural sign; subsequent terms show operator before the absolute value
-- Handles zero values
+```javascript
+const { a, b, c, x } = question
+const xSq = x * x              // x squared
+const termA = a * xSq           // a * x²
+const termB = b * x             // b * x
+const sign = (v) => v >= 0 ? `+ ${v}` : `− ${Math.abs(v)}`
 
-**`buildQuadraticPrompt(a, b, c, x)`**:
-- Combines all three terms into a readable expression
-- Returns the full prompt string: "If x = {x}, find y for y = {expression}"
+const reasoning = [
+  `y = ${a}(${x})² ${sign(b)}(${x}) ${sign(c)}`,
+  `= ${a}(${xSq}) ${sign(termB)} ${sign(c)}`,
+  `= ${termA} ${sign(termB)} ${sign(c)}`,
+  `= ${data.correctAnswer}`
+].join('\n')
+```
+
+**Example output** (a=7, b=3, c=-4, x=-3):
+```
+Correct!
+y = 7(-3)² + 3(-3) − 4
+= 7(9) − 9 − 4
+= 63 − 9 − 4
+= 50
+```
+
+The feedback div uses `white-space: pre-line` to render `\n` as line breaks.
+
+### 5.4 Results Record
+
+```javascript
+{
+  question: `y = ${a}x² ${b >= 0 ? '+' : '−'} ${Math.abs(b)}x ${c >= 0 ? '+' : '−'} ${Math.abs(c)}, x=${x}`,
+  userAnswer: answer,
+  correctAnswer: data.correctAnswer,
+  correct: data.correct,
+  time: timeTaken
+}
+```
+
+### 5.5 User Flow
+
+```
+[Show difficulty selector: Easy / Medium / Hard]
+[Show "Start Quiz" button]
+        ↓ (click Start)
+[Lock difficulty, started=true, results=[]]
+[fetchQuestion(difficulty)]
+        ↓
+[Display: "Question N/20"]
+[Display: "x = -3" (given line)]
+[Display: "y = 7x² + 3x − 4" (equation line)]
+[Input placeholder: "y = ?"]
+[Timer counting]
+        ↓ (submit)
+[POST /quadratic-api/check]
+[Stop timer, compute reasoning, record result]
+[Show multi-line feedback]
+        ↓ (next)
+[If < 20: next question]
+[If = 20: show finish screen with ResultsTable]
+```
+
+### 5.6 Keyboard Support
+
+Enter key listener with dependencies: `[started, finished, question, answer, revealed, questionNumber, loading]`. Active when `started && !finished`.
+
+## 6. Implementation Notes
+
+- The input placeholder is "y = ?" (not "Type your answer") to match the mathematical context
+- Difficulty selector uses the `.radio-pill` CSS pattern (shared with Addition app)
+- The `fetchQuestion()` call passes the current difficulty as a query parameter
+- `startQuiz()` resets: started=true, finished=false, score=0, questionNumber=1, results=[]
+- Finish screen spacing: results summary has `margin-bottom: 32px` before the Play Again button
+- Uses DM Sans (body/UI) and Source Serif 4 (heading) fonts from Google Fonts

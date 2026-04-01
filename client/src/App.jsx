@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
+const API = import.meta.env.VITE_API_BASE_URL || '';
+
 const TOTAL_ADDITION = 20
 const TOTAL_QUADRATIC = 20
 
@@ -65,7 +67,7 @@ function GKApp({ onBack }) {
     setFeedback('')
     setIsCorrect(null)
     setRevealed(false)
-    const res = await fetch('/gk-api/question')
+    const res = await fetch(`${API}/gk-api/question`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -80,7 +82,7 @@ function GKApp({ onBack }) {
 
     if (!revealed) {
       if (!selected) return
-      const res = await fetch('/gk-api/check', {
+      const res = await fetch(`${API}/gk-api/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: question.id, answerOption: selected }),
@@ -148,7 +150,7 @@ function AdditionApp({ onBack }) {
     setFeedback('')
     setAnswer('')
     setRevealed(false)
-    const res = await fetch(`/addition-api/question?digits=${selectedDigits}`)
+    const res = await fetch(`${API}/addition-api/question?digits=${selectedDigits}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -177,7 +179,7 @@ function AdditionApp({ onBack }) {
 
     if (!revealed) {
       if (answer === '') return
-      const res = await fetch('/addition-api/check', {
+      const res = await fetch(`${API}/addition-api/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ a: question.a, b: question.b, answer: Number(answer) }),
@@ -241,7 +243,7 @@ function QuadraticApp({ onBack }) {
     setAnswer('')
     setFeedback('')
     setRevealed(false)
-    const res = await fetch('/quadratic-api/question')
+    const res = await fetch(`${API}/quadratic-api/question`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -270,7 +272,7 @@ function QuadraticApp({ onBack }) {
 
     if (!revealed) {
       if (answer === '') return
-      const res = await fetch('/quadratic-api/check', {
+      const res = await fetch(`${API}/quadratic-api/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ a: question.a, b: question.b, c: question.c, x: question.x, answer: Number(answer) }),
@@ -323,7 +325,7 @@ function SqrtApp({ onBack }) {
     setAnswer('')
     setFeedback('')
     setRevealed(false)
-    const res = await fetch(`/sqrt-api/question?step=${step}`)
+    const res = await fetch(`${API}/sqrt-api/question?step=${step}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -350,7 +352,7 @@ function SqrtApp({ onBack }) {
     if (!question) return
     if (!revealed) {
       if (answer === '') return
-      const res = await fetch('/sqrt-api/check', {
+      const res = await fetch(`${API}/sqrt-api/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ q: question.q, answer: Number(answer) }),

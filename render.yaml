@@ -1,3 +1,4 @@
+# Backend server — kept for Render deployment (Express serves React frontend)
 services:
   - type: web
     name: tenali

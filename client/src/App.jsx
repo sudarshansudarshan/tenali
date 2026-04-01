@@ -334,7 +334,7 @@ function QuadraticApp({ onBack }) {
           {loading || !question ? 'Loading question…' : (
             <>
               <span className="given">x = {question.x}</span>
-              <span className="equation">y = {question.a}x² {question.b >= 0 ? '+' : '−'} {Math.abs(question.b)}x {question.c >= 0 ? '+' : '−'} {Math.abs(question.c)}</span>
+              <span className="equation">y = {question.a === 1 ? '' : question.a === -1 ? '−' : question.a}x² {question.b >= 0 ? '+' : '−'} {Math.abs(question.b) === 1 ? '' : Math.abs(question.b)}x {question.c >= 0 ? '+' : '−'} {Math.abs(question.c)}</span>
             </>
           )}
         </div>

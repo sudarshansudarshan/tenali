@@ -253,6 +253,8 @@ h1 {
   padding: 8px 14px;
   border-radius: 8px;
   margin-bottom: 10px;
+  min-width: 80px;
+  text-align: center;
 }
 
 .menu-subtitle {

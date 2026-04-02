@@ -121,21 +121,33 @@ function NumPad({ value, onChange, onSubmit, disabled }) {
 }
 
 /* ── Adaptive Tables App ────────────────────────────── */
-const MASTERY_STREAK = 3          // correct in a row to pass a phase
-const FAST_MS = 5000              // "fast" answer threshold
-const TABLES_PER_QUIZ = 10       // questions per quiz round
+/*
+  Adaptation logic (rolling window of last WINDOW recent answers for current table):
+  - avgTime < FAST_THRESH (3s) & accuracy ≥ 90%  → "mastered" → hide table, advance soon
+  - avgTime < MEDIUM_THRESH (6s) & accuracy ≥ 70% → "comfortable" → hide table, keep drilling
+  - otherwise → "learning" → show the reference table
+  Advance to next table when mastered without the table shown for ADVANCE_COUNT answers.
+*/
+const WINDOW = 8                   // rolling window size
+const FAST_THRESH = 3000           // ms — mastery speed
+const MEDIUM_THRESH = 6000         // ms — comfortable speed
+const ADVANCE_COUNT = 5            // consecutive mastered-without-table to advance
 
 function AdaptiveTablesApp({ studentName }) {
   const storageKey = `tenali-tables-${studentName}`
-  const loadProgress = () => {
+
+  // Phases: 'setup' → 'playing' → 'finished'
+  const [phase, setPhase] = useState('setup')
+  const [currentTable, setCurrentTable] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey))
-      if (saved && saved.currentTable >= 2) return saved
+      if (saved && saved.currentTable >= 2) return saved.currentTable
     } catch {}
-    return { currentTable: 2, phase: 'learn', streak: 0 }
-  }
+    return 2
+  })
+  const [startTable, setStartTable] = useState(currentTable)
 
-  const [progress, setProgress] = useState(loadProgress)
+  // Quiz state
   const [question, setQuestion] = useState(null)
   const [answer, setAnswer] = useState('')
   const [feedback, setFeedback] = useState('')
@@ -145,32 +157,51 @@ function AdaptiveTablesApp({ studentName }) {
   const [score, setScore] = useState(0)
   const [startTime, setStartTime] = useState(null)
   const [results, setResults] = useState([])
-  const [finished, setFinished] = useState(false)
+
+  // Adaptive state
+  const [recentWindow, setRecentWindow] = useState([])   // {correct, timeMs}
+  const [showTable, setShowTable] = useState(true)
+  const [masteredWithout, setMasteredWithout] = useState(0) // consecutive mastered answers without table
+  const [statusMsg, setStatusMsg] = useState('')
+
   const inputRef = useRef(null)
   const advanceFnRef = useRef(null)
 
-  const { currentTable, phase, streak } = progress
-
-  const saveProgress = (p) => {
-    setProgress(p)
-    try { localStorage.setItem(storageKey, JSON.stringify(p)) } catch {}
+  const save = (tbl) => {
+    try { localStorage.setItem(storageKey, JSON.stringify({ currentTable: tbl })) } catch {}
   }
 
-  const generateQuestion = () => {
+  const generateQuestion = (tbl) => {
     const multiplier = Math.floor(Math.random() * 10) + 1
-    return { table: currentTable, multiplier, answer: currentTable * multiplier }
+    return { table: tbl, multiplier, answer: tbl * multiplier }
   }
 
-  const startRound = () => {
+  const beginPractice = () => {
+    const tbl = startTable
+    setCurrentTable(tbl)
+    save(tbl)
+    setPhase('playing')
     setQuestionNum(0)
     setScore(0)
     setResults([])
-    setFinished(false)
-    nextQuestion()
+    setRecentWindow([])
+    setShowTable(true)
+    setMasteredWithout(0)
+    setStatusMsg('Learning — table shown')
+    const q = generateQuestion(tbl)
+    setQuestion(q)
+    setAnswer('')
+    setFeedback('')
+    setIsCorrect(null)
+    setRevealed(false)
+    setStartTime(Date.now())
+    setQuestionNum(1)
+    setTimeout(() => inputRef.current?.focus(), 50)
   }
 
-  const nextQuestion = () => {
-    const q = generateQuestion()
+  const nextQuestion = (tbl) => {
+    const table = tbl || currentTable
+    const q = generateQuestion(table)
     setQuestion(q)
     setAnswer('')
     setFeedback('')
@@ -182,14 +213,20 @@ function AdaptiveTablesApp({ studentName }) {
   }
 
   advanceFnRef.current = () => {
-    if (questionNum >= TABLES_PER_QUIZ) {
-      setFinished(true)
-    } else {
-      nextQuestion()
-    }
+    nextQuestion()
   }
 
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  // Evaluate the rolling window and decide adaptation
+  const evaluate = (window) => {
+    if (window.length < 3) return { level: 'learning', avgTime: Infinity, accuracy: 0 }
+    const accuracy = window.filter(r => r.correct).length / window.length
+    const avgTime = window.reduce((s, r) => s + r.timeMs, 0) / window.length
+    if (avgTime < FAST_THRESH && accuracy >= 0.9) return { level: 'mastered', avgTime, accuracy }
+    if (avgTime < MEDIUM_THRESH && accuracy >= 0.7) return { level: 'comfortable', avgTime, accuracy }
+    return { level: 'learning', avgTime, accuracy }
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -197,14 +234,14 @@ function AdaptiveTablesApp({ studentName }) {
     const userAns = parseInt(answer, 10)
     const correct = userAns === question.answer
     const elapsed = Date.now() - startTime
-    const fast = elapsed < FAST_MS
 
     setIsCorrect(correct)
     setRevealed(true)
     if (correct) setScore(s => s + 1)
 
+    const speedLabel = elapsed < FAST_THRESH ? 'fast' : elapsed < MEDIUM_THRESH ? 'ok' : 'slow'
     const fb = correct
-      ? `Correct! ${question.table} × ${question.multiplier} = ${question.answer}${fast ? ' (fast!)' : ''}`
+      ? `Correct! ${question.table} × ${question.multiplier} = ${question.answer} (${(elapsed / 1000).toFixed(1)}s — ${speedLabel})`
       : `${question.table} × ${question.multiplier} = ${question.answer} (you said ${userAns || '?'})`
     setFeedback(fb)
 
@@ -213,34 +250,63 @@ function AdaptiveTablesApp({ studentName }) {
       yourAnswer: answer || '?',
       correct: question.answer,
       isCorrect: correct,
-      time: (elapsed / 1000).toFixed(1)
+      time: (elapsed / 1000).toFixed(1),
+      table: question.table
     }])
 
-    // Update mastery progress
-    if (correct && fast) {
-      const newStreak = streak + 1
-      if (phase === 'learn' && newStreak >= MASTERY_STREAK) {
-        saveProgress({ currentTable, phase: 'quiz', streak: 0 })
-      } else if (phase === 'quiz' && newStreak >= MASTERY_STREAK) {
-        const nextTable = currentTable + 1
-        if (nextTable <= 20) {
-          saveProgress({ currentTable: nextTable, phase: 'learn', streak: 0 })
-        } else {
-          saveProgress({ currentTable: 20, phase: 'done', streak: newStreak })
-        }
-      } else {
-        saveProgress({ ...progress, streak: newStreak })
-      }
-    } else {
-      saveProgress({ ...progress, streak: 0 })
-    }
-  }
+    // Update rolling window
+    const newWindow = [...recentWindow, { correct, timeMs: elapsed }].slice(-WINDOW)
+    setRecentWindow(newWindow)
 
-  const handleReset = () => {
-    saveProgress({ currentTable: 2, phase: 'learn', streak: 0 })
-    setFinished(false)
-    setQuestion(null)
-    setQuestionNum(0)
+    // Evaluate and adapt
+    const { level, avgTime, accuracy } = evaluate(newWindow)
+
+    if (level === 'mastered' && !showTable) {
+      // Already without table and mastered — count toward advancement
+      const newCount = masteredWithout + 1
+      setMasteredWithout(newCount)
+      if (newCount >= ADVANCE_COUNT) {
+        // Advance to next table!
+        const nextTbl = currentTable + 1
+        if (nextTbl <= 20) {
+          setCurrentTable(nextTbl)
+          save(nextTbl)
+          setRecentWindow([])
+          setShowTable(true)
+          setMasteredWithout(0)
+          setStatusMsg(`Great! Moving to ${nextTbl}× table`)
+          // Next question will use the new table after state updates
+          setTimeout(() => nextQuestion(nextTbl), AUTO_ADVANCE_MS)
+          return // skip normal auto-advance
+        } else {
+          setPhase('finished')
+          return
+        }
+      }
+      setStatusMsg(`Mastered! (${newCount}/${ADVANCE_COUNT} to advance) — avg ${(avgTime / 1000).toFixed(1)}s`)
+    } else if (level === 'mastered' && showTable) {
+      // Mastered with table shown — hide the table
+      setShowTable(false)
+      setMasteredWithout(0)
+      setStatusMsg(`Fast & accurate — table hidden! Prove it without help.`)
+    } else if (level === 'comfortable') {
+      if (showTable) {
+        setShowTable(false)
+        setStatusMsg(`Getting comfortable — table hidden. Avg ${(avgTime / 1000).toFixed(1)}s`)
+      } else {
+        setStatusMsg(`Comfortable — avg ${(avgTime / 1000).toFixed(1)}s, ${Math.round(accuracy * 100)}% correct`)
+      }
+      setMasteredWithout(0)
+    } else {
+      // Learning — show the table
+      if (!showTable) {
+        setShowTable(true)
+        setStatusMsg(`Needs practice — table shown again`)
+      } else {
+        setStatusMsg(`Learning — keep practicing with the table`)
+      }
+      setMasteredWithout(0)
+    }
   }
 
   // Render the reference table
@@ -256,112 +322,95 @@ function AdaptiveTablesApp({ studentName }) {
     </div>
   )
 
-  if (progress.phase === 'done') {
+  // ── Setup screen: pick starting table ──
+  if (phase === 'setup') {
+    return (
+      <div className="app-shell">
+        <div className="card">
+          <h1>{studentName}'s Tables</h1>
+          <div className="welcome-box">
+            <p className="welcome-text">Which table would you like to start from?</p>
+            <div className="checkbox-group" style={{ marginBottom: '24px' }}>
+              {Array.from({ length: 19 }, (_, i) => i + 2).map(n => (
+                <label key={n} className={`checkbox-pill${startTable === n ? ' active' : ''}`}>
+                  <input type="radio" name="startTable" checked={startTable === n}
+                    onChange={() => setStartTable(n)} />
+                  {n}×
+                </label>
+              ))}
+            </div>
+            <button onClick={beginPractice}>Start Practice</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Finished all tables ──
+  if (phase === 'finished') {
     return (
       <div className="app-shell">
         <div className="card">
           <h1>Congratulations, {studentName}!</h1>
           <div className="welcome-box">
-            <p className="welcome-text">You've mastered all tables from 2 to 20!</p>
-            <button onClick={handleReset}>Start Over</button>
+            <p className="welcome-text">You've mastered all tables up to 20×!</p>
+            <div className="final-score">{score} correct out of {questionNum}</div>
+            <button onClick={() => setPhase('setup')}>Start Over</button>
           </div>
         </div>
       </div>
     )
   }
 
-  if (!question) {
-    return (
-      <div className="app-shell">
-        <div className="card">
-          <h1>{studentName}'s Tables</h1>
-          <div className="welcome-box">
-            <p className="welcome-text">
-              Currently on: <strong>{currentTable} × table</strong>
-              {phase === 'learn' ? ' (with reference table shown)' : ' (quiz mode — no table shown)'}
-            </p>
-            <p className="welcome-text" style={{ fontSize: '0.88rem', marginBottom: '12px' }}>
-              Streak: {streak}/{MASTERY_STREAK} fast correct answers needed to advance
-            </p>
-            <button onClick={startRound}>Start Practice</button>
-            {currentTable > 2 && (
-              <button className="secondary" onClick={handleReset} style={{ marginLeft: 12 }}>Reset All</button>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (finished) {
-    return (
-      <div className="app-shell">
-        <div className="card">
-          <h1>{studentName}'s Tables</h1>
-          <div className="final-score">{score} / {TABLES_PER_QUIZ}</div>
-          <p className="welcome-text">
-            Table: {currentTable} × | Phase: {progress.phase === 'learn' ? 'Learning' : 'Quiz'} | Streak: {progress.streak}/{MASTERY_STREAK}
-          </p>
-          <div className="results-table-wrapper">
-            <table className="results-table">
-              <thead>
-                <tr><th>#</th><th>Question</th><th>You</th><th>Answer</th><th>Time</th></tr>
-              </thead>
-              <tbody>
-                {results.map((r, i) => (
-                  <tr key={i} className={r.isCorrect ? 'row-correct' : 'row-wrong'}>
-                    <td>{i + 1}</td><td>{r.q}</td><td>{r.yourAnswer}</td><td>{r.correct}</td><td>{r.time}s</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="button-row">
-            <button onClick={startRound}>Practice Again</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
+  // ── Playing ──
   return (
     <div className="app-shell">
       <div className="card">
+        <div className="header-row">
+          <button className="back-button" onClick={() => setPhase('setup')}>← Change Table</button>
+        </div>
         <h1>{studentName}'s Tables</h1>
         <div className="top-mini-row">
           <span className="score-pill">Score {score}</span>
-          <span className="progress-pill">{questionNum} / {TABLES_PER_QUIZ}</span>
+          <span className="progress-pill">Q {questionNum}</span>
+          <span className="timer-pill">{currentTable}× table</span>
         </div>
-        <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--clr-text-soft)', margin: '0 0 8px' }}>
-          {currentTable}× table — {phase === 'learn' ? 'Learning' : 'Quiz'} — Streak: {streak}/{MASTERY_STREAK}
-        </p>
+        {statusMsg && (
+          <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--clr-text-soft)', margin: '4px 0 8px', fontWeight: 500 }}>
+            {statusMsg}
+          </p>
+        )}
 
-        <div className={phase === 'learn' ? 'tables-layout' : ''}>
-          {phase === 'learn' && renderTable()}
+        <div className={showTable ? 'tables-layout' : ''}>
+          {showTable && renderTable()}
           <div className="tables-quiz-area">
-            <div className="question-box">
-              {question.table} × {question.multiplier} = ?
-            </div>
-            <form onSubmit={handleSubmit}>
-              <input
-                ref={inputRef}
-                className="answer-input"
-                type="text"
-                inputMode="numeric"
-                value={answer}
-                onChange={e => { if (/^-?\d*$/.test(e.target.value)) setAnswer(e.target.value) }}
-                placeholder="?"
-                disabled={revealed}
-                autoFocus
-              />
-              {!revealed && (
-                <div className="button-row">
-                  <button type="submit" disabled={!answer}>Check</button>
+            {question && (
+              <>
+                <div className="question-box">
+                  {question.table} × {question.multiplier} = ?
                 </div>
-              )}
-            </form>
-            {feedback && (
-              <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>
+                <form onSubmit={handleSubmit}>
+                  <input
+                    ref={inputRef}
+                    className="answer-input"
+                    type="text"
+                    inputMode="numeric"
+                    value={answer}
+                    onChange={e => { if (/^-?\d*$/.test(e.target.value)) setAnswer(e.target.value) }}
+                    placeholder="?"
+                    disabled={revealed}
+                    autoFocus
+                  />
+                  {!revealed && (
+                    <div className="button-row">
+                      <button type="submit" disabled={!answer}>Check</button>
+                    </div>
+                  )}
+                </form>
+                {feedback && (
+                  <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>
+                )}
+              </>
             )}
           </div>
         </div>

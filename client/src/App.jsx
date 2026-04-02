@@ -354,6 +354,7 @@ function AdditionApp({ onBack }) {
         <input className="answer-input" type="number" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="Type your answer" />
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_ADDITION ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete.</p>
@@ -483,6 +484,7 @@ function QuadraticApp({ onBack }) {
         <input className="answer-input" type="number" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="y = ?" />
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_QUADRATIC ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
+        {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete.</p>

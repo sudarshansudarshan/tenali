@@ -36,7 +36,8 @@ Tenali/
 │   ├── simul/SKILL.md        Simultaneous Equations (2×2 / 3×3) specification
 │   ├── funceval/SKILL.md     Function Evaluation specification
 │   ├── lineq/SKILL.md        Line Equation specification
-│   └── basicarith/SKILL.md   Basic Arithmetic specification
+│   ├── basicarith/SKILL.md   Basic Arithmetic specification
+│   └── custom/SKILL.md       Custom Lesson specification
 ├── client/                   React frontend
 │   ├── src/
 │   │   ├── App.jsx           All components in a single file
@@ -83,6 +84,7 @@ The root component renders a centered card on a cream-colored background. A `mod
 - `'funceval'` → Function Evaluation quiz
 - `'lineq'` → Line Equation quiz
 - `'basicarith'` → Basic Arithmetic quiz (+, −, × with positives & negatives)
+- `'custom'` → Custom Lesson (build your own mixed quiz)
 
 Each quiz component receives an `onBack` callback that sets `mode` back to `null`.
 
@@ -91,14 +93,15 @@ Each quiz component receives an `onBack` callback that sets `mode` back to `null
 The Home screen displays:
 1. Title "Tenali" in the heading
 2. Subtitle "Choose a learning game to begin"
-3. A **responsive CSS grid** with **16 slots total** using `auto-fill` (columns auto-adjust from 2 on mobile to 5–6 on wide screens):
-   - First 15 slots: active app cards (clickable buttons)
-   - Remaining 1 slot: placeholder card with dashed border and "Coming soon" text
-4. A **grid dimension indicator** below the grid showing current rows × columns (e.g., "4 × 4"), styled subtly
+3. A **search bar** (`.search-bar`) centered below the subtitle, filters puzzle cards by name/subtitle as you type
+4. A **responsive CSS grid** of **fixed-size cards** (180 × 160px each) using `grid-template-columns: repeat(auto-fill, 180px)` with `justify-content: center`
+5. A **grid dimension indicator** below the grid showing current rows × columns
 
-**Grid dimension indicator implementation:** A `useRef` on the grid element reads `getComputedStyle().gridTemplateColumns` on mount and window resize to compute the current column count. Rows are derived from `Math.ceil(totalSlots / cols)`. Displayed as "rows × cols" in a subtle, low-opacity label below the grid.
+**Theme toggle:** A fixed button (`.theme-toggle`) in the top-right corner of the viewport toggles between dark and light themes. Dark theme (default): `--clr-bg: #2c2420` (dark brown). Light theme: `--clr-bg: #f5f0eb` (warm beige). Uses `data-theme` attribute on `<html>` and persists choice to localStorage.
 
-Each active card shows a title, subtitle, and has a color class (`purple`, `blue`, `green`) that controls a small colored dot on hover.
+**Grid dimension indicator implementation:** A `useRef` on the grid element reads `getComputedStyle().gridTemplateColumns` on mount and window resize to compute the current column count. Rows are derived from `Math.ceil(apps.length / cols)`. Displayed as "rows × cols" in a subtle, low-opacity label below the grid.
+
+Each active card has a fixed size (180 × 160px), shows a title (on a silver badge), subtitle, and has a color class (`purple`, `blue`, `green`) that controls a small colored dot on hover.
 
 **App registry** (hardcoded array):
 | Key | Name | Subtitle | Color |
@@ -118,6 +121,7 @@ Each active card shows a title, subtitle, and has a color class (`purple`, `blue
 | funceval | Functions | Evaluate f(x), f(x,y), f(x,y,z) | blue |
 | lineq | Line Equation | Find m and c from two points | green |
 | basicarith | Basic Arithmetic | +, −, × with positive & negative | purple |
+| custom | Custom Lesson | Build your own mixed quiz | green |
 
 #### 3.3 Shared Quiz Components
 

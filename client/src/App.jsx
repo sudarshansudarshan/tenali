@@ -123,42 +123,39 @@ function NumPad({ value, onChange, onSubmit, disabled }) {
 /* ── App Shell ───────────────────────────────────────── */
 function App() {
   const [mode, setMode] = useState(null)
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('tenali-theme') || 'dark' } catch { return 'dark' }
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    try { localStorage.setItem('tenali-theme', theme) } catch {}
+  }, [theme])
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
+
+  const modeMap = {
+    gk: GKApp, addition: AdditionApp, quadratic: QuadraticApp,
+    multiply: MultiplyApp, vocab: VocabApp, spot: TwinHuntApp,
+    sqrt: SqrtApp, polymul: PolyMulApp, polyfactor: PolyFactorApp,
+    primefactor: PrimeFactorApp, qformula: QFormulaApp, simul: SimulApp,
+    funceval: FuncEvalApp, lineq: LineEqApp, basicarith: BasicArithApp,
+    custom: CustomApp,
+  }
+  const ActiveApp = mode ? modeMap[mode] : null
 
   return (
     <div className="app-shell">
+      <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+        {theme === 'dark' ? '☀️' : '🌙'}
+      </button>
       <div className="card">
         {!mode ? (
           <Home onSelect={setMode} />
-        ) : mode === 'gk' ? (
-          <GKApp onBack={() => setMode(null)} />
-        ) : mode === 'addition' ? (
-          <AdditionApp onBack={() => setMode(null)} />
-        ) : mode === 'quadratic' ? (
-          <QuadraticApp onBack={() => setMode(null)} />
-        ) : mode === 'multiply' ? (
-          <MultiplyApp onBack={() => setMode(null)} />
-        ) : mode === 'vocab' ? (
-          <VocabApp onBack={() => setMode(null)} />
-        ) : mode === 'spot' ? (
-          <TwinHuntApp onBack={() => setMode(null)} />
-        ) : mode === 'sqrt' ? (
-          <SqrtApp onBack={() => setMode(null)} />
-        ) : mode === 'polymul' ? (
-          <PolyMulApp onBack={() => setMode(null)} />
-        ) : mode === 'polyfactor' ? (
-          <PolyFactorApp onBack={() => setMode(null)} />
-        ) : mode === 'primefactor' ? (
-          <PrimeFactorApp onBack={() => setMode(null)} />
-        ) : mode === 'qformula' ? (
-          <QFormulaApp onBack={() => setMode(null)} />
-        ) : mode === 'simul' ? (
-          <SimulApp onBack={() => setMode(null)} />
-        ) : mode === 'funceval' ? (
-          <FuncEvalApp onBack={() => setMode(null)} />
-        ) : mode === 'lineq' ? (
-          <LineEqApp onBack={() => setMode(null)} />
+        ) : ActiveApp ? (
+          <ActiveApp onBack={() => setMode(null)} />
         ) : (
-          <BasicArithApp onBack={() => setMode(null)} />
+          <Home onSelect={setMode} />
         )}
       </div>
     </div>
@@ -167,7 +164,7 @@ function App() {
 
 /* ── Home ────────────────────────────────────────────── */
 function Home({ onSelect }) {
-  const apps = [
+  const allApps = [
     { key: 'gk', name: 'General Knowledge', subtitle: 'Chitragupta quiz', color: 'purple' },
     { key: 'addition', name: 'Addition', subtitle: '20-question addition practice', color: 'blue' },
     { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
@@ -183,10 +180,17 @@ function Home({ onSelect }) {
     { key: 'funceval', name: 'Functions', subtitle: 'Evaluate f(x), f(x,y), f(x,y,z)', color: 'blue' },
     { key: 'lineq', name: 'Line Equation', subtitle: 'Find m and c from two points', color: 'green' },
     { key: 'basicarith', name: 'Basic Arithmetic', subtitle: '+, −, × with positive & negative', color: 'purple' },
+    { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'green' },
   ]
 
-  const totalSlots = 16
-  const emptySlots = totalSlots - apps.length
+  const [search, setSearch] = useState('')
+
+  const apps = search.trim()
+    ? allApps.filter(a =>
+        a.name.toLowerCase().includes(search.toLowerCase()) ||
+        a.subtitle.toLowerCase().includes(search.toLowerCase())
+      )
+    : allApps
 
   const gridRef = useRef(null)
   const [cols, setCols] = useState(4)
@@ -203,23 +207,27 @@ function Home({ onSelect }) {
     return () => window.removeEventListener('resize', updateCols)
   }, [])
 
-  const rows = Math.ceil(totalSlots / cols)
+  const rows = Math.ceil(apps.length / (cols || 1))
 
   return (
     <>
       <h1>Tenali</h1>
       <p className="subtitle">Choose a learning game to begin</p>
+      <div className="search-bar-row">
+        <input
+          className="search-bar"
+          type="text"
+          placeholder="Search puzzles…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
       <div className="menu-grid" ref={gridRef}>
         {apps.map((app) => (
           <button key={app.key} className={`menu-card ${app.color}`} onClick={() => onSelect(app.key)}>
             <span className="menu-title">{app.name}</span>
             <span className="menu-subtitle">{app.subtitle}</span>
           </button>
-        ))}
-        {Array.from({ length: emptySlots }, (_, i) => (
-          <div key={`empty-${i}`} className="menu-card placeholder">
-            <span className="menu-title placeholder-text">Coming soon</span>
-          </div>
         ))}
       </div>
       <div className="grid-dimension">{rows} × {cols}</div>
@@ -2314,6 +2322,521 @@ function LineEqApp({ onBack }) {
 }
 
 /* ── Quiz Layout ─────────────────────────────────────── */
+/* ── Custom Lesson App ────────────────────────────────── */
+const CUSTOM_PUZZLES = [
+  { key: 'basicarith', name: 'Basic Arithmetic' },
+  { key: 'addition', name: 'Addition' },
+  { key: 'quadratic', name: 'Quadratic' },
+  { key: 'multiply', name: 'Multiplication' },
+  { key: 'sqrt', name: 'Square Root' },
+  { key: 'polymul', name: 'Poly Multiply' },
+  { key: 'polyfactor', name: 'Poly Factor' },
+  { key: 'primefactor', name: 'Prime Factors' },
+  { key: 'qformula', name: 'Quadratic Formula' },
+  { key: 'simul', name: 'Simultaneous Eq.' },
+  { key: 'funceval', name: 'Functions' },
+  { key: 'lineq', name: 'Line Equation' },
+  { key: 'gk', name: 'General Knowledge' },
+  { key: 'vocab', name: 'Vocab Builder' },
+]
+
+function fetchQuestionForType(type, difficulty) {
+  const diffMap = { easy: 1, medium: 2, hard: 3 }
+  const urls = {
+    basicarith: `${API}/basicarith-api/question?difficulty=${difficulty}`,
+    addition: `${API}/addition-api/question?digits=${diffMap[difficulty] || 1}`,
+    quadratic: `${API}/quadratic-api/question?difficulty=${difficulty}`,
+    multiply: `${API}/multiply-api/question?table=${Math.floor(Math.random() * 8) + 2}`,
+    sqrt: `${API}/sqrt-api/question?step=${difficulty === 'easy' ? Math.floor(Math.random() * 10) + 1 : difficulty === 'medium' ? Math.floor(Math.random() * 25) + 11 : Math.floor(Math.random() * 25) + 36}`,
+    polymul: `${API}/polymul-api/question?difficulty=${difficulty}`,
+    polyfactor: `${API}/polyfactor-api/question?difficulty=${difficulty}`,
+    primefactor: `${API}/primefactor-api/question?difficulty=${difficulty}`,
+    qformula: `${API}/qformula-api/question?difficulty=${difficulty}`,
+    simul: `${API}/simul-api/question?difficulty=${difficulty}`,
+    funceval: `${API}/funceval-api/question?difficulty=${difficulty}`,
+    lineq: `${API}/lineq-api/question?difficulty=${difficulty}`,
+    gk: `${API}/gk-api/question`,
+    vocab: `${API}/vocab-api/question?difficulty=${difficulty}`,
+  }
+  return fetch(urls[type]).then(r => r.json())
+}
+
+function getPromptForType(type, q) {
+  if (!q) return 'Loading…'
+  const sup = (n) => String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('')
+  switch (type) {
+    case 'basicarith': case 'addition': return `${q.prompt} = ?`
+    case 'quadratic': return `${q.prompt}`
+    case 'multiply': return `${q.prompt} = ?`
+    case 'sqrt': return `${q.prompt} = ?`
+    case 'funceval': return `${q.formula}, evaluate at ${Object.entries(q.vars).map(([k,v]) => `${k} = ${v}`).join(', ')}`
+    case 'polymul': return null // special render
+    case 'polyfactor': return null // special render
+    case 'primefactor': return `Find all prime factors of ${q.number}`
+    case 'qformula': return `Find the roots of ${q.a}x² ${q.b >= 0 ? '+' : '−'} ${Math.abs(q.b)}x ${q.c >= 0 ? '+' : '−'} ${Math.abs(q.c)} = 0`
+    case 'simul': return null // special render
+    case 'lineq': return `Find slope (m) and intercept (c) for the line through (${q.x1}, ${q.y1}) and (${q.x2}, ${q.y2})`
+    case 'gk': return q.question
+    case 'vocab': return `What does "${q.question}" mean?`
+    default: return ''
+  }
+}
+
+function CustomApp({ onBack }) {
+  // Setup state
+  const [phase, setPhase] = useState('setup')
+  const [selected, setSelected] = useState([])
+  const [ordering, setOrdering] = useState('random')
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState('20')
+
+  // Quiz state
+  const [plan, setPlan] = useState([])
+  const [qIndex, setQIndex] = useState(0)
+  const [question, setQuestion] = useState(null)
+  const [curType, setCurType] = useState(null)
+  const [score, setScore] = useState(0)
+  const [results, setResults] = useState([])
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [revealed, setRevealed] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const timer = useTimer()
+
+  // Input state
+  const [answer, setAnswer] = useState('')
+  const [selectedOption, setSelectedOption] = useState('')
+  const [userCoeffs, setUserCoeffs] = useState([])
+  const [inputs, setInputs] = useState({})
+
+  const totalQ = plan.length
+
+  // Toggle puzzle selection
+  const togglePuzzle = (key) => {
+    setSelected(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
+  }
+
+  // Move puzzle up/down in order
+  const movePuzzle = (idx, dir) => {
+    const arr = [...selected]
+    const swap = idx + dir
+    if (swap < 0 || swap >= arr.length) return
+    ;[arr[idx], arr[swap]] = [arr[swap], arr[idx]]
+    setSelected(arr)
+  }
+
+  // Build question plan and start
+  const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : 20
+    let questionPlan = []
+    if (ordering === 'sequential') {
+      const perType = Math.floor(count / selected.length)
+      const remainder = count % selected.length
+      selected.forEach((key, i) => {
+        const n = perType + (i < remainder ? 1 : 0)
+        for (let j = 0; j < n; j++) questionPlan.push(key)
+      })
+    } else {
+      for (let i = 0; i < count; i++) {
+        questionPlan.push(selected[Math.floor(Math.random() * selected.length)])
+      }
+    }
+    setPlan(questionPlan)
+    setPhase('quiz')
+    setScore(0)
+    setResults([])
+    setQIndex(0)
+    await loadQuestion(questionPlan[0])
+  }
+
+  const resetInputs = () => {
+    setAnswer(''); setSelectedOption(''); setUserCoeffs([]); setInputs({})
+    setFeedback(''); setIsCorrect(null); setRevealed(false)
+  }
+
+  const loadQuestion = async (type) => {
+    setLoading(true)
+    resetInputs()
+    setCurType(type)
+    const data = await fetchQuestionForType(type, difficulty)
+    setQuestion(data)
+    if (type === 'polymul') setUserCoeffs(new Array(data.resultDegree + 1).fill(''))
+    setLoading(false)
+    timer.start()
+  }
+
+  // Submit answer
+  const handleSubmit = async () => {
+    if (!question || revealed) return
+    const timeTaken = timer.stop()
+    let res, data, correct, correctDisplay, userDisplay
+
+    switch (curType) {
+      case 'basicarith': {
+        if (answer === '') return
+        res = await fetch(`${API}/basicarith-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ a: question.a, b: question.b, op: question.op, answer: Number(answer) }) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = String(data.correctAnswer); userDisplay = answer
+        setFeedback(data.correct ? `Correct! ${question.prompt} = ${data.correctAnswer}` : `Incorrect. ${question.prompt} = ${data.correctAnswer}`)
+        break
+      }
+      case 'addition': {
+        if (answer === '') return
+        res = await fetch(`${API}/addition-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ a: question.a, b: question.b, answer: Number(answer) }) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = String(data.correctAnswer); userDisplay = answer
+        setFeedback(data.correct ? `Correct! ${question.a} + ${question.b} = ${data.correctAnswer}` : `Incorrect. ${question.a} + ${question.b} = ${data.correctAnswer}`)
+        break
+      }
+      case 'quadratic': {
+        if (answer === '') return
+        res = await fetch(`${API}/quadratic-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ a: question.a, b: question.b, c: question.c, x: question.x, answer: Number(answer) }) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = String(data.correctAnswer); userDisplay = answer
+        setFeedback(data.correct ? `Correct! y = ${data.correctAnswer}` : `Incorrect. y = ${data.correctAnswer}`)
+        break
+      }
+      case 'multiply': {
+        if (answer === '') return
+        res = await fetch(`${API}/multiply-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ table: question.table, multiplier: question.multiplier, answer: Number(answer) }) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = String(data.correctAnswer); userDisplay = answer
+        setFeedback(data.correct ? `Correct! ${question.prompt} = ${data.correctAnswer}` : `Incorrect. ${question.prompt} = ${data.correctAnswer}`)
+        break
+      }
+      case 'sqrt': {
+        if (answer === '') return
+        res = await fetch(`${API}/sqrt-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: question.q, answer: Number(answer) }) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = `⌊${data.sqrtRounded}⌋=${data.floorAnswer} or ⌈${data.sqrtRounded}⌉=${data.ceilAnswer}`; userDisplay = answer
+        setFeedback(data.correct ? `Correct! √${question.q} ≈ ${data.sqrtRounded}` : `Incorrect. √${question.q} ≈ ${data.sqrtRounded} → ${data.floorAnswer} or ${data.ceilAnswer}`)
+        break
+      }
+      case 'funceval': {
+        if (answer === '') return
+        res = await fetch(`${API}/funceval-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answer: question.answer, userAnswer: Number(answer) }) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = String(data.correctAnswer); userDisplay = answer
+        setFeedback(data.correct ? `Correct! = ${data.correctAnswer}` : `Incorrect. = ${data.correctAnswer}`)
+        break
+      }
+      case 'polymul': {
+        if (userCoeffs.some(c => c === '')) return
+        res = await fetch(`${API}/polymul-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p1: question.p1, p2: question.p2, userCoeffs: userCoeffs.map(Number) }) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = data.correctDisplay; userDisplay = userCoeffs.join(', ')
+        setFeedback(data.correct ? `Correct! ${question.productDisplay}` : `Incorrect. Answer: ${data.correctDisplay}`)
+        break
+      }
+      case 'polyfactor': {
+        const { p: up, q: uq, r: ur, s: us } = inputs
+        if (!up || !uq || !ur || !us) return
+        res = await fetch(`${API}/polyfactor-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ a: question.a, b: question.b, c: question.c, userP: Number(up), userQ: Number(uq), userR: Number(ur), userS: Number(us) }) })
+        data = await res.json()
+        const f = question.factors
+        correct = data.correct; correctDisplay = `(${f.p}x${f.q>=0?'+':''}${f.q})(${f.r}x${f.s>=0?'+':''}${f.s})`; userDisplay = `(${up}x${Number(uq)>=0?'+':''}${uq})(${ur}x${Number(us)>=0?'+':''}${us})`
+        setFeedback(data.correct ? `Correct! ${correctDisplay}` : `Incorrect. ${correctDisplay}`)
+        break
+      }
+      case 'primefactor': {
+        const pf = (inputs.factors || '').split(/[,\s]+/).filter(Boolean).map(Number).sort((a,b) => a - b)
+        if (pf.length === 0) return
+        res = await fetch(`${API}/primefactor-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ number: question.number, userFactors: pf }) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = data.correctFactors.join(' × '); userDisplay = pf.join(' × ')
+        setFeedback(data.correct ? `Correct! ${question.number} = ${correctDisplay}` : `Incorrect. ${question.number} = ${correctDisplay}`)
+        break
+      }
+      case 'qformula': {
+        const { r1, r2 } = inputs
+        if (question.roots.type === 'real_equal' && !r1) return
+        if (question.roots.type !== 'real_equal' && (!r1 || !r2)) return
+        res = await fetch(`${API}/qformula-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ a: question.a, b: question.b, c: question.c, userR1: Number(r1), userR2: Number(r2 || 0), userType: question.roots.type }) })
+        data = await res.json()
+        correct = data.correct
+        const rt = data.roots
+        correctDisplay = rt.type === 'real_distinct' ? `r₁ = ${rt.r1}, r₂ = ${rt.r2}` : rt.type === 'real_equal' ? `r = ${rt.r1}` : `${rt.realPart} ± ${rt.imagPart}i`
+        userDisplay = question.roots.type === 'real_equal' ? r1 : `${r1}, ${r2}`
+        setFeedback(data.correct ? `Correct! ${correctDisplay}` : `Incorrect. ${correctDisplay}`)
+        break
+      }
+      case 'simul': {
+        const { x: ux, y: uy, z: uz } = inputs
+        if (!ux || !uy) return
+        if (question.size === 3 && !uz) return
+        const body = { eqs: question.eqs, size: question.size, solution: question.solution, userX: Number(ux), userY: Number(uy) }
+        if (question.size === 3) body.userZ = Number(uz)
+        res = await fetch(`${API}/simul-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        data = await res.json()
+        correct = data.correct
+        const s = question.solution
+        correctDisplay = question.size === 3 ? `(${s.x}, ${s.y}, ${s.z})` : `(${s.x}, ${s.y})`
+        userDisplay = question.size === 3 ? `(${ux}, ${uy}, ${uz})` : `(${ux}, ${uy})`
+        setFeedback(data.correct ? `Correct! ${correctDisplay}` : `Incorrect. ${correctDisplay}`)
+        break
+      }
+      case 'lineq': {
+        const { m, c } = inputs
+        if (!m || !c) return
+        res = await fetch(`${API}/lineq-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ x1: question.x1, y1: question.y1, x2: question.x2, y2: question.y2, userM: Number(m), userC: Number(c) }) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = `m = ${data.m}, c = ${data.c}`; userDisplay = `m = ${m}, c = ${c}`
+        setFeedback(data.correct ? `Correct! ${correctDisplay}` : `Incorrect. ${correctDisplay}`)
+        break
+      }
+      case 'gk': case 'vocab': {
+        if (!selectedOption) return
+        const url = curType === 'gk' ? `${API}/gk-api/check` : `${API}/vocab-api/check`
+        res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: question.id, answerOption: selectedOption }) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = `${data.correctAnswer}: ${data.correctAnswerText}`; userDisplay = selectedOption
+        setFeedback(data.correct ? `Correct! ${data.correctAnswerText}` : `Incorrect. ${data.correctAnswerText}`)
+        break
+      }
+      default: return
+    }
+
+    setIsCorrect(correct)
+    if (correct) setScore(s => s + 1)
+    const typeName = CUSTOM_PUZZLES.find(p => p.key === curType)?.name || curType
+    setResults(prev => [...prev, {
+      question: `[${typeName}] ${getPromptForType(curType, question) || '…'}`.slice(0, 80),
+      userAnswer: userDisplay,
+      correctAnswer: correctDisplay,
+      correct,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = async () => {
+    if (qIndex + 1 >= totalQ) { setPhase('finished'); timer.reset(); return }
+    const next = qIndex + 1
+    setQIndex(next)
+    await loadQuestion(plan[next])
+  }
+  useAutoAdvance(revealed, advanceRef, isCorrect)
+
+  const valInput = (key) => (e) => {
+    const v = e.target.value
+    if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setInputs(prev => ({ ...prev, [key]: v }))
+  }
+
+  const sup = (n) => String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('')
+  const formatCoeffLabel = (i) => i === 0 ? 'constant' : i === 1 ? 'x' : `x${sup(i)}`
+  const fmtEq2 = (eq) => `${eq.a}x ${eq.b >= 0 ? '+' : '−'} ${Math.abs(eq.b)}y = ${eq.d}`
+  const fmtEq3 = (eq) => `${eq.a}x ${eq.b >= 0 ? '+' : '−'} ${Math.abs(eq.b)}y ${eq.c >= 0 ? '+' : '−'} ${Math.abs(eq.c)}z = ${eq.d}`
+
+  // Render the right input UI for current puzzle type
+  const renderInputs = () => {
+    if (!question || !curType) return null
+    switch (curType) {
+      case 'basicarith': case 'addition': case 'quadratic': case 'multiply': case 'sqrt': case 'funceval':
+        return <>
+          <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d*\.?\d*$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
+          <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} />
+        </>
+      case 'gk': case 'vocab':
+        return <div className="options-grid">
+          {question.options.map((opt) => (
+            <button key={opt.option} className={`option-card ${selectedOption === opt.option ? 'selected' : ''} ${revealed && opt.option === (question.answerOption || question.correctAnswer) ? 'correct-option' : ''} ${revealed && selectedOption === opt.option && !isCorrect ? 'wrong-option' : ''}`} onClick={() => !revealed && setSelectedOption(opt.option)} disabled={revealed}>
+              <strong>{opt.option}.</strong> {opt.text}
+            </button>
+          ))}
+        </div>
+      case 'polymul':
+        return <div className="coeff-inputs">
+          {userCoeffs.map((c, i) => (
+            <div key={i} className="coeff-field">
+              <label className="coeff-label">{formatCoeffLabel(i)}</label>
+              <input className="answer-input coeff-input" type="text" value={c} disabled={revealed}
+                onChange={e => { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) { const nc = [...userCoeffs]; nc[i] = v; setUserCoeffs(nc) } }}
+                onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} />
+            </div>
+          ))}
+        </div>
+      case 'polyfactor':
+        return <div className="factor-inputs">
+          {[['p','p'],['q','q'],['r','r'],['s','s']].map(([key, label]) => (
+            <div key={key} className="coeff-field">
+              <label className="coeff-label">{label}</label>
+              <input className="answer-input coeff-input" type="text" value={inputs[key] || ''} disabled={revealed} onChange={valInput(key)} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} />
+            </div>
+          ))}
+          <div style={{ fontSize: '0.82rem', color: 'var(--clr-text-soft)', marginTop: 4 }}>Factor as (px + q)(rx + s)</div>
+        </div>
+      case 'primefactor':
+        return <div className="single-input-row">
+          <input className="answer-input" type="text" value={inputs.factors || ''} disabled={revealed} placeholder="e.g. 2, 3, 5" onChange={e => setInputs(prev => ({ ...prev, factors: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} />
+          <div style={{ fontSize: '0.82rem', color: 'var(--clr-text-soft)', marginTop: 4 }}>Enter all prime factors separated by commas</div>
+        </div>
+      case 'qformula':
+        return <div className="roots-inputs">
+          {question.roots.type === 'complex' ? <>
+            <div className="coeff-field"><label className="coeff-label">Real part</label>
+              <input className="answer-input coeff-input" type="text" value={inputs.r1 || ''} disabled={revealed} onChange={valInput('r1')} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+            <div className="coeff-field"><label className="coeff-label">Imag part</label>
+              <input className="answer-input coeff-input" type="text" value={inputs.r2 || ''} disabled={revealed} onChange={valInput('r2')} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+          </> : question.roots.type === 'real_equal' ? <>
+            <div className="coeff-field"><label className="coeff-label">Root</label>
+              <input className="answer-input coeff-input" type="text" value={inputs.r1 || ''} disabled={revealed} onChange={valInput('r1')} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+          </> : <>
+            <div className="coeff-field"><label className="coeff-label">r₁</label>
+              <input className="answer-input coeff-input" type="text" value={inputs.r1 || ''} disabled={revealed} onChange={valInput('r1')} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+            <div className="coeff-field"><label className="coeff-label">r₂</label>
+              <input className="answer-input coeff-input" type="text" value={inputs.r2 || ''} disabled={revealed} onChange={valInput('r2')} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+          </>}
+        </div>
+      case 'simul':
+        return <div className="roots-inputs">
+          <div className="coeff-field"><label className="coeff-label">x =</label>
+            <input className="answer-input coeff-input" type="text" value={inputs.x || ''} disabled={revealed} onChange={valInput('x')} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+          <div className="coeff-field"><label className="coeff-label">y =</label>
+            <input className="answer-input coeff-input" type="text" value={inputs.y || ''} disabled={revealed} onChange={valInput('y')} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+          {question.size === 3 && <div className="coeff-field"><label className="coeff-label">z =</label>
+            <input className="answer-input coeff-input" type="text" value={inputs.z || ''} disabled={revealed} onChange={valInput('z')} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>}
+        </div>
+      case 'lineq':
+        return <div className="roots-inputs">
+          <div className="coeff-field"><label className="coeff-label">m =</label>
+            <input className="answer-input coeff-input" type="text" value={inputs.m || ''} disabled={revealed} onChange={valInput('m')} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+          <div className="coeff-field"><label className="coeff-label">c =</label>
+            <input className="answer-input coeff-input" type="text" value={inputs.c || ''} disabled={revealed} onChange={valInput('c')} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+        </div>
+      default: return null
+    }
+  }
+
+  // Render the question display
+  const renderQuestion = () => {
+    if (!question || !curType) return <div className="question-box">Loading…</div>
+    const typeName = CUSTOM_PUZZLES.find(p => p.key === curType)?.name || curType
+
+    if (curType === 'polymul') {
+      return <>
+        <div className="custom-type-badge">{typeName}</div>
+        <div className="question-box">
+          <span className="poly-expr">({question.p1Display})</span> × <span className="poly-expr">({question.p2Display})</span>
+        </div>
+      </>
+    }
+    if (curType === 'polyfactor') {
+      return <>
+        <div className="custom-type-badge">{typeName}</div>
+        <div className="question-box">Factor: {question.display}</div>
+      </>
+    }
+    if (curType === 'simul') {
+      const is3 = question.size === 3
+      return <>
+        <div className="custom-type-badge">{typeName}</div>
+        <div className="question-box equation-system">
+          {question.eqs.map((eq, i) => <div key={i}>{is3 ? fmtEq3(eq) : fmtEq2(eq)}</div>)}
+        </div>
+      </>
+    }
+    return <>
+      <div className="custom-type-badge">{typeName}</div>
+      <div className="question-box">{getPromptForType(curType, question)}</div>
+    </>
+  }
+
+  // ─── Setup Phase ─────────────────────────────────────
+  if (phase === 'setup') {
+    return (
+      <QuizLayout title="Custom Lesson" subtitle="Build your own quiz from any combination of puzzles" onBack={onBack}>
+        <div className="radio-group">
+          {['easy', 'medium', 'hard'].map(d => (
+            <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
+              <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+              {d.charAt(0).toUpperCase() + d.slice(1)}
+            </label>
+          ))}
+        </div>
+
+        <div className="custom-section-label">Select puzzles:</div>
+        <div className="custom-puzzle-grid">
+          {CUSTOM_PUZZLES.map(p => (
+            <label key={p.key} className={`custom-puzzle-check ${selected.includes(p.key) ? 'checked' : ''}`}>
+              <input type="checkbox" checked={selected.includes(p.key)} onChange={() => togglePuzzle(p.key)} />
+              {p.name}
+            </label>
+          ))}
+        </div>
+
+        <div className="custom-section-label">Question order:</div>
+        <div className="radio-group">
+          <label className={`radio-pill ${ordering === 'random' ? 'active' : ''}`}>
+            <input type="radio" checked={ordering === 'random'} onChange={() => setOrdering('random')} /> Random
+          </label>
+          <label className={`radio-pill ${ordering === 'sequential' ? 'active' : ''}`}>
+            <input type="radio" checked={ordering === 'sequential'} onChange={() => setOrdering('sequential')} /> Sequential
+          </label>
+        </div>
+
+        {ordering === 'sequential' && selected.length > 1 && <>
+          <div className="custom-section-label">Drag order (first → last):</div>
+          <div className="custom-order-list">
+            {selected.map((key, i) => {
+              const p = CUSTOM_PUZZLES.find(x => x.key === key)
+              return (
+                <div key={key} className="custom-order-item">
+                  <span className="custom-order-num">{i + 1}.</span>
+                  <span className="custom-order-name">{p?.name}</span>
+                  <button className="custom-order-btn" onClick={() => movePuzzle(i, -1)} disabled={i === 0}>↑</button>
+                  <button className="custom-order-btn" onClick={() => movePuzzle(i, 1)} disabled={i === selected.length - 1}>↓</button>
+                </div>
+              )
+            })}
+          </div>
+        </>}
+
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row">
+          <button onClick={startQuiz} disabled={selected.length === 0}>Start Custom Quiz</button>
+        </div>
+      </QuizLayout>
+    )
+  }
+
+  // ─── Quiz Phase ──────────────────────────────────────
+  if (phase === 'quiz') {
+    return (
+      <QuizLayout title="Custom Lesson" subtitle={`${selected.length} puzzle types · ${difficulty}`} onBack={onBack}>
+        <div className="top-mini-row">
+          {!revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+          <div className="score-pill">Score: {score}</div>
+        </div>
+        <div className="progress-pill center">Question {qIndex + 1}/{totalQ}</div>
+        {renderQuestion()}
+        {renderInputs()}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading}>
+            {revealed ? (qIndex + 1 >= totalQ ? 'Finish' : 'Next') : 'Submit'}
+          </button>
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </QuizLayout>
+    )
+  }
+
+  // ─── Finished Phase ──────────────────────────────────
+  return (
+    <QuizLayout title="Custom Lesson" subtitle="Quiz complete!" onBack={onBack}>
+      <div className="welcome-box">
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => setPhase('setup')}>Play Again</button>
+      </div>
+    </QuizLayout>
+  )
+}
+
 function QuizLayout({ title, subtitle, onBack, children }) {
   return (
     <>

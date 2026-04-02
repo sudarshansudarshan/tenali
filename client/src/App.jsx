@@ -472,6 +472,12 @@ function App() {
       </>
     )
   }
+  if (pathname === '/intervalscheduling') {
+    return <IntervalSchedulingApp />
+  }
+  if (pathname === '/extendedeuclid') {
+    return <ExtendedEuclidApp />
+  }
 
   const modeMap = {
     gk: GKApp, addition: AdditionApp, quadratic: QuadraticApp,
@@ -2832,10 +2838,21 @@ function CustomApp({ onBack }) {
   const loadQuestion = async (type) => {
     setLoading(true)
     resetInputs()
+    setQuestion(null)   // clear stale question before changing type to prevent render crash
     setCurType(type)
-    const data = await fetchQuestionForType(type, difficulty)
-    setQuestion(data)
-    if (type === 'polymul') setUserCoeffs(new Array(data.resultDegree + 1).fill(''))
+    try {
+      const data = await fetchQuestionForType(type, difficulty)
+      if (data && !data.error) {
+        setQuestion(data)
+        if (type === 'polymul') setUserCoeffs(new Array(data.resultDegree + 1).fill(''))
+      } else {
+        // API returned an error — skip to next question or show fallback
+        setQuestion(null)
+      }
+    } catch (err) {
+      console.error('Failed to load question:', err)
+      setQuestion(null)
+    }
     setLoading(false)
     timer.start()
   }
@@ -3034,6 +3051,7 @@ function CustomApp({ onBack }) {
           <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} />
         </>
       case 'gk': case 'vocab':
+        if (!question.options) return null
         return <div className="options-grid">
           {question.options.map((opt) => (
             <button key={opt.option} className={`option-card ${selectedOption === opt.option ? 'selected' : ''} ${revealed && opt.option === (question.answerOption || question.correctAnswer) ? 'correct-option' : ''} ${revealed && selectedOption === opt.option && !isCorrect ? 'wrong-option' : ''}`} onClick={() => !revealed && setSelectedOption(opt.option)} disabled={revealed}>
@@ -3230,6 +3248,523 @@ function CustomApp({ onBack }) {
         <button onClick={() => setPhase('setup')}>Play Again</button>
       </div>
     </QuizLayout>
+  )
+}
+
+/* ── Interval Scheduling App ────────────────────────── */
+function IntervalSchedulingApp() {
+  const [intervals, setIntervals] = useState([])
+  const [nextId, setNextId] = useState(1)
+  const [result, setResult] = useState(null)
+  const [step, setStep] = useState(-1) // -1 = not started, 0..n = stepping through
+  const [sorted, setSorted] = useState([])
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('tenali-theme') || 'dark' } catch { return 'dark' }
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    try { localStorage.setItem('tenali-theme', theme) } catch {}
+  }, [theme])
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
+
+  const TIMELINE_MAX = 24
+  const COLORS = ['#e8864a', '#5cb87a', '#4a90d9', '#d94a8a', '#9b59b6', '#e6c84a', '#2ecc71', '#e74c3c', '#1abc9c', '#f39c12']
+
+  // Drag state for creating intervals on the timeline
+  const [dragging, setDragging] = useState(false)
+  const [dragStart, setDragStart] = useState(null)
+  const [dragEnd, setDragEnd] = useState(null)
+  const timelineRef = useRef(null)
+
+  const getTimeFromX = (clientX) => {
+    const rect = timelineRef.current.getBoundingClientRect()
+    const x = clientX - rect.left
+    const t = Math.round((x / rect.width) * TIMELINE_MAX)
+    return Math.max(0, Math.min(TIMELINE_MAX, t))
+  }
+
+  const handleMouseDown = (e) => {
+    if (result) return
+    const t = getTimeFromX(e.clientX)
+    setDragging(true)
+    setDragStart(t)
+    setDragEnd(t)
+  }
+
+  const handleMouseMove = (e) => {
+    if (!dragging) return
+    setDragEnd(getTimeFromX(e.clientX))
+  }
+
+  const handleMouseUp = () => {
+    if (!dragging) return
+    setDragging(false)
+    const s = Math.min(dragStart, dragEnd)
+    const e = Math.max(dragStart, dragEnd)
+    if (e > s) {
+      setIntervals(prev => [...prev, { id: nextId, start: s, end: e }])
+      setNextId(n => n + 1)
+    }
+    setDragStart(null)
+    setDragEnd(null)
+  }
+
+  // Touch support
+  const handleTouchStart = (e) => {
+    if (result) return
+    const touch = e.touches[0]
+    const t = getTimeFromX(touch.clientX)
+    setDragging(true)
+    setDragStart(t)
+    setDragEnd(t)
+  }
+
+  const handleTouchMove = (e) => {
+    if (!dragging) return
+    const touch = e.touches[0]
+    setDragEnd(getTimeFromX(touch.clientX))
+  }
+
+  const handleTouchEnd = () => {
+    handleMouseUp()
+  }
+
+  const removeInterval = (id) => {
+    if (result) return
+    setIntervals(prev => prev.filter(i => i.id !== id))
+  }
+
+  const runGreedy = () => {
+    const sortedByEnd = [...intervals].sort((a, b) => a.end - b.end || a.start - b.start)
+    setSorted(sortedByEnd)
+    setStep(0)
+    setResult(null)
+  }
+
+  const stepForward = () => {
+    if (step >= sorted.length) return
+    setStep(s => s + 1)
+  }
+
+  const runFullAlgorithm = () => {
+    setStep(sorted.length)
+  }
+
+  // Compute selected set up to current step
+  const getSelectedAtStep = (upToStep) => {
+    const selected = []
+    let lastEnd = -Infinity
+    for (let i = 0; i < Math.min(upToStep, sorted.length); i++) {
+      if (sorted[i].start >= lastEnd) {
+        selected.push(sorted[i])
+        lastEnd = sorted[i].end
+      }
+    }
+    return selected
+  }
+
+  const selectedIntervals = step >= 0 ? getSelectedAtStep(step) : []
+  const isFinished = step >= sorted.length && step >= 0
+  const currentConsidering = step >= 0 && step < sorted.length ? sorted[step] : null
+
+  // Check if current interval would be rejected
+  const wouldBeRejected = (() => {
+    if (!currentConsidering) return false
+    const sel = getSelectedAtStep(step)
+    const lastEnd = sel.length > 0 ? sel[sel.length - 1].end : -Infinity
+    return currentConsidering.start < lastEnd
+  })()
+
+  const reset = () => {
+    setResult(null)
+    setStep(-1)
+    setSorted([])
+  }
+
+  const clearAll = () => {
+    setIntervals([])
+    setNextId(1)
+    reset()
+  }
+
+  const loadExample = () => {
+    clearAll()
+    const examples = [
+      { id: 1, start: 0, end: 6 },
+      { id: 2, start: 1, end: 4 },
+      { id: 3, start: 3, end: 5 },
+      { id: 4, start: 5, end: 7 },
+      { id: 5, start: 3, end: 9 },
+      { id: 6, start: 5, end: 9 },
+      { id: 7, start: 6, end: 10 },
+      { id: 8, start: 8, end: 11 },
+      { id: 9, start: 8, end: 12 },
+      { id: 10, start: 2, end: 14 },
+      { id: 11, start: 12, end: 16 },
+    ]
+    setIntervals(examples)
+    setNextId(12)
+  }
+
+  const selectedSet = new Set(selectedIntervals.map(i => i.id))
+
+  return (
+    <>
+      <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+        {theme === 'dark' ? '☀️' : '🌙'}
+      </button>
+      <div className="app-shell">
+        <div className="card is-wide">
+          <h1>Interval Scheduling</h1>
+          <p className="subtitle">
+            Drag on the timeline to create intervals, then step through the greedy algorithm
+          </p>
+
+          {/* Algorithm explanation */}
+          <div className="is-algo-explain">
+            <strong>Greedy strategy:</strong> Sort all intervals by finish time. Then, scan left to right — accept an interval if it doesn't overlap the last accepted one, otherwise skip it. This always gives the maximum number of non-overlapping intervals.
+          </div>
+
+          {/* Timeline */}
+          <div className="is-timeline-container">
+            <div className="is-timeline-labels">
+              {Array.from({ length: TIMELINE_MAX + 1 }, (_, i) => (
+                <span key={i} className="is-timeline-label">{i}</span>
+              ))}
+            </div>
+            <div
+              className="is-timeline"
+              ref={timelineRef}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* Grid lines */}
+              {Array.from({ length: TIMELINE_MAX + 1 }, (_, i) => (
+                <div key={i} className="is-grid-line" style={{ left: `${(i / TIMELINE_MAX) * 100}%` }} />
+              ))}
+
+              {/* Existing intervals */}
+              {intervals.map((intv, idx) => {
+                const isSelected = selectedSet.has(intv.id)
+                const isConsidering = currentConsidering && currentConsidering.id === intv.id
+                const isRejected = isConsidering && wouldBeRejected
+                const wasProcessed = step >= 0 && sorted.findIndex(s => s.id === intv.id) < step && !isSelected
+
+                let className = 'is-interval'
+                if (isConsidering && !isRejected) className += ' is-considering'
+                if (isConsidering && isRejected) className += ' is-rejected'
+                if (isSelected) className += ' is-selected'
+                if (wasProcessed && !isSelected) className += ' is-skipped'
+
+                return (
+                  <div
+                    key={intv.id}
+                    className={className}
+                    style={{
+                      left: `${(intv.start / TIMELINE_MAX) * 100}%`,
+                      width: `${((intv.end - intv.start) / TIMELINE_MAX) * 100}%`,
+                      top: `${(idx % 6) * 34 + 4}px`,
+                      backgroundColor: isSelected ? COLORS[idx % COLORS.length] : undefined,
+                    }}
+                    title={`[${intv.start}, ${intv.end})`}
+                  >
+                    <span className="is-interval-label">{intv.start}–{intv.end}</span>
+                    {step < 0 && (
+                      <button className="is-interval-remove" onClick={(e) => { e.stopPropagation(); removeInterval(intv.id) }}>×</button>
+                    )}
+                  </div>
+                )
+              })}
+
+              {/* Drag preview */}
+              {dragging && dragStart !== null && dragEnd !== null && (
+                <div
+                  className="is-interval is-preview"
+                  style={{
+                    left: `${(Math.min(dragStart, dragEnd) / TIMELINE_MAX) * 100}%`,
+                    width: `${((Math.abs(dragEnd - dragStart)) / TIMELINE_MAX) * 100}%`,
+                    top: `${(intervals.length % 6) * 34 + 4}px`,
+                  }}
+                >
+                  <span className="is-interval-label">{Math.min(dragStart, dragEnd)}–{Math.max(dragStart, dragEnd)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="is-controls">
+            {step < 0 ? (
+              <>
+                <button className="is-btn" onClick={loadExample}>Load Example</button>
+                <button className="is-btn" onClick={clearAll} disabled={intervals.length === 0}>Clear All</button>
+                <button className="is-btn is-btn-primary" onClick={runGreedy} disabled={intervals.length === 0}>
+                  Run Greedy Algorithm
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="is-btn" onClick={reset}>Reset</button>
+                {!isFinished && (
+                  <>
+                    <button className="is-btn is-btn-primary" onClick={stepForward}>
+                      Next Step
+                    </button>
+                    <button className="is-btn" onClick={runFullAlgorithm}>Skip to End</button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Step-by-step log */}
+          {step >= 0 && (
+            <div className="is-log">
+              <h3>Algorithm Trace</h3>
+              <div className="is-log-header">
+                Sorted by finish time: [{sorted.map(s => `[${s.start},${s.end})`).join(', ')}]
+              </div>
+              <div className="is-log-entries">
+                {sorted.slice(0, step).map((intv, i) => {
+                  const selUpTo = getSelectedAtStep(i + 1)
+                  const wasSelected = selUpTo.some(s => s.id === intv.id) && !getSelectedAtStep(i).some(s => s.id === intv.id)
+                  const lastAccepted = getSelectedAtStep(i)
+                  const lastEnd = lastAccepted.length > 0 ? lastAccepted[lastAccepted.length - 1].end : 0
+
+                  return (
+                    <div key={i} className={`is-log-entry ${wasSelected ? 'is-log-accept' : 'is-log-reject'}`}>
+                      <span className="is-log-step">Step {i + 1}:</span>
+                      <span>Consider [{intv.start}, {intv.end})</span>
+                      {wasSelected ? (
+                        <span className="is-log-verdict is-accept">
+                           Accept (start {intv.start} {'>'}= last end {lastEnd})
+                        </span>
+                      ) : (
+                        <span className="is-log-verdict is-reject">
+                           Reject (start {intv.start} {'<'} last end {lastEnd})
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+                {currentConsidering && (
+                  <div className={`is-log-entry is-log-current ${wouldBeRejected ? 'is-log-reject-pending' : 'is-log-accept-pending'}`}>
+                    <span className="is-log-step">Step {step + 1}:</span>
+                    <span>Considering [{currentConsidering.start}, {currentConsidering.end})…</span>
+                    <span className="is-log-verdict is-pending">press Next Step</span>
+                  </div>
+                )}
+              </div>
+
+              {isFinished && (
+                <div className="is-result">
+                  <strong>Result:</strong> {selectedIntervals.length} interval{selectedIntervals.length !== 1 ? 's' : ''} selected
+                  — [{selectedIntervals.map(s => `[${s.start},${s.end})`).join(', ')}]
+                  <br />
+                  <span className="is-result-note">This is the maximum possible set of non-overlapping intervals.</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Legend */}
+          <div className="is-legend">
+            <div className="is-legend-item"><span className="is-legend-swatch is-swatch-default" /> Unprocessed</div>
+            <div className="is-legend-item"><span className="is-legend-swatch is-swatch-considering" /> Considering</div>
+            <div className="is-legend-item"><span className="is-legend-swatch is-swatch-selected" /> Accepted</div>
+            <div className="is-legend-item"><span className="is-legend-swatch is-swatch-rejected" /> Rejected</div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+/* ── Extended Euclid App ───────────────────────────── */
+function ExtendedEuclidApp() {
+  const [a, setA] = useState('')
+  const [b, setB] = useState('')
+  const [steps, setSteps] = useState(null)
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('tenali-theme') || 'dark' } catch { return 'dark' }
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    try { localStorage.setItem('tenali-theme', theme) } catch {}
+  }, [theme])
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
+
+  const compute = () => {
+    const na = parseInt(a, 10)
+    const nb = parseInt(b, 10)
+    if (isNaN(na) || isNaN(nb) || (na === 0 && nb === 0)) return
+
+    // Run extended Euclidean algorithm, recording every step
+    const rows = []
+    let r0 = Math.abs(na), r1 = Math.abs(nb)
+    let s0 = 1, s1 = 0
+    let t0 = 0, t1 = 1
+
+    rows.push({ r: r0, s: s0, t: t0, q: null, step: 0 })
+    rows.push({ r: r1, s: s1, t: t1, q: null, step: 1 })
+
+    let i = 2
+    while (r1 !== 0) {
+      const q = Math.floor(r0 / r1)
+      const r2 = r0 - q * r1
+      const s2 = s0 - q * s1
+      const t2 = t0 - q * t1
+
+      rows.push({ r: r2, s: s2, t: t2, q, step: i })
+
+      r0 = r1; r1 = r2
+      s0 = s1; s1 = s2
+      t0 = t1; t1 = t2
+      i++
+    }
+
+    // Adjust signs if original inputs were negative
+    const signA = na >= 0 ? 1 : -1
+    const signB = nb >= 0 ? 1 : -1
+    const gcd = r0
+    const x = s0 * signA
+    const y = t0 * signB
+
+    setSteps({ rows, gcd, x, y, a: na, b: nb })
+  }
+
+  const loadExample = () => {
+    setA('252')
+    setB('198')
+    setSteps(null)
+  }
+
+  return (
+    <>
+      <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+        {theme === 'dark' ? '☀️' : '🌙'}
+      </button>
+      <div className="app-shell">
+        <div className="card is-wide">
+          <h1>Extended Euclidean Algorithm</h1>
+          <p className="subtitle">
+            Enter two integers to see the step-by-step computation of gcd(a, b) and coefficients x, y such that ax + by = gcd(a, b)
+          </p>
+
+          <div className="is-algo-explain">
+            <strong>How it works:</strong> The algorithm repeatedly divides the larger number by the smaller and tracks coefficients.
+            At each step: r_i = r_(i-2) − q_i · r_(i-1), and similarly for s_i and t_i. When the remainder reaches 0, the previous remainder is the GCD, and the coefficients give the linear combination.
+          </div>
+
+          <div className="ee-input-row">
+            <div className="ee-field">
+              <label className="ee-label">a</label>
+              <input
+                className="ee-input"
+                type="number"
+                value={a}
+                onChange={e => { setA(e.target.value); setSteps(null) }}
+                placeholder="e.g. 252"
+                onKeyDown={e => e.key === 'Enter' && compute()}
+              />
+            </div>
+            <div className="ee-field">
+              <label className="ee-label">b</label>
+              <input
+                className="ee-input"
+                type="number"
+                value={b}
+                onChange={e => { setB(e.target.value); setSteps(null) }}
+                placeholder="e.g. 198"
+                onKeyDown={e => e.key === 'Enter' && compute()}
+              />
+            </div>
+          </div>
+
+          <div className="is-controls">
+            <button className="is-btn" onClick={loadExample}>Load Example</button>
+            <button className="is-btn is-btn-primary" onClick={compute} disabled={!a || !b}>Compute</button>
+            <button className="is-btn" onClick={() => { setA(''); setB(''); setSteps(null) }}>Clear</button>
+          </div>
+
+          {steps && (
+            <>
+              {/* Result summary */}
+              <div className="is-result" style={{ marginTop: '24px' }}>
+                <strong>gcd({steps.a}, {steps.b}) = {steps.gcd}</strong>
+                <br />
+                <span style={{ fontSize: '1.05rem' }}>
+                  ({steps.x}) · {steps.a} + ({steps.y}) · {steps.b} = {steps.gcd}
+                </span>
+                <br />
+                <span className="is-result-note">
+                  Verification: {steps.x} × {steps.a} + {steps.y} × {steps.b} = {steps.x * steps.a + steps.y * steps.b}
+                </span>
+              </div>
+
+              {/* Step table */}
+              <div className="ee-table-wrap">
+                <table className="ee-table">
+                  <thead>
+                    <tr>
+                      <th>Step i</th>
+                      <th>q_i</th>
+                      <th>r_i</th>
+                      <th>s_i</th>
+                      <th>t_i</th>
+                      <th>Equation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {steps.rows.map((row, idx) => (
+                      <tr key={idx} className={row.r === 0 ? 'ee-row-zero' : idx === steps.rows.length - 2 ? 'ee-row-gcd' : ''}>
+                        <td>{row.step}</td>
+                        <td>{row.q !== null ? row.q : '—'}</td>
+                        <td><strong>{row.r}</strong></td>
+                        <td>{row.s}</td>
+                        <td>{row.t}</td>
+                        <td className="ee-eq">
+                          {row.r !== 0 ? (
+                            <span>{row.r} = ({row.s}) · {Math.abs(steps.a)} + ({row.t}) · {Math.abs(steps.b)}</span>
+                          ) : (
+                            <span className="is-result-note">remainder = 0, stop</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Division steps breakdown */}
+              <div className="ee-divisions">
+                <h3>Division Steps</h3>
+                {steps.rows.slice(2).map((row, idx) => {
+                  const prev2 = steps.rows[idx]
+                  const prev1 = steps.rows[idx + 1]
+                  return (
+                    <div key={idx} className="ee-division-step">
+                      <span className="is-log-step">Step {idx + 1}:</span>
+                      {prev2.r} = {row.q} × {prev1.r} + {row.r}
+                      {row.r === 0 && <span className="is-result-note"> (done — gcd is {prev1.r})</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </>
   )
 }
 

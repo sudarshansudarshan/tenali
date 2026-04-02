@@ -865,9 +865,24 @@ function BasicArithApp({ onBack }) {
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key !== 'Enter' || !started || finished) return
-      event.preventDefault()
-      handleSubmitOrNext()
+      if (!started || finished) return
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        handleSubmitOrNext()
+        return
+      }
+      // Keyboard typing for digits, minus, backspace — works even without input focus
+      if (revealed || loading) return
+      if (/^[0-9]$/.test(event.key)) {
+        event.preventDefault()
+        setAnswer(prev => prev + event.key)
+      } else if (event.key === '-') {
+        event.preventDefault()
+        setAnswer(prev => prev.startsWith('-') ? prev.slice(1) : '-' + prev)
+      } else if (event.key === 'Backspace') {
+        event.preventDefault()
+        setAnswer(prev => prev.slice(0, -1))
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

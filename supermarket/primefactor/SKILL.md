@@ -120,7 +120,7 @@ The `allFactors` array contains all prime factors in ascending order (including 
         ↓ (puzzle complete)
 [Show feedback: "Puzzle solved! All factors found."]
 [Record result: question, allFactors, time]
-[Auto-advance after 1.5s]
+[Auto-advance after 1.5s if completed correctly]
         ↓
 [fetchPuzzle(difficulty)] → next puzzle, or show "Finished" screen
 [Show ResultsTable with all completed puzzles]
@@ -188,7 +188,7 @@ After each puzzle completion, append to `results`:
 │     [       0       ]            │
 │  [⌫ ] [ Submit]  [Give Up]      │
 │┌─ Correct! Remaining: 5 ───────┐│
-│  (next factor field in 1.5s)   ││
+│  (next factor field in 1.5s if correct) ││
 │┌── Results Table ──────────────┐│
 │ # │ Number │ Factors │ ✓/✗ │ t││
 │└──────────────────────────────┘│
@@ -229,7 +229,7 @@ The "Give Up" button is always visible. Clicking it:
 
 ### 5.10 Auto-Advance
 
-Uses the shared `useAutoAdvance(revealed, advanceRef)` hook. After each factor or puzzle completion, automatically advances after 1.5 seconds. The player can press Enter to skip the wait.
+Uses the shared `useAutoAdvance(revealed, advanceRef, isCorrect)` hook. After a correct factor or puzzle completion is revealed, automatically advances after 1.5 seconds. On wrong factors, the player must submit again. The player can press Enter to skip the wait on correct answers.
 
 ### 5.11 Running Results Table
 

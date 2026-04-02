@@ -110,7 +110,7 @@ const correct = String(answerOption).toUpperCase() === String(q.answerOption).to
                                     ↓
                     [POST /gk-api/check] → [Show feedback]
                     [Record result with time] → [Stop timer]
-                    [Auto-advance after 1.5s OR press Enter to skip]
+                    [Auto-advance after 1.5s if correct; click Next if wrong]
                                     ↓
                         loadQuestion() → [Loop back to display]
 ```
@@ -164,12 +164,12 @@ Global `keydown` listener on `Enter` key triggers `handleSubmitOrNext()`. Depend
 
 ### 4.7 Auto-Advance
 
-Uses the shared `useAutoAdvance(revealed, advanceRef)` hook with the `useRef` pattern to avoid stale closures. After an answer is revealed, automatically advances to the next question after 1.5 seconds (`AUTO_ADVANCE_MS`). The player can press Enter to skip the wait.
+Uses the shared `useAutoAdvance(revealed, advanceRef, isCorrect)` hook with the `useRef` pattern to avoid stale closures. After a correct answer is revealed, automatically advances to the next question after 1.5 seconds (`AUTO_ADVANCE_MS`). On wrong answers, the player must click Next manually. The player can press Enter to skip the wait on correct answers.
 
 ```javascript
 const advanceRef = useRef(() => {})
 advanceRef.current = () => loadQuestion()
-useAutoAdvance(revealed, advanceRef)
+useAutoAdvance(revealed, advanceRef, isCorrect)
 ```
 
 ## 5. Implementation Notes

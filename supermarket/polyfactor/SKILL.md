@@ -122,7 +122,7 @@ The polynomial is `ax² + bx + c`, and it factors as `(px + q)(rx + s)`. The val
 [POST /polyfactor-api/check]
 [Stop timer, record result]
 [Show feedback: "Correct! (2x + 1)(x + 3)" or "Incorrect. Correct: (2x + 1)(x + 3)"]
-[Auto-advance after 1.5s OR press Enter to skip wait]
+[Auto-advance after 1.5s if correct; click Next if wrong]
         ↓
 [If questionNumber < totalQ: increment, fetchQuestion]
 [If questionNumber >= totalQ: set finished=true]
@@ -173,7 +173,7 @@ After each answer, append to `results`:
 │  r: [__]  s: [__]              │
 │          [Submit]               │
 │┌─ Correct! (2x + 1)(x + 3) ───┐│
-│  (auto-advances in 1.5s)       ││
+│  (auto-advances in 1.5s if correct) ││
 │┌── Running Results Table ──────┐│
 │ # │ Question │ Ans │ ✓/✗ │ t  ││
 │└──────────────────────────────┘│
@@ -186,7 +186,7 @@ Enter key listener activates submit or next when appropriate. Only active when `
 
 ### 5.7 Auto-Advance
 
-Uses the shared `useAutoAdvance(revealed, advanceRef)` hook. After an answer is revealed, automatically advances to the next question after 1.5 seconds. The player can press Enter to skip the wait.
+Uses the shared `useAutoAdvance(revealed, advanceRef, isCorrect)` hook. After a correct answer is revealed, automatically advances to the next question after 1.5 seconds. On wrong answers, the player must click Next manually. The player can press Enter to skip the wait on correct answers.
 
 ### 5.8 Running Results Table
 

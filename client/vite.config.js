@@ -19,10 +19,10 @@ export default defineConfig({
       '/polyfactor-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       '/primefactor-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       '/qformula-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
-      '/linear-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       '/simul-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       '/funceval-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       '/lineq-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/basicarith-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
     },
   },
 })

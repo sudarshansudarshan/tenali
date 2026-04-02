@@ -253,14 +253,9 @@ app.post('/multiply-api/check', (req, res) => {
 
 /* ── Polynomial Multiplication ─────────────────────── */
 function polyCoeffRange(difficulty) {
-  if (difficulty === 'easy') return { min: 1, max: 5 };
+  if (difficulty === 'easy') return { min: 1, max: 9 };
   if (difficulty === 'medium') return { min: 1, max: 10 };
   return { min: 1, max: 20 };
-}
-function polyDegree(difficulty) {
-  if (difficulty === 'easy') return 1;
-  if (difficulty === 'medium') return 2;
-  return 3;
 }
 function randomPoly(degree, range) {
   const coeffs = [];
@@ -302,9 +297,39 @@ function formatPoly(coeffs) {
 app.get('/polymul-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const range = polyCoeffRange(difficulty);
-  const degree = polyDegree(difficulty);
-  const p1 = randomPoly(degree, range);
-  const p2 = randomPoly(degree, range);
+  let p1, p2;
+
+  if (difficulty === 'easy') {
+    // Easy: a(bx + c) form — monomial × binomial
+    // Variants: plain constant like 3(2x+5), or term like 4x(7x+8)
+    const usesX = Math.random() < 0.4; // 40% chance of ax(...) form
+    if (usesX) {
+      // ax × (bx + c) → coeffs: ax = [0, a], (bx+c) = [c, b]
+      const a = randomInt(2, range.max);
+      const b = randomInt(1, range.max);
+      let c = randomInt(1, range.max);
+      if (Math.random() < 0.3) c = -c;
+      p1 = [0, a];
+      p2 = [c, b];
+    } else {
+      // a × (bx + c) → coeffs: a = [a], (bx+c) = [c, b]
+      const a = randomInt(2, range.max);
+      const b = randomInt(1, range.max);
+      let c = randomInt(1, range.max);
+      if (Math.random() < 0.3) c = -c;
+      p1 = [a];
+      p2 = [c, b];
+    }
+  } else if (difficulty === 'medium') {
+    // Medium: two degree-1 polynomials (ax+b)(cx+d)
+    p1 = randomPoly(1, range);
+    p2 = randomPoly(1, range);
+  } else {
+    // Hard: two degree-2 polynomials
+    p1 = randomPoly(2, range);
+    p2 = randomPoly(2, range);
+  }
+
   const product = multiplyPolys(p1, p2);
   res.json({
     id: `polymul-${Date.now()}-${Math.random()}`,
@@ -475,119 +500,88 @@ app.post('/qformula-api/check', (req, res) => {
   res.json({ correct, roots, message: correct ? 'Correct' : 'Incorrect' });
 });
 
-/* ── Linear Equations (2 variables) ───────────────── */
-function linearRange(difficulty) {
+/* ── Simultaneous Equations (2×2 easy, 3×3 hard) ──── */
+function simulRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 10 };
-  if (difficulty === 'medium') return { min: 1, max: 20 };
-  return { min: 1, max: 30 };
+  return { min: 1, max: 15 };
 }
 
-app.get('/linear-api/question', (req, res) => {
-  const difficulty = req.query.difficulty || 'easy';
-  const range = linearRange(difficulty);
-  let a1, b1, c1, a2, b2, c2, x, y;
-  if (difficulty === 'easy') {
-    // Generate integer solutions first
-    x = randomInt(-range.max, range.max);
-    y = randomInt(-range.max, range.max);
-    a1 = randomInt(1, range.max); b1 = randomInt(1, range.max);
-    a2 = randomInt(1, range.max); b2 = randomInt(1, range.max);
-    // Ensure not parallel
-    while (a1 * b2 === a2 * b1) { a2 = randomInt(1, range.max); b2 = randomInt(1, range.max); }
-    c1 = a1 * x + b1 * y;
-    c2 = a2 * x + b2 * y;
-  } else {
-    a1 = randomInt(1, range.max); b1 = randomInt(1, range.max);
-    a2 = randomInt(1, range.max); b2 = randomInt(1, range.max);
-    c1 = randomInt(-range.max * 2, range.max * 2);
-    c2 = randomInt(-range.max * 2, range.max * 2);
-  }
-  const det = a1 * b2 - a2 * b1;
-  let solution;
-  if (det === 0) {
-    solution = { type: 'no_solution' };
-  } else {
-    solution = {
-      type: 'unique',
-      x: parseFloat(((c1 * b2 - c2 * b1) / det).toFixed(2)),
-      y: parseFloat(((a1 * c2 - a2 * c1) / det).toFixed(2)),
-    };
-  }
-  res.json({
-    id: `linear-${Date.now()}-${Math.random()}`,
-    eq1: { a: a1, b: b1, c: c1 },
-    eq2: { a: a2, b: b2, c: c2 },
-    solution,
-  });
-});
-
-app.post('/linear-api/check', (req, res) => {
-  const { eq1, eq2, userX, userY } = req.body || {};
-  const det = eq1.a * eq2.b - eq2.a * eq1.b;
-  let correct = false;
-  let solution;
-  if (det === 0) {
-    solution = { type: 'no_solution' };
-    correct = false; // User shouldn't be answering no-solution
-  } else {
-    solution = {
-      type: 'unique',
-      x: parseFloat(((eq1.c * eq2.b - eq2.c * eq1.b) / det).toFixed(2)),
-      y: parseFloat(((eq1.a * eq2.c - eq2.a * eq1.c) / det).toFixed(2)),
-    };
-    correct = Math.abs(Number(userX) - solution.x) < 0.05 && Math.abs(Number(userY) - solution.y) < 0.05;
-  }
-  res.json({ correct, solution, message: correct ? 'Correct' : 'Incorrect' });
-});
-
-/* ── Simultaneous Equations (3 variables) ─────────── */
 app.get('/simul-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
-  const range = linearRange(difficulty);
-  let x, y, z;
-  // Generate solution first to ensure solvability
-  if (difficulty === 'easy') {
-    x = randomInt(-5, 5); y = randomInt(-5, 5); z = randomInt(-5, 5);
-  } else {
-    x = randomInt(-range.max, range.max); y = randomInt(-range.max, range.max); z = randomInt(-range.max, range.max);
-  }
-  // Generate 3 linearly independent rows
-  let eqs;
-  let attempts = 0;
-  do {
-    eqs = [];
-    for (let i = 0; i < 3; i++) {
-      const a = randomInt(1, Math.min(range.max, 10));
-      const b = randomInt(1, Math.min(range.max, 10));
-      const c = randomInt(1, Math.min(range.max, 10));
-      if (Math.random() < 0.3) eqs.push({ a: -a, b, c, d: -a * x + b * y + c * z });
-      else eqs.push({ a, b: Math.random() < 0.3 ? -b : b, c: Math.random() < 0.3 ? -c : c, d: a * x + (Math.random() < 0.3 ? -b : b) * y + (Math.random() < 0.3 ? -c : c) * z });
-    }
-    // Recompute d properly
-    eqs = eqs.map(e => ({ a: e.a, b: e.b, c: e.c, d: e.a * x + e.b * y + e.c * z }));
-    // Check determinant
-    const det = eqs[0].a * (eqs[1].b * eqs[2].c - eqs[1].c * eqs[2].b)
-              - eqs[0].b * (eqs[1].a * eqs[2].c - eqs[1].c * eqs[2].a)
-              + eqs[0].c * (eqs[1].a * eqs[2].b - eqs[1].b * eqs[2].a);
-    if (det !== 0) break;
-    attempts++;
-  } while (attempts < 50);
+  const range = simulRange(difficulty);
+  const is2x2 = difficulty === 'easy';
 
-  res.json({
-    id: `simul-${Date.now()}-${Math.random()}`,
-    eqs,
-    solution: { x: parseFloat(x.toFixed(2)), y: parseFloat(y.toFixed(2)), z: parseFloat(z.toFixed(2)) },
-  });
+  if (is2x2) {
+    // 2×2: generate integer solutions, then build equations
+    const x = randomInt(-range.max, range.max);
+    const y = randomInt(-range.max, range.max);
+    let a1 = randomInt(1, range.max), b1 = randomInt(1, range.max);
+    let a2 = randomInt(1, range.max), b2 = randomInt(1, range.max);
+    while (a1 * b2 === a2 * b1) { a2 = randomInt(1, range.max); b2 = randomInt(1, range.max); }
+    if (Math.random() < 0.3) a1 = -a1;
+    if (Math.random() < 0.3) b1 = -b1;
+    if (Math.random() < 0.3) a2 = -a2;
+    if (Math.random() < 0.3) b2 = -b2;
+    const eqs = [
+      { a: a1, b: b1, d: a1 * x + b1 * y },
+      { a: a2, b: b2, d: a2 * x + b2 * y },
+    ];
+    res.json({
+      id: `simul-${Date.now()}-${Math.random()}`,
+      size: 2,
+      eqs,
+      solution: { x, y },
+    });
+  } else {
+    // 3×3: generate integer solutions, then build equations
+    const x = randomInt(-8, 8), y = randomInt(-8, 8), z = randomInt(-8, 8);
+    let eqs;
+    let attempts = 0;
+    do {
+      eqs = [];
+      for (let i = 0; i < 3; i++) {
+        let a = randomInt(1, Math.min(range.max, 10));
+        let b = randomInt(1, Math.min(range.max, 10));
+        let c = randomInt(1, Math.min(range.max, 10));
+        if (Math.random() < 0.3) a = -a;
+        if (Math.random() < 0.3) b = -b;
+        if (Math.random() < 0.3) c = -c;
+        eqs.push({ a, b, c, d: a * x + b * y + c * z });
+      }
+      const det = eqs[0].a * (eqs[1].b * eqs[2].c - eqs[1].c * eqs[2].b)
+                - eqs[0].b * (eqs[1].a * eqs[2].c - eqs[1].c * eqs[2].a)
+                + eqs[0].c * (eqs[1].a * eqs[2].b - eqs[1].b * eqs[2].a);
+      if (det !== 0) break;
+      attempts++;
+    } while (attempts < 50);
+
+    res.json({
+      id: `simul-${Date.now()}-${Math.random()}`,
+      size: 3,
+      eqs,
+      solution: { x, y, z },
+    });
+  }
 });
 
 app.post('/simul-api/check', (req, res) => {
-  const { eqs, userX, userY, userZ } = req.body || {};
-  const ux = Number(userX), uy = Number(userY), uz = Number(userZ);
-  // Verify solution satisfies all 3 equations
-  const correct = eqs.every(e => Math.abs(e.a * ux + e.b * uy + e.c * uz - e.d) < 0.1);
+  const { eqs, size, userX, userY, userZ } = req.body || {};
+  const ux = Number(userX), uy = Number(userY), uz = Number(userZ || 0);
+  let correct;
+  if (Number(size) === 2) {
+    correct = eqs.every(e => Math.abs(e.a * ux + e.b * uy - e.d) < 0.1);
+  } else {
+    correct = eqs.every(e => Math.abs(e.a * ux + e.b * uy + e.c * uz - e.d) < 0.1);
+  }
   const solution = req.body.solution || {};
   res.json({ correct, solution, message: correct ? 'Correct' : 'Incorrect' });
 });
+
+function linearRange(difficulty) {
+  if (difficulty === 'easy') return { min: 1, max: 5 };
+  if (difficulty === 'medium') return { min: 1, max: 10 };
+  return { min: 1, max: 15 };
+}
 
 /* ── Function Evaluation ──────────────────────────── */
 app.get('/funceval-api/question', (req, res) => {
@@ -657,6 +651,54 @@ app.post('/lineq-api/check', (req, res) => {
   const actualC = parseFloat((Number(y1) - actualM * Number(x1)).toFixed(2));
   const correct = Math.abs(Number(userM) - actualM) < 0.05 && Math.abs(Number(userC) - actualC) < 0.05;
   res.json({ correct, m: actualM, c: actualC, message: correct ? 'Correct' : 'Incorrect' });
+});
+
+/* ── Basic Arithmetic (+, −, ×) ──────────────────── */
+function arithRange(difficulty) {
+  if (difficulty === 'easy') return { min: 1, max: 9 };
+  if (difficulty === 'medium') return { min: 10, max: 99 };
+  return { min: 100, max: 999 };
+}
+
+app.get('/basicarith-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const range = arithRange(difficulty);
+  const ops = ['+', '−', '×'];
+  const op = ops[randomInt(0, 2)];
+  // Generate two numbers, each randomly positive or negative
+  let a = randomInt(range.min, range.max);
+  let b = randomInt(range.min, range.max);
+  if (Math.random() < 0.4) a = -a;
+  if (Math.random() < 0.4) b = -b;
+  let answer;
+  if (op === '+') answer = a + b;
+  else if (op === '−') answer = a - b;
+  else answer = a * b;
+  // Build a readable prompt with proper sign handling
+  const aStr = String(a);
+  const bAbs = Math.abs(b);
+  let prompt;
+  if (op === '×') {
+    prompt = `(${a}) × (${b})`;
+  } else if (b < 0) {
+    prompt = `${a} ${op} (${b})`;
+  } else {
+    prompt = `${a} ${op} ${b}`;
+  }
+  res.json({
+    id: `arith-${Date.now()}-${Math.random()}`,
+    a, b, op, prompt, answer,
+  });
+});
+
+app.post('/basicarith-api/check', (req, res) => {
+  const { a, b, op, answer } = req.body || {};
+  let correctAnswer;
+  if (op === '+') correctAnswer = Number(a) + Number(b);
+  else if (op === '−') correctAnswer = Number(a) - Number(b);
+  else correctAnswer = Number(a) * Number(b);
+  const correct = Number(answer) === correctAnswer;
+  res.json({ correct, correctAnswer, message: correct ? 'Correct' : 'Incorrect' });
 });
 
 app.get(/.*/, (_req, res) => {

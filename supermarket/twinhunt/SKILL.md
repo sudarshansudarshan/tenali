@@ -111,7 +111,7 @@ Each item receives `style={{ left: '${x}%', top: '${y}%' }}` with CSS `position:
         ↓ (tap an emoji in either panel)
 [Check if tapped symbol === commonSymbol]
 [Show feedback, highlight match (green), dim others]
-[Auto-advance after 1.5s]
+[Auto-advance after 1.5s if correct; click Next if wrong]
         ↓ (all rounds done)
 [Show finish screen with score and ResultsTable]
 ```
@@ -242,7 +242,7 @@ Each item receives `style={{ left: '${x}%', top: '${y}%' }}` with CSS `position:
 
 ### 5.7 Features
 
-- **Auto-advance**: After revealing the answer, auto-advances in 1.5s via `useAutoAdvance` hook.
+- **Auto-advance**: After a correct answer is revealed, auto-advances in 1.5s via `useAutoAdvance` hook. On wrong answers, the player must click Next manually.
 - **Running results table**: Displayed during gameplay below the panels.
 - **No server dependency**: Fully client-side game logic.
 - **Circular scatter**: Items randomly distributed within circular panels, never on grid lines.

@@ -185,7 +185,7 @@ The feedback div uses `white-space: pre-line` to render `\n` as line breaks.
 [POST /quadratic-api/check]
 [Stop timer, compute reasoning, record result]
 [Show multi-line feedback]
-[Auto-advance after 1.5s OR press Enter to skip]
+[Auto-advance after 1.5s if correct; click Next if wrong]
         ↓
 [If < totalQ: next question]
 [If = totalQ: show finish screen with ResultsTable]
@@ -197,7 +197,7 @@ An on-screen numeric keypad is rendered below the input field via the shared `Nu
 
 ### 5.7 Auto-Advance
 
-Uses the shared `useAutoAdvance(revealed, advanceRef)` hook. After an answer is revealed, automatically advances to the next question after 1.5 seconds. The player can press Enter to skip the wait.
+Uses the shared `useAutoAdvance(revealed, advanceRef, isCorrect)` hook. After a correct answer is revealed, automatically advances to the next question after 1.5 seconds. On wrong answers, the player must click Next manually. The player can press Enter to skip the wait on correct answers.
 
 ### 5.8 Running Results Table
 

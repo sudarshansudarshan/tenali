@@ -94,7 +94,7 @@ Used only as a fallback. Client-side generation is primary.
 [Timer starts]
         ↓ (submit answer)
 [Check: Number(answer) === table × multiplier]
-[Show feedback, auto-advance after 1.5s]
+[Show feedback, auto-advance after 1.5s if correct; click Next if wrong]
         ↓ (all questions done)
 [Show finish screen with score and ResultsTable]
 ```
@@ -102,7 +102,7 @@ Used only as a fallback. Client-side generation is primary.
 ### 5.3 Features
 
 - **NumPad**: On-screen numeric keypad with 0–9, ±, ⌫. Physical keyboard works alongside.
-- **Auto-advance**: After revealing the answer, auto-advances in 1.5s. Enter skips the wait.
+- **Auto-advance**: After a correct answer is revealed, auto-advances in 1.5s. On wrong answers, the player must click Next manually. Enter skips the wait on correct answers.
 - **Running results table**: Displayed during gameplay below the quiz area.
 - **Answer validation**: Client-side check (`Number(answer) === table * multiplier`).
 

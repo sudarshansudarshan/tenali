@@ -122,7 +122,7 @@ Note: The server omits `answerOption` and `answerText` from the GET response to 
         ↓ (select option, click Submit)
 [POST /vocab-api/check with id and selected option]
 [Show feedback: correct/incorrect with the right definition]
-[Auto-advance after 1.5s]
+[Auto-advance after 1.5s if correct; click Next if wrong]
         ↓ (all questions done)
 [Show finish screen with score and ResultsTable]
 ```
@@ -136,7 +136,7 @@ Note: The server omits `answerOption` and `answerText` from the GET response to 
 
 ### 4.4 Features
 
-- **Auto-advance**: After revealing the answer, auto-advances in 1.5s via `useAutoAdvance` hook.
+- **Auto-advance**: After a correct answer is revealed, auto-advances in 1.5s via `useAutoAdvance` hook. On wrong answers, the player must click Next manually.
 - **Running results table**: Displayed during gameplay below the quiz area.
 - **Difficulty persists**: Selector is locked during a quiz session (`disabled={started && !finished}`).
 

@@ -13,14 +13,14 @@ const AUTO_ADVANCE_MS = 1500  // auto-advance delay in milliseconds
 
 ## 3. Difficulty Levels
 
-| Level | Degree | Coeff Range | Example |
-|-------|--------|-------------|---------|
-| Easy | 1 | 1–5 | (2x + 3)(4x + 1) = 8x² + 14x + 3 |
-| Medium | 2 | 1–10 | (3x² + 2x + 1)(2x + 5) = 6x³ + 19x² + 12x + 5 |
-| Hard | 3 | 1–20 | Complex higher-degree multiplications |
+| Level | Form | Coeff Range | Example |
+|-------|------|-------------|---------|
+| Easy | a(bx + c) or ax(bx + c) — monomial × binomial | 1–9 | 3(2x + 5) = 6x + 15, or 4x(7x + 8) = 28x² + 32x |
+| Medium | (ax + b)(cx + d) — two degree-1 polynomials | 1–10 | (2x + 3)(4x + 1) = 8x² + 14x + 3 |
+| Hard | (ax² + bx + c)(dx² + ex + f) — two degree-2 polynomials | 1–20 | Complex higher-degree multiplications |
 
 **Server-side implementation:**
-Both polynomials are generated with degrees in the specified range. Each polynomial is represented as an array of coefficients `[a₀, a₁, a₂, ...]` where `aₙ` is the coefficient of `xⁿ`.
+Easy generates a monomial (scalar or single-variable term) and a binomial. Medium generates two linear polynomials. Hard generates two quadratic polynomials. Each polynomial is represented as an array of coefficients `[a₀, a₁, a₂, ...]` where `aₙ` is the coefficient of `xⁿ`.
 
 ## 4. API Specification
 
@@ -117,7 +117,7 @@ The `correctCoeffs` array has length `resultDegree + 1`.
 [POST /polymul-api/check]
 [Stop timer, record result]
 [Show feedback: "Correct! Result: 8x² + 14x + 3" or "Incorrect. Correct result: ..."]
-[Auto-advance after 1.5s OR press Enter to skip wait]
+[Auto-advance after 1.5s if correct; click Next if wrong]
         ↓
 [If questionNumber < totalQ: increment, fetchQuestion]
 [If questionNumber >= totalQ: set finished=true]
@@ -131,11 +131,12 @@ The `correctCoeffs` array has length `resultDegree + 1`.
 
 Client-side construction:
 ```javascript
+const sup = (n) => String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('');
 const resultStr = question.resultDegree === 0
   ? `${data.correctCoeffs[0]}`
   : data.correctCoeffs.map((c, i) => {
       if (c === 0) return null;
-      const term = i === 0 ? `${c}` : i === 1 ? `${c === 1 ? '' : c}x` : `${c === 1 ? '' : c}x^${i}`;
+      const term = i === 0 ? `${c}` : i === 1 ? `${c === 1 ? '' : c}x` : `${c === 1 ? '' : c}x${sup(i)}`;
       return term;
     }).filter(Boolean).join(' + ');
 // Correct: "Correct! Result: 8x² + 14x + 3"
@@ -174,7 +175,7 @@ After each answer, append to `results`:
 │ Coeff of x²: [__]              │
 │          [Submit]               │
 │┌─ Correct! Result: 8x² + ... ─┐│
-│  (auto-advances in 1.5s)       ││
+│  (auto-advances in 1.5s if correct) ││
 │┌── Running Results Table ──────┐│
 │ # │ Question │ Ans │ ✓/✗ │ t  ││
 │└──────────────────────────────┘│
@@ -187,7 +188,7 @@ Enter key listener activates submit or next when appropriate. Only active when `
 
 ### 5.7 Auto-Advance
 
-Uses the shared `useAutoAdvance(revealed, advanceRef)` hook. After an answer is revealed, automatically advances to the next question after 1.5 seconds. The player can press Enter to skip the wait.
+Uses the shared `useAutoAdvance(revealed, advanceRef, isCorrect)` hook. After a correct answer is revealed, automatically advances to the next question after 1.5 seconds. On wrong answers, the player must click Next manually. The player can press Enter to skip the wait on correct answers.
 
 ### 5.8 Running Results Table
 

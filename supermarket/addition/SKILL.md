@@ -112,7 +112,7 @@ Both operands `a` and `b` are generated independently within the same range usin
 [POST /addition-api/check]
 [Stop timer, record result]
 [Show feedback: "Correct! 47 + 83 = 130" or "Incorrect. 47 + 83 = 130"]
-[Auto-advance after 1.5s OR press Enter to skip wait]
+[Auto-advance after 1.5s if correct; click Next if wrong]
         ↓
 [If questionNumber < totalQ: increment, fetchQuestion]
 [If questionNumber >= totalQ: set finished=true]
@@ -167,7 +167,7 @@ After each answer, append to `results`:
 │     [       0       ]            │
 │          [Submit]                │
 │ ┌─ Correct! 47 + 83 = 130 ────┐ │
-│   (auto-advances in 1.5s)       │
+│   (auto-advances in 1.5s if correct) │
 │ ┌── Running Results Table ─────┐ │
 │ │ # │ Question  │ Ans │ ✓/✗ │t│ │
 │ └──────────────────────────────┘ │
@@ -213,7 +213,7 @@ Input validation (onChange): `if (v === '' || v === '-' || /^-?\d+$/.test(v)) se
 
 ### 5.7 Auto-Advance
 
-Uses the shared `useAutoAdvance(revealed, advanceRef)` hook. After an answer is revealed, automatically advances to the next question after 1.5 seconds. The player can press Enter to skip the wait.
+Uses the shared `useAutoAdvance(revealed, advanceRef, isCorrect)` hook. After a correct answer is revealed, automatically advances to the next question after 1.5 seconds. On wrong answers, the player must click Next manually. The player can press Enter to skip the wait on correct answers.
 
 ### 5.8 Running Results Table
 

@@ -121,7 +121,7 @@ The line passes through both points: y1 = m*x1 + c and y2 = m*x2 + c.
 [POST /lineq-api/check]
 [Stop timer, record result]
 [Show feedback: "Correct! m = 3, c = 2" or "Incorrect. Correct: m = 3, c = 2"]
-[Auto-advance after 1.5s OR press Enter to skip wait]
+[Auto-advance after 1.5s if correct; click Next if wrong]
         ↓
 [If questionNumber < totalQ: increment, fetchQuestion]
 [If questionNumber >= totalQ: set finished=true]
@@ -180,7 +180,7 @@ After each answer, append to `results`:
 │  c = [__________]              │
 │          [Submit]               │
 │┌─ Correct! m = 3, c = 2 ──────┐│
-│  (auto-advances in 1.5s)       ││
+│  (auto-advances in 1.5s if correct) ││
 │┌── Running Results Table ──────┐│
 │ # │ Question │ Ans │ ✓/✗ │ t  ││
 │└──────────────────────────────┘│
@@ -193,7 +193,7 @@ Enter key listener activates submit or next when appropriate. Only active when `
 
 ### 5.8 Auto-Advance
 
-Uses the shared `useAutoAdvance(revealed, advanceRef)` hook. After an answer is revealed, automatically advances to the next question after 1.5 seconds. The player can press Enter to skip the wait.
+Uses the shared `useAutoAdvance(revealed, advanceRef, isCorrect)` hook. After a correct answer is revealed, automatically advances to the next question after 1.5 seconds. On wrong answers, the player must click Next manually. The player can press Enter to skip the wait on correct answers.
 
 ### 5.9 Running Results Table
 

@@ -164,7 +164,7 @@ For complex roots, both root1 and root2 are provided with `Real` and `Imag` part
 [POST /qformula-api/check]
 [Stop timer, record result]
 [Show feedback: "Correct! Roots: -2, -3" or "Incorrect. Correct roots: -2, -3"]
-[Auto-advance after 1.5s OR press Enter to skip wait]
+[Auto-advance after 1.5s if correct; click Next if wrong]
         ↓
 [If questionNumber < totalQ: increment, fetchQuestion]
 [If questionNumber >= totalQ: set finished=true]
@@ -241,7 +241,7 @@ After each answer, append to `results`:
 │ Root 2: [__________]            │
 │          [Submit]               │
 │┌─ Correct! Roots: -2, -3 ─────┐│
-│  (auto-advances in 1.5s)       ││
+│  (auto-advances in 1.5s if correct) ││
 │┌── Running Results Table ──────┐│
 │ # │ Question │ Ans │ ✓/✗ │ t  ││
 │└──────────────────────────────┘│
@@ -254,7 +254,7 @@ Enter key listener activates submit or next when appropriate. Only active when `
 
 ### 5.8 Auto-Advance
 
-Uses the shared `useAutoAdvance(revealed, advanceRef)` hook. After an answer is revealed, automatically advances to the next question after 1.5 seconds. The player can press Enter to skip the wait.
+Uses the shared `useAutoAdvance(revealed, advanceRef, isCorrect)` hook. After a correct answer is revealed, automatically advances to the next question after 1.5 seconds. On wrong answers, the player must click Next manually. The player can press Enter to skip the wait on correct answers.
 
 ### 5.9 Running Results Table
 

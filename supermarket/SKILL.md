@@ -33,10 +33,10 @@ Tenali/
 │   ├── polyfactor/SKILL.md   Polynomial Factorization specification
 │   ├── primefactor/SKILL.md  Prime Factorization specification
 │   ├── qformula/SKILL.md     Quadratic Formula specification
-│   ├── linear/SKILL.md       Linear Equations (2 variables) specification
-│   ├── simul/SKILL.md        Simultaneous Equations (3 variables) specification
+│   ├── simul/SKILL.md        Simultaneous Equations (2×2 / 3×3) specification
 │   ├── funceval/SKILL.md     Function Evaluation specification
-│   └── lineq/SKILL.md        Line Equation specification
+│   ├── lineq/SKILL.md        Line Equation specification
+│   └── basicarith/SKILL.md   Basic Arithmetic specification
 ├── client/                   React frontend
 │   ├── src/
 │   │   ├── App.jsx           All components in a single file
@@ -79,10 +79,10 @@ The root component renders a centered card on a cream-colored background. A `mod
 - `'polyfactor'` → Polynomial Factorization quiz
 - `'primefactor'` → Prime Factorization puzzle
 - `'qformula'` → Quadratic Formula quiz
-- `'linear'` → Linear Equations (2 variables) quiz
-- `'simul'` → Simultaneous Equations (3 variables) quiz
+- `'simul'` → Simultaneous Equations (2×2 easy / 3×3 hard) quiz
 - `'funceval'` → Function Evaluation quiz
 - `'lineq'` → Line Equation quiz
+- `'basicarith'` → Basic Arithmetic quiz (+, −, × with positives & negatives)
 
 Each quiz component receives an `onBack` callback that sets `mode` back to `null`.
 
@@ -92,8 +92,8 @@ The Home screen displays:
 1. Title "Tenali" in the heading
 2. Subtitle "Choose a learning game to begin"
 3. A **responsive CSS grid** with **16 slots total** using `auto-fill` (columns auto-adjust from 2 on mobile to 5–6 on wide screens):
-   - First 7 slots: active app cards (clickable buttons)
-   - Remaining 9 slots: placeholder cards with dashed borders and "Coming soon" text
+   - First 15 slots: active app cards (clickable buttons)
+   - Remaining 1 slot: placeholder card with dashed border and "Coming soon" text
 4. A **grid dimension indicator** below the grid showing current rows × columns (e.g., "4 × 4"), styled subtly
 
 **Grid dimension indicator implementation:** A `useRef` on the grid element reads `getComputedStyle().gridTemplateColumns` on mount and window resize to compute the current column count. Rows are derived from `Math.ceil(totalSlots / cols)`. Displayed as "rows × cols" in a subtle, low-opacity label below the grid.
@@ -110,14 +110,14 @@ Each active card shows a title, subtitle, and has a color class (`purple`, `blue
 | vocab | Vocab Builder | Match words to definitions | blue |
 | spot | Twin Hunt | Find the common object | purple |
 | sqrt | Square Root | Nearest-integer square root drill | green |
-| polymul | Polynomial Multiplication | Multiply polynomials and enter coefficients | blue |
-| polyfactor | Polynomial Factorization | Factor ax² + bx + c into (px + q)(rx + s) | blue |
-| primefactor | Prime Factorization | Find prime factors one at a time | green |
+| polymul | Poly Multiply | Multiply two polynomials | blue |
+| polyfactor | Poly Factor | Factor a quadratic expression | green |
+| primefactor | Prime Factors | Break a number into primes | purple |
 | qformula | Quadratic Formula | Find roots of ax² + bx + c = 0 | blue |
-| linear | Linear Equations (2 vars) | Solve ax + by = c systems | green |
-| simul | Simultaneous Equations (3 vars) | Solve ax + by + cz = d systems | green |
-| funceval | Function Evaluation | Evaluate linear functions at points | blue |
-| lineq | Line Equation | Find m and c from two points | purple |
+| simul | Simultaneous Eq. | 2×2 (easy) or 3×3 (hard) | purple |
+| funceval | Functions | Evaluate f(x), f(x,y), f(x,y,z) | blue |
+| lineq | Line Equation | Find m and c from two points | green |
+| basicarith | Basic Arithmetic | +, −, × with positive & negative | purple |
 
 #### 3.3 Shared Quiz Components
 
@@ -135,15 +135,15 @@ Each active card shows a title, subtitle, and has a color class (`purple`, `blue
 - `stop()`: stops counting, returns seconds elapsed
 - `reset()`: stops counting, sets elapsed to 0
 
-**useAutoAdvance hook**: Auto-advances to the next question 1.5 seconds after an answer is revealed. Uses `useRef` pattern to avoid stale closure issues. Players can still press Enter to skip the wait.
+**useAutoAdvance hook**: Auto-advances to the next question 1.5 seconds after an answer is revealed, **but only if the answer was correct**. If the answer was wrong, the player must click the Next button manually (i.e., two clicks total on wrong: one for Submit, one for Next). Uses `useRef` pattern to avoid stale closure issues.
 ```javascript
 const AUTO_ADVANCE_MS = 1500
-function useAutoAdvance(revealed, advanceFnRef) {
+function useAutoAdvance(revealed, advanceFnRef, isCorrect) {
   useEffect(() => {
-    if (!revealed) return
+    if (!revealed || !isCorrect) return
     const id = setTimeout(() => advanceFnRef.current(), AUTO_ADVANCE_MS)
     return () => clearTimeout(id)
-  }, [revealed])
+  }, [revealed, isCorrect])
 }
 ```
 
@@ -209,14 +209,14 @@ All quizzes display the results table both during gameplay (growing as the playe
 | POST | `/primefactor-api/check` | — | `{ originalNumber, factor, currentRemaining }` | `{ correct, nextRemaining, factorsFound[], allFactorsList[], isComplete, message }` |
 | GET | `/qformula-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, a, b, c, prompt, discriminant, rootType, root1, root2, root1Real, root1Imag, root2Real, root2Imag }` |
 | POST | `/qformula-api/check` | — | `{ a, b, c, root1, root2, root, root1Real, root1Imag, root2Real, root2Imag, rootType }` | `{ correct, correctRoot1, correctRoot2, message }` |
-| GET | `/linear-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, a, b, c, d, e, f, prompt, x, y }` |
-| POST | `/linear-api/check` | — | `{ a, b, c, d, e, f, x, y }` | `{ correct, correctX, correctY, message }` |
-| GET | `/simul-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, a, b, c, d, e, f, g, h, i, j, k, l, prompt, x, y, z }` |
-| POST | `/simul-api/check` | — | `{ a, b, c, d, e, f, g, h, i, j, k, l, x, y, z }` | `{ correct, correctX, correctY, correctZ, message }` |
+| GET | `/simul-api/question` | `difficulty` (easy/hard) | — | `{ id, size (2 or 3), eqs[], solution: {x, y[, z]} }` |
+| POST | `/simul-api/check` | — | `{ eqs, size, solution, userX, userY[, userZ] }` | `{ correct, solution, message }` |
 | GET | `/funceval-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, functionType, a, b, c, d, x, y, z, prompt, answer }` |
 | POST | `/funceval-api/check` | — | `{ a, b, c, d, x, y, z, answer }` | `{ correct, correctAnswer, message }` |
 | GET | `/lineq-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, x1, y1, x2, y2, prompt, m, c }` |
 | POST | `/lineq-api/check` | — | `{ x1, y1, x2, y2, m, c }` | `{ correct, correctM, correctC, message }` |
+| GET | `/basicarith-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, a, b, op, prompt, answer }` |
+| POST | `/basicarith-api/check` | — | `{ a, b, op, answer }` | `{ correct, correctAnswer, message }` |
 
 #### 4.3 Data Loading
 
@@ -280,7 +280,7 @@ services:
 
 1. `cd server && node index.js` — starts Express on port 4000
 2. `cd client && npm run dev` — starts Vite on port 5173 with proxy to 4000
-3. Vite proxy forwards: `/api`, `/gk-api`, `/addition-api`, `/quadratic-api`, `/sqrt-api`, `/multiply-api`, `/vocab-api`, `/polymul-api`, `/polyfactor-api`, `/primefactor-api`, `/qformula-api`, `/linear-api`, `/simul-api`, `/funceval-api`, `/lineq-api`
+3. Vite proxy forwards: `/api`, `/gk-api`, `/addition-api`, `/quadratic-api`, `/sqrt-api`, `/multiply-api`, `/vocab-api`, `/polymul-api`, `/polyfactor-api`, `/primefactor-api`, `/qformula-api`, `/simul-api`, `/funceval-api`, `/lineq-api`, `/basicarith-api`
 
 ### 7. Adding a New App
 

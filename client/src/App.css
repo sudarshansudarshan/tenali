@@ -104,7 +104,8 @@ h1 {
   border-radius: var(--radius);
   background: var(--clr-card);
   color: var(--clr-text);
-  text-align: left;
+  text-align: center;
+  align-items: center;
   cursor: pointer;
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
   box-shadow: 0 1px 4px rgba(60, 40, 20, 0.05);
@@ -180,13 +181,12 @@ h1 {
 .menu-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--clr-text);
   line-height: 1.3;
-  background: #4a4a4a;
+  background: #c0c0c0;
   padding: 8px 14px;
   border-radius: 8px;
   margin-bottom: 10px;
-  display: inline-block;
 }
 
 .menu-subtitle {

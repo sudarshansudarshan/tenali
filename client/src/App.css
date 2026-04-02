@@ -690,6 +690,110 @@ button:disabled {
   opacity: 0.25;
 }
 
+/* ── Polynomial / Coefficient Inputs ───────────────── */
+.coeff-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 16px 0;
+}
+.coeff-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.coeff-label {
+  font-size: 0.78rem;
+  color: var(--clr-text-soft);
+  font-weight: 500;
+}
+.coeff-input {
+  width: 72px !important;
+  text-align: center;
+  font-size: 1.1rem !important;
+}
+.poly-expr {
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+/* ── Factor Inputs ─────────────────────────────────── */
+.factor-inputs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.factor-group {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--clr-text);
+}
+.factor-input {
+  width: 56px !important;
+  text-align: center;
+  font-size: 1.1rem !important;
+}
+
+/* ── Prime Factorization ───────────────────────────── */
+.prime-chain {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  word-spacing: 0.15em;
+}
+.prime-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.prime-input-row .answer-input {
+  max-width: 140px;
+}
+.give-up-btn {
+  background: var(--clr-wrong) !important;
+  font-size: 0.85rem;
+}
+
+/* ── Roots / Variable Inputs ───────────────────────── */
+.roots-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  margin: 16px 0;
+}
+.single-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.single-input-row .answer-input {
+  max-width: 180px;
+}
+
+/* ── Equation System Display ───────────────────────── */
+.equation-system {
+  text-align: left;
+  display: inline-block;
+  margin: 0 auto;
+}
+.equation-system div {
+  font-family: var(--font-body);
+  font-size: 1.15rem;
+  line-height: 1.8;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Numeric Keypad ─────────────────────────────────── */
 .numpad {
   display: flex;

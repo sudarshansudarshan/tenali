@@ -141,8 +141,24 @@ function App() {
           <VocabApp onBack={() => setMode(null)} />
         ) : mode === 'spot' ? (
           <SpotApp onBack={() => setMode(null)} />
-        ) : (
+        ) : mode === 'sqrt' ? (
           <SqrtApp onBack={() => setMode(null)} />
+        ) : mode === 'polymul' ? (
+          <PolyMulApp onBack={() => setMode(null)} />
+        ) : mode === 'polyfactor' ? (
+          <PolyFactorApp onBack={() => setMode(null)} />
+        ) : mode === 'primefactor' ? (
+          <PrimeFactorApp onBack={() => setMode(null)} />
+        ) : mode === 'qformula' ? (
+          <QFormulaApp onBack={() => setMode(null)} />
+        ) : mode === 'linear' ? (
+          <LinearApp onBack={() => setMode(null)} />
+        ) : mode === 'simul' ? (
+          <SimulApp onBack={() => setMode(null)} />
+        ) : mode === 'funceval' ? (
+          <FuncEvalApp onBack={() => setMode(null)} />
+        ) : (
+          <LineEqApp onBack={() => setMode(null)} />
         )}
       </div>
     </div>
@@ -159,6 +175,14 @@ function Home({ onSelect }) {
     { key: 'vocab', name: 'Vocab Builder', subtitle: 'Match words to definitions', color: 'blue' },
     { key: 'spot', name: 'Spot It', subtitle: 'Find the common object', color: 'purple' },
     { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
+    { key: 'polymul', name: 'Poly Multiply', subtitle: 'Multiply two polynomials', color: 'blue' },
+    { key: 'polyfactor', name: 'Poly Factor', subtitle: 'Factor a quadratic expression', color: 'green' },
+    { key: 'primefactor', name: 'Prime Factors', subtitle: 'Break a number into primes', color: 'purple' },
+    { key: 'qformula', name: 'Quadratic Formula', subtitle: 'Find roots of ax² + bx + c = 0', color: 'blue' },
+    { key: 'linear', name: 'Linear Equations', subtitle: 'Solve 2 equations, 2 unknowns', color: 'green' },
+    { key: 'simul', name: 'Simultaneous Eq.', subtitle: 'Solve 3 equations, 3 unknowns', color: 'purple' },
+    { key: 'funceval', name: 'Functions', subtitle: 'Evaluate f(x), f(x,y), f(x,y,z)', color: 'blue' },
+    { key: 'lineq', name: 'Line Equation', subtitle: 'Find m and c from two points', color: 'green' },
   ]
 
   const totalSlots = 16
@@ -1235,6 +1259,1038 @@ function SqrtApp({ onBack }) {
         <button onClick={() => { setStarted(false); setFinished(false); setNumQuestions('') }}>Play Again</button>
       </div>}
       {!finished && results.length > 0 && <ResultsTable results={results} />}
+    </QuizLayout>
+  )
+}
+
+/* ── Polynomial Multiplication App ──────────────────── */
+function PolyMulApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [userCoeffs, setUserCoeffs] = useState([])
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [score, setScore] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    setFeedback('')
+    setIsCorrect(null)
+    setRevealed(false)
+    const res = await fetch(`${API}/polymul-api/question?difficulty=${difficulty}`)
+    const data = await res.json()
+    setQuestion(data)
+    setUserCoeffs(new Array(data.resultDegree + 1).fill(''))
+    setLoading(false)
+    timer.start()
+  }
+
+  const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
+    setTotalQ(count)
+    setStarted(true)
+    setFinished(false)
+    setScore(0)
+    setQuestionNumber(1)
+    setResults([])
+    await loadQuestion()
+  }
+
+  const handleSubmit = async () => {
+    if (!question || revealed) return
+    if (userCoeffs.some(c => c === '')) return
+    const timeTaken = timer.stop()
+    const res = await fetch(`${API}/polymul-api/check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p1: question.p1, p2: question.p2, userCoeffs: userCoeffs.map(Number) }),
+    })
+    const data = await res.json()
+    setIsCorrect(data.correct)
+    if (data.correct) setScore(s => s + 1)
+    setFeedback(data.correct ? `Correct! ${question.productDisplay}` : `Incorrect. Answer: ${data.correctDisplay}`)
+    setResults(prev => [...prev, {
+      question: `(${question.p1Display})(${question.p2Display})`,
+      userAnswer: userCoeffs.join(', '),
+      correctAnswer: data.correctCoeffs.join(', '),
+      correct: data.correct,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = async () => {
+    if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
+    setQuestionNumber(n => n + 1)
+    await loadQuestion()
+  }
+  useAutoAdvance(revealed, advanceRef)
+
+  const formatCoeffLabel = (i) => i === 0 ? 'constant' : i === 1 ? 'x' : `x^${i}`
+
+  return (
+    <QuizLayout title="Poly Multiply" subtitle="Multiply two polynomials and enter the coefficients" onBack={onBack}>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
+      <div className="radio-group">
+        {['easy', 'medium', 'hard'].map(d => (
+          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
+            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
+            {d.charAt(0).toUpperCase() + d.slice(1)}
+          </label>
+        ))}
+      </div>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Multiply two polynomials and fill in the resulting coefficients.</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && <>
+          <div className="question-box">
+            <span className="poly-expr">({question.p1Display})</span> × <span className="poly-expr">({question.p2Display})</span>
+          </div>
+          <div className="coeff-inputs">
+            {userCoeffs.map((c, i) => (
+              <div key={i} className="coeff-field">
+                <label className="coeff-label">{formatCoeffLabel(i)}</label>
+                <input className="answer-input coeff-input" type="text" value={c} disabled={revealed}
+                  onChange={e => { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) { const nc = [...userCoeffs]; nc[i] = v; setUserCoeffs(nc) } }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} />
+              </div>
+            ))}
+          </div>
+        </>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && userCoeffs.some(c => c === ''))}>
+            {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
+          </button>
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Polynomial Factorization App ──────────────────── */
+function PolyFactorApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [userP, setUserP] = useState('')
+  const [userQ, setUserQ] = useState('')
+  const [userR, setUserR] = useState('')
+  const [userS, setUserS] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [score, setScore] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    setUserP(''); setUserQ(''); setUserR(''); setUserS('')
+    setFeedback(''); setIsCorrect(null); setRevealed(false)
+    const res = await fetch(`${API}/polyfactor-api/question?difficulty=${difficulty}`)
+    const data = await res.json()
+    setQuestion(data)
+    setLoading(false)
+    timer.start()
+  }
+
+  const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
+    setTotalQ(count)
+    setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    await loadQuestion()
+  }
+
+  const handleSubmit = async () => {
+    if (!question || revealed) return
+    if (!userP || !userQ || !userR || !userS) return
+    const timeTaken = timer.stop()
+    const res = await fetch(`${API}/polyfactor-api/check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ a: question.a, b: question.b, c: question.c, userP: Number(userP), userQ: Number(userQ), userR: Number(userR), userS: Number(userS) }),
+    })
+    const data = await res.json()
+    setIsCorrect(data.correct)
+    if (data.correct) setScore(s => s + 1)
+    const { p, q, r, s } = question.factors
+    setFeedback(data.correct ? `Correct! (${p}x ${q >= 0 ? '+' : '−'} ${Math.abs(q)})(${r}x ${s >= 0 ? '+' : '−'} ${Math.abs(s)})` : `Incorrect. One factorization: (${p}x ${q >= 0 ? '+' : '−'} ${Math.abs(q)})(${r}x ${s >= 0 ? '+' : '−'} ${Math.abs(s)})`)
+    setResults(prev => [...prev, {
+      question: question.display,
+      userAnswer: `(${userP}x${Number(userQ)>=0?'+':''}${userQ})(${userR}x${Number(userS)>=0?'+':''}${userS})`,
+      correctAnswer: `(${p}x${q>=0?'+':''}${q})(${r}x${s>=0?'+':''}${s})`,
+      correct: data.correct,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = async () => {
+    if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
+    setQuestionNumber(n => n + 1)
+    await loadQuestion()
+  }
+  useAutoAdvance(revealed, advanceRef)
+
+  const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setter(v) }
+
+  return (
+    <QuizLayout title="Poly Factor" subtitle="Factor the quadratic into (px + q)(rx + s)" onBack={onBack}>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
+      <div className="radio-group">
+        {['easy', 'medium', 'hard'].map(d => (
+          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
+            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
+            {d.charAt(0).toUpperCase() + d.slice(1)}
+          </label>
+        ))}
+      </div>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Factor ax² + bx + c into (px + q)(rx + s).</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && <>
+          <div className="question-box">{question.display} = 0</div>
+          <div className="factor-inputs">
+            <span className="factor-group">(</span>
+            <input className="answer-input factor-input" type="text" value={userP} onChange={valInput(setUserP)} disabled={revealed} placeholder="p" onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} />
+            <span className="factor-group">x +</span>
+            <input className="answer-input factor-input" type="text" value={userQ} onChange={valInput(setUserQ)} disabled={revealed} placeholder="q" onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} />
+            <span className="factor-group">)(</span>
+            <input className="answer-input factor-input" type="text" value={userR} onChange={valInput(setUserR)} disabled={revealed} placeholder="r" onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} />
+            <span className="factor-group">x +</span>
+            <input className="answer-input factor-input" type="text" value={userS} onChange={valInput(setUserS)} disabled={revealed} placeholder="s" onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} />
+            <span className="factor-group">)</span>
+          </div>
+        </>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`} style={{whiteSpace:'pre-line'}}>{feedback}</div>}
+        <div className="button-row">
+          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && (!userP || !userQ || !userR || !userS))}>
+            {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
+          </button>
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Prime Factorization App ───────────────────────── */
+function PrimeFactorApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [enteredFactors, setEnteredFactors] = useState([])
+  const [currentInput, setCurrentInput] = useState('')
+  const [remaining, setRemaining] = useState(0)
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [score, setScore] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+
+  const loadQuestion = async () => {
+    setFeedback(''); setIsCorrect(null); setRevealed(false)
+    setEnteredFactors([]); setCurrentInput('')
+    const res = await fetch(`${API}/primefactor-api/question?difficulty=${difficulty}`)
+    const data = await res.json()
+    setQuestion(data)
+    setRemaining(data.number)
+    timer.start()
+  }
+
+  const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
+    setTotalQ(count)
+    setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    await loadQuestion()
+  }
+
+  const addFactor = () => {
+    const f = Number(currentInput)
+    if (!f || f < 2 || remaining % f !== 0) return
+    const newFactors = [...enteredFactors, f]
+    const newRemaining = remaining / f
+    setEnteredFactors(newFactors)
+    setRemaining(newRemaining)
+    setCurrentInput('')
+    if (newRemaining === 1) {
+      // Auto-check
+      const timeTaken = timer.stop()
+      const sorted = [...newFactors].sort((a, b) => a - b)
+      const correct = question.factors.length === sorted.length && question.factors.every((v, i) => v === sorted[i])
+      setIsCorrect(correct)
+      if (correct) setScore(s => s + 1)
+      setFeedback(correct ? `Correct! ${question.number} = ${question.factors.join(' × ')}` : `Incorrect. ${question.number} = ${question.factors.join(' × ')}`)
+      setResults(prev => [...prev, {
+        question: String(question.number),
+        userAnswer: newFactors.join(' × '),
+        correctAnswer: question.factors.join(' × '),
+        correct,
+        time: timeTaken,
+      }])
+      setRevealed(true)
+    }
+  }
+
+  const handleGiveUp = () => {
+    const timeTaken = timer.stop()
+    setIsCorrect(false)
+    setFeedback(`${question.number} = ${question.factors.join(' × ')}`)
+    setResults(prev => [...prev, {
+      question: String(question.number),
+      userAnswer: enteredFactors.length ? enteredFactors.join(' × ') + ' ...' : '—',
+      correctAnswer: question.factors.join(' × '),
+      correct: false,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = async () => {
+    if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
+    setQuestionNumber(n => n + 1)
+    await loadQuestion()
+  }
+  useAutoAdvance(revealed, advanceRef)
+
+  const buildChain = () => {
+    if (enteredFactors.length === 0) return String(question?.number || '')
+    const parts = [String(question.number), '=', ...enteredFactors.flatMap((f, i) => i === 0 ? [String(f)] : ['×', String(f)])]
+    if (remaining > 1) parts.push('×', String(remaining))
+    return parts.join(' ')
+  }
+
+  return (
+    <QuizLayout title="Prime Factors" subtitle="Break the number into its prime factors" onBack={onBack}>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
+      <div className="radio-group">
+        {['easy', 'medium', 'hard'].map(d => (
+          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
+            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
+            {d.charAt(0).toUpperCase() + d.slice(1)}
+          </label>
+        ))}
+      </div>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Enter prime factors one at a time. Watch the remaining number shrink!</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && <>
+          <div className="question-box prime-chain">{buildChain()}</div>
+          {!revealed && remaining > 1 && <div className="prime-input-row">
+            <input className="answer-input" type="text" value={currentInput} placeholder="Enter a prime factor"
+              onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setCurrentInput(v) }}
+              onKeyDown={e => { if (e.key === 'Enter') addFactor() }} autoFocus />
+            <button onClick={addFactor} disabled={!currentInput}>Add</button>
+            <button className="give-up-btn" onClick={handleGiveUp}>Give Up</button>
+          </div>}
+          <NumPad value={currentInput} onChange={setCurrentInput} onSubmit={addFactor} disabled={revealed || remaining <= 1} />
+        </>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {revealed && <div className="button-row">
+          <button onClick={() => advanceRef.current()}>{questionNumber >= totalQ ? 'Finish' : 'Next'}</button>
+        </div>}
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Quadratic Formula App ─────────────────────────── */
+function QFormulaApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [userR1, setUserR1] = useState('')
+  const [userR2, setUserR2] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [score, setScore] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    setUserR1(''); setUserR2('')
+    setFeedback(''); setIsCorrect(null); setRevealed(false)
+    const res = await fetch(`${API}/qformula-api/question?difficulty=${difficulty}`)
+    const data = await res.json()
+    setQuestion(data)
+    setLoading(false)
+    timer.start()
+  }
+
+  const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
+    setTotalQ(count)
+    setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    await loadQuestion()
+  }
+
+  const handleSubmit = async () => {
+    if (!question || revealed || !userR1) return
+    if (question.roots.type === 'real_distinct' && !userR2) return
+    if (question.roots.type === 'complex' && !userR2) return
+    const timeTaken = timer.stop()
+    const res = await fetch(`${API}/qformula-api/check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ a: question.a, b: question.b, c: question.c, userR1: Number(userR1), userR2: Number(userR2), userType: question.roots.type }),
+    })
+    const data = await res.json()
+    setIsCorrect(data.correct)
+    if (data.correct) setScore(s => s + 1)
+    let correctStr = ''
+    if (data.roots.type === 'real_distinct') correctStr = `Roots: ${data.roots.r1} and ${data.roots.r2}`
+    else if (data.roots.type === 'real_equal') correctStr = `Root: ${data.roots.r1} (repeated)`
+    else correctStr = `Roots: ${data.roots.realPart} ± ${data.roots.imagPart}i`
+    setFeedback(data.correct ? `Correct! ${correctStr}` : `Incorrect. ${correctStr}`)
+    setResults(prev => [...prev, {
+      question: `${question.a}x² ${question.b>=0?'+':'−'} ${Math.abs(question.b)}x ${question.c>=0?'+':'−'} ${Math.abs(question.c)} = 0`,
+      userAnswer: question.roots.type === 'real_equal' ? userR1 : `${userR1}, ${userR2}`,
+      correctAnswer: correctStr,
+      correct: data.correct,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = async () => {
+    if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
+    setQuestionNumber(n => n + 1)
+    await loadQuestion()
+  }
+  useAutoAdvance(revealed, advanceRef)
+
+  const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setter(v) }
+
+  return (
+    <QuizLayout title="Quadratic Formula" subtitle="Find the roots of ax² + bx + c = 0" onBack={onBack}>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
+      <div className="radio-group">
+        {['easy', 'medium', 'hard'].map(d => (
+          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
+            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
+            {d.charAt(0).toUpperCase() + d.slice(1)}
+          </label>
+        ))}
+      </div>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">{difficulty === 'easy' ? 'Integer roots only.' : difficulty === 'medium' ? 'Real roots (integer or decimal).' : 'May include complex roots.'}</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && <>
+          <div className="question-box">{question.a}x² {question.b >= 0 ? '+' : '−'} {Math.abs(question.b)}x {question.c >= 0 ? '+' : '−'} {Math.abs(question.c)} = 0</div>
+          <div className="roots-inputs">
+            {question.roots.type === 'complex' ? <>
+              <div className="coeff-field"><label className="coeff-label">Real part</label>
+                <input className="answer-input coeff-input" type="text" value={userR1} onChange={valInput(setUserR1)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+              <div className="coeff-field"><label className="coeff-label">Imaginary part</label>
+                <input className="answer-input coeff-input" type="text" value={userR2} onChange={valInput(setUserR2)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+            </> : question.roots.type === 'real_equal' ? <>
+              <div className="coeff-field"><label className="coeff-label">Root (repeated)</label>
+                <input className="answer-input coeff-input" type="text" value={userR1} onChange={valInput(setUserR1)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+            </> : <>
+              <div className="coeff-field"><label className="coeff-label">Root 1</label>
+                <input className="answer-input coeff-input" type="text" value={userR1} onChange={valInput(setUserR1)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+              <div className="coeff-field"><label className="coeff-label">Root 2</label>
+                <input className="answer-input coeff-input" type="text" value={userR2} onChange={valInput(setUserR2)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+            </>}
+          </div>
+        </>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && !userR1)}>
+            {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
+          </button>
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Linear Equations App (2 variables) ────────────── */
+function LinearApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [userX, setUserX] = useState('')
+  const [userY, setUserY] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [score, setScore] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    setUserX(''); setUserY('')
+    setFeedback(''); setIsCorrect(null); setRevealed(false)
+    const res = await fetch(`${API}/linear-api/question?difficulty=${difficulty}`)
+    const data = await res.json()
+    setQuestion(data)
+    setLoading(false)
+    timer.start()
+  }
+
+  const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
+    setTotalQ(count)
+    setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    await loadQuestion()
+  }
+
+  const handleSubmit = async () => {
+    if (!question || revealed || !userX || !userY) return
+    const timeTaken = timer.stop()
+    const res = await fetch(`${API}/linear-api/check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eq1: question.eq1, eq2: question.eq2, userX: Number(userX), userY: Number(userY) }),
+    })
+    const data = await res.json()
+    setIsCorrect(data.correct)
+    if (data.correct) setScore(s => s + 1)
+    setFeedback(data.correct ? `Correct! (x, y) = (${data.solution.x}, ${data.solution.y})` : `Incorrect. (x, y) = (${data.solution.x}, ${data.solution.y})`)
+    setResults(prev => [...prev, {
+      question: `${question.eq1.a}x+${question.eq1.b}y=${question.eq1.c}, ${question.eq2.a}x+${question.eq2.b}y=${question.eq2.c}`,
+      userAnswer: `(${userX}, ${userY})`,
+      correctAnswer: `(${data.solution.x}, ${data.solution.y})`,
+      correct: data.correct,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = async () => {
+    if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
+    setQuestionNumber(n => n + 1)
+    await loadQuestion()
+  }
+  useAutoAdvance(revealed, advanceRef)
+
+  const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setter(v) }
+  const fmtEq = (eq) => `${eq.a}x ${eq.b >= 0 ? '+' : '−'} ${Math.abs(eq.b)}y = ${eq.c}`
+
+  return (
+    <QuizLayout title="Linear Equations" subtitle="Solve the system of two equations" onBack={onBack}>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
+      <div className="radio-group">
+        {['easy', 'medium', 'hard'].map(d => (
+          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
+            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
+            {d.charAt(0).toUpperCase() + d.slice(1)}
+          </label>
+        ))}
+      </div>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Solve for x and y in two linear equations.</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && <>
+          <div className="question-box equation-system">
+            <div>{fmtEq(question.eq1)}</div>
+            <div>{fmtEq(question.eq2)}</div>
+          </div>
+          <div className="roots-inputs">
+            <div className="coeff-field"><label className="coeff-label">x =</label>
+              <input className="answer-input coeff-input" type="text" value={userX} onChange={valInput(setUserX)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+            <div className="coeff-field"><label className="coeff-label">y =</label>
+              <input className="answer-input coeff-input" type="text" value={userY} onChange={valInput(setUserY)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+          </div>
+        </>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && (!userX || !userY))}>
+            {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
+          </button>
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Simultaneous Equations App (3 variables) ──────── */
+function SimulApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [userX, setUserX] = useState('')
+  const [userY, setUserY] = useState('')
+  const [userZ, setUserZ] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [score, setScore] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    setUserX(''); setUserY(''); setUserZ('')
+    setFeedback(''); setIsCorrect(null); setRevealed(false)
+    const res = await fetch(`${API}/simul-api/question?difficulty=${difficulty}`)
+    const data = await res.json()
+    setQuestion(data)
+    setLoading(false)
+    timer.start()
+  }
+
+  const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
+    setTotalQ(count)
+    setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    await loadQuestion()
+  }
+
+  const handleSubmit = async () => {
+    if (!question || revealed || !userX || !userY || !userZ) return
+    const timeTaken = timer.stop()
+    const res = await fetch(`${API}/simul-api/check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eqs: question.eqs, solution: question.solution, userX: Number(userX), userY: Number(userY), userZ: Number(userZ) }),
+    })
+    const data = await res.json()
+    setIsCorrect(data.correct)
+    if (data.correct) setScore(s => s + 1)
+    const s = question.solution
+    setFeedback(data.correct ? `Correct! (x,y,z) = (${s.x}, ${s.y}, ${s.z})` : `Incorrect. (x,y,z) = (${s.x}, ${s.y}, ${s.z})`)
+    setResults(prev => [...prev, {
+      question: '3×3 system',
+      userAnswer: `(${userX}, ${userY}, ${userZ})`,
+      correctAnswer: `(${s.x}, ${s.y}, ${s.z})`,
+      correct: data.correct,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = async () => {
+    if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
+    setQuestionNumber(n => n + 1)
+    await loadQuestion()
+  }
+  useAutoAdvance(revealed, advanceRef)
+
+  const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setter(v) }
+  const fmtEq3 = (eq) => `${eq.a}x ${eq.b >= 0 ? '+' : '−'} ${Math.abs(eq.b)}y ${eq.c >= 0 ? '+' : '−'} ${Math.abs(eq.c)}z = ${eq.d}`
+
+  return (
+    <QuizLayout title="Simultaneous Eq." subtitle="Solve the system of three equations" onBack={onBack}>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
+      <div className="radio-group">
+        {['easy', 'medium', 'hard'].map(d => (
+          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
+            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
+            {d.charAt(0).toUpperCase() + d.slice(1)}
+          </label>
+        ))}
+      </div>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Solve for x, y, and z in three simultaneous equations.</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && <>
+          <div className="question-box equation-system">
+            {question.eqs.map((eq, i) => <div key={i}>{fmtEq3(eq)}</div>)}
+          </div>
+          <div className="roots-inputs">
+            <div className="coeff-field"><label className="coeff-label">x =</label>
+              <input className="answer-input coeff-input" type="text" value={userX} onChange={valInput(setUserX)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+            <div className="coeff-field"><label className="coeff-label">y =</label>
+              <input className="answer-input coeff-input" type="text" value={userY} onChange={valInput(setUserY)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+            <div className="coeff-field"><label className="coeff-label">z =</label>
+              <input className="answer-input coeff-input" type="text" value={userZ} onChange={valInput(setUserZ)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+          </div>
+        </>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && (!userX || !userY || !userZ))}>
+            {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
+          </button>
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Function Evaluation App ───────────────────────── */
+function FuncEvalApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [score, setScore] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    setAnswer('')
+    setFeedback(''); setIsCorrect(null); setRevealed(false)
+    const res = await fetch(`${API}/funceval-api/question?difficulty=${difficulty}`)
+    const data = await res.json()
+    setQuestion(data)
+    setLoading(false)
+    timer.start()
+  }
+
+  const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
+    setTotalQ(count)
+    setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    await loadQuestion()
+  }
+
+  const handleSubmit = async () => {
+    if (!question || revealed || !answer) return
+    const timeTaken = timer.stop()
+    const res = await fetch(`${API}/funceval-api/check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answer: question.answer, userAnswer: Number(answer) }),
+    })
+    const data = await res.json()
+    setIsCorrect(data.correct)
+    if (data.correct) setScore(s => s + 1)
+    const varStr = Object.entries(question.vars).map(([k, v]) => `${k}=${v}`).join(', ')
+    setFeedback(data.correct ? `Correct! f(${varStr}) = ${data.correctAnswer}` : `Incorrect. f(${varStr}) = ${data.correctAnswer}`)
+    setResults(prev => [...prev, {
+      question: `${question.formula}, ${varStr}`,
+      userAnswer: answer,
+      correctAnswer: String(data.correctAnswer),
+      correct: data.correct,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = async () => {
+    if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
+    setQuestionNumber(n => n + 1)
+    await loadQuestion()
+  }
+  useAutoAdvance(revealed, advanceRef)
+
+  const varStr = question ? Object.entries(question.vars).map(([k, v]) => `${k} = ${v}`).join(', ') : ''
+
+  return (
+    <QuizLayout title="Functions" subtitle="Evaluate the function at the given values" onBack={onBack}>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
+      <div className="radio-group">
+        {[{k:'easy',l:'1 variable'},{k:'medium',l:'2 variables'},{k:'hard',l:'3 variables'}].map(({k,l}) => (
+          <label key={k} className={`radio-pill ${difficulty === k ? 'active' : ''}`}>
+            <input type="radio" checked={difficulty === k} onChange={() => setDifficulty(k)} disabled={started && !finished} />
+            {l}
+          </label>
+        ))}
+      </div>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Evaluate linear functions of 1, 2, or 3 variables.</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && <>
+          <div className="question-box">
+            <div>{question.formula}</div>
+            <div className="given">Given: {varStr}</div>
+          </div>
+          <div className="single-input-row">
+            <label className="coeff-label">f = </label>
+            <input className="answer-input" type="text" value={answer} disabled={revealed}
+              onChange={e => { const v = e.target.value; if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setAnswer(v) }}
+              onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} autoFocus />
+          </div>
+          <NumPad value={answer} onChange={setAnswer} onSubmit={handleSubmit} disabled={revealed} />
+        </>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && !answer)}>
+            {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
+          </button>
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Line Equation App ─────────────────────────────── */
+function LineEqApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [userM, setUserM] = useState('')
+  const [userC, setUserC] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [score, setScore] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    setUserM(''); setUserC('')
+    setFeedback(''); setIsCorrect(null); setRevealed(false)
+    const res = await fetch(`${API}/lineq-api/question?difficulty=${difficulty}`)
+    const data = await res.json()
+    setQuestion(data)
+    setLoading(false)
+    timer.start()
+  }
+
+  const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
+    setTotalQ(count)
+    setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    await loadQuestion()
+  }
+
+  const handleSubmit = async () => {
+    if (!question || revealed || !userM || !userC) return
+    const timeTaken = timer.stop()
+    const res = await fetch(`${API}/lineq-api/check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ x1: question.x1, y1: question.y1, x2: question.x2, y2: question.y2, userM: Number(userM), userC: Number(userC) }),
+    })
+    const data = await res.json()
+    setIsCorrect(data.correct)
+    if (data.correct) setScore(s => s + 1)
+    setFeedback(data.correct ? `Correct! y = ${data.m}x ${data.c >= 0 ? '+' : '−'} ${Math.abs(data.c)}` : `Incorrect. y = ${data.m}x ${data.c >= 0 ? '+' : '−'} ${Math.abs(data.c)}`)
+    setResults(prev => [...prev, {
+      question: `(${question.x1},${question.y1}) (${question.x2},${question.y2})`,
+      userAnswer: `m=${userM}, c=${userC}`,
+      correctAnswer: `m=${data.m}, c=${data.c}`,
+      correct: data.correct,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = async () => {
+    if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
+    setQuestionNumber(n => n + 1)
+    await loadQuestion()
+  }
+  useAutoAdvance(revealed, advanceRef)
+
+  const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setter(v) }
+
+  return (
+    <QuizLayout title="Line Equation" subtitle="Find m and c in y = mx + c from two points" onBack={onBack}>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
+      <div className="radio-group">
+        {['easy', 'medium', 'hard'].map(d => (
+          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
+            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
+            {d.charAt(0).toUpperCase() + d.slice(1)}
+          </label>
+        ))}
+      </div>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Given two points, find the slope m and intercept c.</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && <>
+          <div className="question-box">
+            <div>Point A: ({question.x1}, {question.y1})</div>
+            <div>Point B: ({question.x2}, {question.y2})</div>
+            <div className="given">Find y = mx + c</div>
+          </div>
+          <div className="roots-inputs">
+            <div className="coeff-field"><label className="coeff-label">m =</label>
+              <input className="answer-input coeff-input" type="text" value={userM} onChange={valInput(setUserM)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+            <div className="coeff-field"><label className="coeff-label">c =</label>
+              <input className="answer-input coeff-input" type="text" value={userC} onChange={valInput(setUserC)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
+          </div>
+        </>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && (!userM || !userC))}>
+            {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
+          </button>
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
     </QuizLayout>
   )
 }

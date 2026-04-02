@@ -28,7 +28,15 @@ Tenali/
 │   ├── multiply/SKILL.md     Multiplication Tables specification
 │   ├── vocab/SKILL.md        Vocab Builder specification
 │   ├── spotit/SKILL.md       Spot It specification
-│   └── sqrt/SKILL.md         Square Root specification
+│   ├── sqrt/SKILL.md         Square Root specification
+│   ├── polymul/SKILL.md      Polynomial Multiplication specification
+│   ├── polyfactor/SKILL.md   Polynomial Factorization specification
+│   ├── primefactor/SKILL.md  Prime Factorization specification
+│   ├── qformula/SKILL.md     Quadratic Formula specification
+│   ├── linear/SKILL.md       Linear Equations (2 variables) specification
+│   ├── simul/SKILL.md        Simultaneous Equations (3 variables) specification
+│   ├── funceval/SKILL.md     Function Evaluation specification
+│   └── lineq/SKILL.md        Line Equation specification
 ├── client/                   React frontend
 │   ├── src/
 │   │   ├── App.jsx           All components in a single file
@@ -67,6 +75,14 @@ The root component renders a centered card on a cream-colored background. A `mod
 - `'vocab'` → Vocab Builder quiz
 - `'spot'` → Spot It game
 - `'sqrt'` → Square Root drill
+- `'polymul'` → Polynomial Multiplication quiz
+- `'polyfactor'` → Polynomial Factorization quiz
+- `'primefactor'` → Prime Factorization puzzle
+- `'qformula'` → Quadratic Formula quiz
+- `'linear'` → Linear Equations (2 variables) quiz
+- `'simul'` → Simultaneous Equations (3 variables) quiz
+- `'funceval'` → Function Evaluation quiz
+- `'lineq'` → Line Equation quiz
 
 Each quiz component receives an `onBack` callback that sets `mode` back to `null`.
 
@@ -94,6 +110,14 @@ Each active card shows a title, subtitle, and has a color class (`purple`, `blue
 | vocab | Vocab Builder | Match words to definitions | blue |
 | spot | Spot It | Find the common object | purple |
 | sqrt | Square Root | Nearest-integer square root drill | green |
+| polymul | Polynomial Multiplication | Multiply polynomials and enter coefficients | blue |
+| polyfactor | Polynomial Factorization | Factor ax² + bx + c into (px + q)(rx + s) | blue |
+| primefactor | Prime Factorization | Find prime factors one at a time | green |
+| qformula | Quadratic Formula | Find roots of ax² + bx + c = 0 | blue |
+| linear | Linear Equations (2 vars) | Solve ax + by = c systems | green |
+| simul | Simultaneous Equations (3 vars) | Solve ax + by + cz = d systems | green |
+| funceval | Function Evaluation | Evaluate linear functions at points | blue |
+| lineq | Line Equation | Find m and c from two points | purple |
 
 #### 3.3 Shared Quiz Components
 
@@ -177,6 +201,22 @@ All quizzes display the results table both during gameplay (growing as the playe
 | POST | `/multiply-api/check` | — | `{ table, multiplier, answer }` | `{ correct, correctAnswer, message }` |
 | GET | `/vocab-api/question` | `difficulty` | — | `{ id, question (word), options[] (definitions), difficulty }` |
 | POST | `/vocab-api/check` | — | `{ id, answerOption }` | `{ correct, correctAnswer, correctAnswerText, message }` |
+| GET | `/polymul-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, poly1, poly2, poly1Str, poly2Str, prompt, resultDegree, correctCoeffs }` |
+| POST | `/polymul-api/check` | — | `{ poly1, poly2, coeffs }` | `{ correct, correctCoeffs, message }` |
+| GET | `/polyfactor-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, a, b, c, prompt, p, q, r, s }` |
+| POST | `/polyfactor-api/check` | — | `{ a, b, c, p, q, r, s }` | `{ correct, message }` |
+| GET | `/primefactor-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, originalNumber, allFactors[], remaining, factorsFound[], prompt }` |
+| POST | `/primefactor-api/check` | — | `{ originalNumber, factor, currentRemaining }` | `{ correct, nextRemaining, factorsFound[], allFactorsList[], isComplete, message }` |
+| GET | `/qformula-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, a, b, c, prompt, discriminant, rootType, root1, root2, root1Real, root1Imag, root2Real, root2Imag }` |
+| POST | `/qformula-api/check` | — | `{ a, b, c, root1, root2, root, root1Real, root1Imag, root2Real, root2Imag, rootType }` | `{ correct, correctRoot1, correctRoot2, message }` |
+| GET | `/linear-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, a, b, c, d, e, f, prompt, x, y }` |
+| POST | `/linear-api/check` | — | `{ a, b, c, d, e, f, x, y }` | `{ correct, correctX, correctY, message }` |
+| GET | `/simul-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, a, b, c, d, e, f, g, h, i, j, k, l, prompt, x, y, z }` |
+| POST | `/simul-api/check` | — | `{ a, b, c, d, e, f, g, h, i, j, k, l, x, y, z }` | `{ correct, correctX, correctY, correctZ, message }` |
+| GET | `/funceval-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, functionType, a, b, c, d, x, y, z, prompt, answer }` |
+| POST | `/funceval-api/check` | — | `{ a, b, c, d, x, y, z, answer }` | `{ correct, correctAnswer, message }` |
+| GET | `/lineq-api/question` | `difficulty` (easy/medium/hard) | — | `{ id, difficulty, x1, y1, x2, y2, prompt, m, c }` |
+| POST | `/lineq-api/check` | — | `{ x1, y1, x2, y2, m, c }` | `{ correct, correctM, correctC, message }` |
 
 #### 4.3 Data Loading
 
@@ -240,7 +280,7 @@ services:
 
 1. `cd server && node index.js` — starts Express on port 4000
 2. `cd client && npm run dev` — starts Vite on port 5173 with proxy to 4000
-3. Vite proxy forwards: `/api`, `/gk-api`, `/addition-api`, `/quadratic-api`, `/sqrt-api`, `/multiply-api`, `/vocab-api`
+3. Vite proxy forwards: `/api`, `/gk-api`, `/addition-api`, `/quadratic-api`, `/sqrt-api`, `/multiply-api`, `/vocab-api`, `/polymul-api`, `/polyfactor-api`, `/primefactor-api`, `/qformula-api`, `/linear-api`, `/simul-api`, `/funceval-api`, `/lineq-api`
 
 ### 7. Adding a New App
 

@@ -623,15 +623,34 @@ function GKApp({ onBack }) {
   advanceRef.current = () => loadQuestion()
   useAutoAdvance(revealed, advanceRef, isCorrect)
 
+  // Keyboard shortcuts: 1-4, a-d to select+submit; Enter to submit/next
+  const handleSubmitRef = useRef(handleSubmitOrNext)
+  handleSubmitRef.current = handleSubmitOrNext
+  const selectedRef = useRef(selected)
+  selectedRef.current = selected
+  const revealedRef = useRef(revealed)
+  revealedRef.current = revealed
+
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key !== 'Enter') return
-      event.preventDefault()
-      handleSubmitOrNext()
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        handleSubmitRef.current()
+        return
+      }
+      if (revealedRef.current || loading) return
+      const keyMap = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', 'a': 'A', 'b': 'B', 'c': 'C', 'd': 'D' }
+      const letter = keyMap[event.key.toLowerCase()]
+      if (letter && question && question.options.length >= ['A','B','C','D'].indexOf(letter) + 1) {
+        event.preventDefault()
+        setSelected(letter)
+        // auto-submit after selecting
+        setTimeout(() => handleSubmitRef.current(), 50)
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [question, selected, revealed, loading])
+  }, [question, loading])
 
   return (
     <QuizLayout title="General Knowledge" subtitle="Random question picker" onBack={onBack}>
@@ -1334,15 +1353,32 @@ function VocabApp({ onBack }) {
   advanceRef.current = () => handleSubmitOrNext()
   useAutoAdvance(revealed, advanceRef, isCorrect)
 
+  // Keyboard shortcuts: 1-4, a-d to select+submit; Enter to submit/next
+  const handleSubmitRefV = useRef(handleSubmitOrNext)
+  handleSubmitRefV.current = handleSubmitOrNext
+  const revealedRefV = useRef(revealed)
+  revealedRefV.current = revealed
+
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key !== 'Enter' || !started || finished) return
-      event.preventDefault()
-      handleSubmitOrNext()
+      if (event.key === 'Enter') {
+        if (!started || finished) return
+        event.preventDefault()
+        handleSubmitRefV.current()
+        return
+      }
+      if (!started || finished || revealedRefV.current || loading) return
+      const keyMap = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', 'a': 'A', 'b': 'B', 'c': 'C', 'd': 'D' }
+      const letter = keyMap[event.key.toLowerCase()]
+      if (letter && question && question.options.length >= ['A','B','C','D'].indexOf(letter) + 1) {
+        event.preventDefault()
+        setSelected(letter)
+        setTimeout(() => handleSubmitRefV.current(), 50)
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [started, finished, question, selected, revealed, loading, questionNumber, totalQ])
+  }, [started, finished, question, loading])
 
   const difficultyLabels = { easy: 'Easy', medium: 'Medium', hard: 'Hard', 'extra-hard': 'Extra Hard', hardest: 'Hardest' }
 
@@ -2939,6 +2975,28 @@ function CustomApp({ onBack }) {
     await loadQuestion(plan[next])
   }
   useAutoAdvance(revealed, advanceRef, isCorrect)
+
+  // Keyboard shortcuts for GK/Vocab options in custom mode: 1-4 / a-d
+  const handleSubmitRefC = useRef(handleSubmit)
+  handleSubmitRefC.current = handleSubmit
+  const revealedRefC = useRef(revealed)
+  revealedRefC.current = revealed
+  useEffect(() => {
+    if (phase !== 'quiz') return
+    const onKeyDown = (event) => {
+      if (revealedRefC.current || loading) return
+      if (curType !== 'gk' && curType !== 'vocab') return
+      const keyMap = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', 'a': 'A', 'b': 'B', 'c': 'C', 'd': 'D' }
+      const letter = keyMap[event.key.toLowerCase()]
+      if (letter && question && question.options) {
+        event.preventDefault()
+        setSelectedOption(letter)
+        setTimeout(() => handleSubmitRefC.current(), 50)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [phase, curType, question, loading])
 
   const valInput = (key) => (e) => {
     const v = e.target.value

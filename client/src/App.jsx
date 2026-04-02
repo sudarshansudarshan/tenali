@@ -313,12 +313,14 @@ function AdaptiveTablesApp({ studentName }) {
   const renderTable = () => (
     <div className="ref-table">
       <div className="ref-table-title">{currentTable} × Table</div>
-      {Array.from({ length: 10 }, (_, i) => i + 1).map(m => (
-        <div key={m} className="ref-table-row">
-          <span>{currentTable} × {m}</span>
-          <span>= {currentTable * m}</span>
-        </div>
-      ))}
+      <div className="ref-table-rows">
+        {Array.from({ length: 10 }, (_, i) => i + 1).map(m => (
+          <div key={m} className="ref-table-row">
+            <span>{currentTable} × {m}</span>
+            <span>= {currentTable * m}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 

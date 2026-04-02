@@ -344,6 +344,7 @@ function AdditionApp({ onBack }) {
   const [questionNumber, setQuestionNumber] = useState(0)
   const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
   const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
   const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [results, setResults] = useState([])
@@ -354,6 +355,7 @@ function AdditionApp({ onBack }) {
     setFeedback('')
     setAnswer('')
     setRevealed(false)
+    setIsCorrect(null)
     const res = await fetch(`${API}/addition-api/question?digits=${selectedDigits}`)
     const data = await res.json()
     setQuestion(data)
@@ -394,6 +396,7 @@ function AdditionApp({ onBack }) {
         body: JSON.stringify({ a: question.a, b: question.b, answer: Number(answer) }),
       })
       const data = await res.json()
+      setIsCorrect(data.correct)
       const newScore = score + (data.correct ? 1 : 0)
       setScore(newScore)
       const reasoning = `${question.a} + ${question.b} = ${data.correctAnswer}`
@@ -454,7 +457,7 @@ function AdditionApp({ onBack }) {
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
-        {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
@@ -479,6 +482,7 @@ function QuadraticApp({ onBack }) {
   const [questionNumber, setQuestionNumber] = useState(0)
   const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
   const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
   const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [results, setResults] = useState([])
@@ -489,6 +493,7 @@ function QuadraticApp({ onBack }) {
     setAnswer('')
     setFeedback('')
     setRevealed(false)
+    setIsCorrect(null)
     const res = await fetch(`${API}/quadratic-api/question?difficulty=${selectedDifficulty}`)
     const data = await res.json()
     setQuestion(data)
@@ -529,6 +534,7 @@ function QuadraticApp({ onBack }) {
         body: JSON.stringify({ a: question.a, b: question.b, c: question.c, x: question.x, answer: Number(answer) }),
       })
       const data = await res.json()
+      setIsCorrect(data.correct)
       if (data.correct) setScore((s) => s + 1)
       const { a, b, c, x } = question
       const xSq = x * x
@@ -599,7 +605,7 @@ function QuadraticApp({ onBack }) {
         </div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="y = ?" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
-        {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
@@ -625,6 +631,7 @@ function MultiplyApp({ onBack }) {
   const [questionNumber, setQuestionNumber] = useState(0)
   const [totalQuestions, setTotalQuestions] = useState(0)
   const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
   const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [results, setResults] = useState([])
@@ -660,6 +667,7 @@ function MultiplyApp({ onBack }) {
     setAnswer('')
     setFeedback('')
     setRevealed(false)
+    setIsCorrect(null)
     setLoading(false)
     timer.start()
   }
@@ -701,6 +709,7 @@ function MultiplyApp({ onBack }) {
       const timeTaken = timer.stop()
       const correctAnswer = question.table * question.multiplier
       const correct = Number(answer) === correctAnswer
+      setIsCorrect(correct)
       if (correct) setScore((s) => s + 1)
       const reasoning = `${question.table} × ${question.multiplier} = ${correctAnswer}`
       setFeedback(correct
@@ -777,7 +786,7 @@ function MultiplyApp({ onBack }) {
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQuestions ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
-        {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
@@ -1147,6 +1156,7 @@ function SqrtApp({ onBack }) {
   const [questionNumber, setQuestionNumber] = useState(0)
   const [totalQ, setTotalQ] = useState(0)
   const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
   const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [results, setResults] = useState([])
@@ -1157,6 +1167,7 @@ function SqrtApp({ onBack }) {
     setAnswer('')
     setFeedback('')
     setRevealed(false)
+    setIsCorrect(null)
     const res = await fetch(`${API}/sqrt-api/question?step=${step}`)
     const data = await res.json()
     setQuestion(data)
@@ -1198,6 +1209,7 @@ function SqrtApp({ onBack }) {
         body: JSON.stringify({ q: question.q, answer: Number(answer) }),
       })
       const data = await res.json()
+      setIsCorrect(data.correct)
       if (data.correct) setScore((s) => s + 1)
       const reasoning = `√${question.q} = ${data.sqrtRounded}\n⌊${data.sqrtRounded}⌋ = ${data.floorAnswer}, ⌈${data.sqrtRounded}⌉ = ${data.ceilAnswer}`
       setFeedback(data.correct
@@ -1249,7 +1261,7 @@ function SqrtApp({ onBack }) {
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
-        {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (!unlimited && questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
       </>}
       {finished && <div className="welcome-box">

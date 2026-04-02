@@ -165,21 +165,21 @@ function App() {
 /* ── Home ────────────────────────────────────────────── */
 function Home({ onSelect }) {
   const allApps = [
-    { key: 'gk', name: 'General Knowledge', subtitle: 'Chitragupta quiz', color: 'purple' },
+    { key: 'gk', name: 'GK', subtitle: 'Chitragupta quiz', color: 'purple' },
     { key: 'addition', name: 'Addition', subtitle: '20-question addition practice', color: 'blue' },
     { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
     { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (1–10)', color: 'green' },
-    { key: 'vocab', name: 'Vocab Builder', subtitle: 'Match words to definitions', color: 'blue' },
+    { key: 'vocab', name: 'Vocabulary', subtitle: 'Match words to definitions', color: 'blue' },
     { key: 'spot', name: 'Twin Hunt', subtitle: 'Find the common object', color: 'purple' },
     { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
     { key: 'polymul', name: 'Poly Multiply', subtitle: 'Multiply two polynomials', color: 'blue' },
     { key: 'polyfactor', name: 'Poly Factor', subtitle: 'Factor a quadratic expression', color: 'green' },
     { key: 'primefactor', name: 'Prime Factors', subtitle: 'Break a number into primes', color: 'purple' },
-    { key: 'qformula', name: 'Quadratic Formula', subtitle: 'Find roots of ax² + bx + c = 0', color: 'blue' },
-    { key: 'simul', name: 'Simultaneous Eq.', subtitle: '2×2 (easy) or 3×3 (hard)', color: 'purple' },
+    { key: 'qformula', name: 'Quadratics', subtitle: 'Find roots of ax² + bx + c = 0', color: 'blue' },
+    { key: 'simul', name: 'Sim. Eq.', subtitle: '2×2 (easy) or 3×3 (hard)', color: 'purple' },
     { key: 'funceval', name: 'Functions', subtitle: 'Evaluate f(x), f(x,y), f(x,y,z)', color: 'blue' },
     { key: 'lineq', name: 'Line Equation', subtitle: 'Find m and c from two points', color: 'green' },
-    { key: 'basicarith', name: 'Basic Arithmetic', subtitle: '+, −, × with positive & negative', color: 'purple' },
+    { key: 'basicarith', name: 'Arithmetic', subtitle: '+, −, × with positive & negative', color: 'purple' },
     { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'green' },
   ]
 

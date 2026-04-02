@@ -1,14 +1,15 @@
 {
   "id": 29,
-  "question": "Able to recover quickly from difficulties",
+  "word": "Resilient",
+  "question": "Resilient",
   "options": [
-    "Resilient",
-    "Easily defeated",
-    "Constantly confused",
-    "Permanently broken"
+    "Able to recover quickly from difficulties",
+    "Strange or unusual in character",
+    "A person new to a field or activity",
+    "Calm, peaceful, and untroubled"
   ],
   "answerOption": "A",
-  "answerText": "Resilient",
+  "answerText": "Able to recover quickly from difficulties",
   "difficulty": "medium",
   "sourceFile": "0029.json"
 }

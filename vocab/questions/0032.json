@@ -1,14 +1,15 @@
 {
   "id": 32,
-  "question": "Well-meaning and kindly in nature",
+  "word": "Benevolent",
+  "question": "Benevolent",
   "options": [
-    "Benevolent",
-    "Cruel and heartless",
-    "Selfish and greedy",
-    "Angry and bitter"
+    "Having a harmful effect, especially gradually",
+    "Well-meaning and kindly toward others",
+    "A seemingly contradictory statement that may be true",
+    "Insisting on beliefs without considering evidence"
   ],
-  "answerOption": "A",
-  "answerText": "Benevolent",
+  "answerOption": "B",
+  "answerText": "Well-meaning and kindly toward others",
   "difficulty": "hard",
   "sourceFile": "0032.json"
 }

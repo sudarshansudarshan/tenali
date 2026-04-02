@@ -1,14 +1,15 @@
 {
   "id": 68,
-  "question": "The pleasant smell of earth after rain",
+  "word": "Petrichor",
+  "question": "Petrichor",
   "options": [
-    "The sound of thunder",
-    "The taste of salt",
-    "Petrichor",
-    "The color of sunset"
+    "The act of throwing someone out of a window",
+    "The state of being infatuated with another person",
+    "Inability to identify and describe one's emotions",
+    "The pleasant smell of earth after rain"
   ],
-  "answerOption": "C",
-  "answerText": "Petrichor",
+  "answerOption": "D",
+  "answerText": "The pleasant smell of earth after rain",
   "difficulty": "hardest",
   "sourceFile": "0068.json"
 }

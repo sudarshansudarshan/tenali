@@ -1,14 +1,15 @@
 {
   "id": 65,
-  "question": "To change repeatedly one's attitude or opinions",
+  "word": "Tergiversate",
+  "question": "Tergiversate",
   "options": [
-    "To speak one language",
-    "To remain perfectly still",
-    "To hold firm beliefs",
-    "Tergiversate"
+    "To change one's loyalties; to be evasive",
+    "Having a ready insight into things; shrewd",
+    "The lights you see when you rub your closed eyes",
+    "Pleasure derived from another's misfortune"
   ],
-  "answerOption": "D",
-  "answerText": "Tergiversate",
+  "answerOption": "A",
+  "answerText": "To change one's loyalties; to be evasive",
   "difficulty": "hardest",
   "sourceFile": "0065.json"
 }

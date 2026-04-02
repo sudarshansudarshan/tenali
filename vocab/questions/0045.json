@@ -1,14 +1,15 @@
 {
   "id": 45,
-  "question": "Reserved or uncommunicative in speech",
+  "word": "Taciturn",
+  "question": "Taciturn",
   "options": [
-    "Openly emotional",
-    "Taciturn",
-    "Extremely talkative",
-    "Wildly enthusiastic"
+    "Reserved or uncommunicative in speech",
+    "Well-meaning and kindly toward others",
+    "Something that deviates from what is standard",
+    "Lacking energy; sluggish and apathetic"
   ],
-  "answerOption": "B",
-  "answerText": "Taciturn",
+  "answerOption": "A",
+  "answerText": "Reserved or uncommunicative in speech",
   "difficulty": "hard",
   "sourceFile": "0045.json"
 }

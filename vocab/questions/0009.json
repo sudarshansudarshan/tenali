@@ -1,14 +1,15 @@
 {
   "id": 9,
-  "question": "A great victory or achievement",
+  "word": "Triumph",
+  "question": "Triumph",
   "options": [
-    "A quiet moment",
-    "Triumph",
-    "A terrible loss",
-    "A long journey"
+    "Eager to know or learn something",
+    "To pause before doing something",
+    "To throw in various random directions",
+    "A great victory or achievement"
   ],
-  "answerOption": "B",
-  "answerText": "Triumph",
+  "answerOption": "D",
+  "answerText": "A great victory or achievement",
   "difficulty": "easy",
   "sourceFile": "0009.json"
 }

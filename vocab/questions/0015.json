@@ -1,14 +1,15 @@
 {
   "id": 15,
-  "question": "Shiny and smooth",
+  "word": "Glossy",
+  "question": "Glossy",
   "options": [
-    "Soft and fuzzy",
-    "Dark and heavy",
-    "Glossy",
-    "Rough and dull"
+    "Very large in size or quantity",
+    "Shiny and smooth on the surface",
+    "To pause before doing something",
+    "Easily broken or damaged"
   ],
-  "answerOption": "C",
-  "answerText": "Glossy",
+  "answerOption": "B",
+  "answerText": "Shiny and smooth on the surface",
   "difficulty": "easy",
   "sourceFile": "0015.json"
 }

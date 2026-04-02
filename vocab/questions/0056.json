@@ -1,14 +1,15 @@
 {
   "id": 56,
-  "question": "A change of circumstances, typically unwelcome",
+  "word": "Vicissitude",
+  "question": "Vicissitude",
   "options": [
-    "Vicissitude",
-    "Permanent comfort",
-    "Perfect stability",
-    "Endless monotony"
+    "Proceeding in a harmful way that is hard to notice",
+    "Stubbornly resistant to authority or control",
+    "A change of circumstances, typically unwelcome",
+    "Carried out with minimum effort or care"
   ],
-  "answerOption": "A",
-  "answerText": "Vicissitude",
+  "answerOption": "C",
+  "answerText": "A change of circumstances, typically unwelcome",
   "difficulty": "extra-hard",
   "sourceFile": "0056.json"
 }

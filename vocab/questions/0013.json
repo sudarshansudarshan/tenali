@@ -1,14 +1,15 @@
 {
   "id": 13,
-  "question": "Keen and enthusiastic",
+  "word": "Eager",
+  "question": "Eager",
   "options": [
-    "Confused and lost",
-    "Eager",
-    "Bored and tired",
-    "Angry and upset"
+    "Showing aggressive or violent force",
+    "Wanting to do something very much",
+    "To pause before doing something",
+    "Not afraid of danger"
   ],
   "answerOption": "B",
-  "answerText": "Eager",
+  "answerText": "Wanting to do something very much",
   "difficulty": "easy",
   "sourceFile": "0013.json"
 }

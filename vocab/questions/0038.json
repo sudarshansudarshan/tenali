@@ -1,14 +1,15 @@
 {
   "id": 38,
-  "question": "A statement that contradicts itself but contains truth",
+  "word": "Paradox",
+  "question": "Paradox",
   "options": [
-    "A common greeting",
-    "Paradox",
-    "A proven scientific fact",
-    "A simple math equation"
+    "A seemingly contradictory statement that may be true",
+    "Something that deviates from what is standard",
+    "Present, appearing, or found everywhere",
+    "Reserved or uncommunicative in speech"
   ],
-  "answerOption": "B",
-  "answerText": "Paradox",
+  "answerOption": "A",
+  "answerText": "A seemingly contradictory statement that may be true",
   "difficulty": "hard",
   "sourceFile": "0038.json"
 }

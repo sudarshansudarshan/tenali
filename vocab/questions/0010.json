@@ -1,14 +1,15 @@
 {
   "id": 10,
-  "question": "Genuine and honest in feelings",
+  "word": "Sincere",
+  "question": "Sincere",
   "options": [
-    "Sincere",
-    "Fake and pretending",
-    "Loud and angry",
-    "Slow and lazy"
+    "Eager to know or learn something",
+    "Free from pretence or deceit",
+    "Shiny and smooth on the surface",
+    "Belonging to the very distant past"
   ],
-  "answerOption": "A",
-  "answerText": "Sincere",
+  "answerOption": "B",
+  "answerText": "Free from pretence or deceit",
   "difficulty": "easy",
   "sourceFile": "0010.json"
 }

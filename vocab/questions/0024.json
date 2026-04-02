@@ -1,14 +1,15 @@
 {
   "id": 24,
-  "question": "Giving the impression that something bad will happen",
+  "word": "Ominous",
+  "question": "Ominous",
   "options": [
-    "Peaceful and calm",
-    "Sweet and gentle",
-    "Cheerful and bright",
-    "Ominous"
+    "Giving the impression that something bad will happen",
+    "Truthful and straightforward; frank",
+    "A feeling that something is worthless",
+    "A person new to a field or activity"
   ],
-  "answerOption": "D",
-  "answerText": "Ominous",
+  "answerOption": "A",
+  "answerText": "Giving the impression that something bad will happen",
   "difficulty": "medium",
   "sourceFile": "0024.json"
 }

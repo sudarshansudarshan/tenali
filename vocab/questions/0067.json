@@ -1,14 +1,15 @@
 {
   "id": 67,
-  "question": "A tendency to extreme talkativeness",
+  "word": "Logorrhea",
+  "question": "Logorrhea",
   "options": [
-    "Fear of speaking",
-    "Complete silence",
-    "Loss of memory",
-    "Logorrhea"
+    "The act of throwing someone out of a window",
+    "Showing a lack of courage; timid",
+    "Realizing each passerby has a life as vivid as your own",
+    "A tendency to excessive and often incoherent talking"
   ],
   "answerOption": "D",
-  "answerText": "Logorrhea",
+  "answerText": "A tendency to excessive and often incoherent talking",
   "difficulty": "hardest",
   "sourceFile": "0067.json"
 }

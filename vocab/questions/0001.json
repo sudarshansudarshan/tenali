@@ -1,14 +1,15 @@
 {
   "id": 1,
-  "question": "Not afraid of danger",
+  "word": "Brave",
+  "question": "Brave",
   "options": [
-    "Very tired",
-    "Moving slowly",
-    "Extremely happy",
-    "Brave"
+    "Free from pretence or deceit",
+    "Mild and kind in manner",
+    "Not afraid of danger",
+    "Shiny and smooth on the surface"
   ],
-  "answerOption": "D",
-  "answerText": "Brave",
+  "answerOption": "C",
+  "answerText": "Not afraid of danger",
   "difficulty": "easy",
   "sourceFile": "0001.json"
 }

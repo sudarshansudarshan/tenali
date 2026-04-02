@@ -1,14 +1,15 @@
 {
   "id": 36,
-  "question": "To place close together for contrast",
+  "word": "Juxtapose",
+  "question": "Juxtapose",
   "options": [
-    "Juxtapose",
-    "To hide carefully",
-    "To destroy completely",
-    "To repeat endlessly"
+    "Fond of company; sociable",
+    "To place side by side for comparison",
+    "A seemingly contradictory statement that may be true",
+    "Something that deviates from what is standard"
   ],
-  "answerOption": "A",
-  "answerText": "Juxtapose",
+  "answerOption": "B",
+  "answerText": "To place side by side for comparison",
   "difficulty": "hard",
   "sourceFile": "0036.json"
 }

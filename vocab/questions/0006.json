@@ -1,14 +1,15 @@
 {
   "id": 6,
-  "question": "Very old, from a long time ago",
+  "word": "Ancient",
+  "question": "Ancient",
   "options": [
-    "Very colorful",
-    "Slightly broken",
-    "Ancient",
-    "Brand new"
+    "Shiny and smooth on the surface",
+    "Belonging to the very distant past",
+    "A great victory or achievement",
+    "To throw in various random directions"
   ],
-  "answerOption": "C",
-  "answerText": "Ancient",
+  "answerOption": "B",
+  "answerText": "Belonging to the very distant past",
   "difficulty": "easy",
   "sourceFile": "0006.json"
 }

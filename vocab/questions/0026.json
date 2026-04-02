@@ -1,14 +1,15 @@
 {
   "id": 26,
-  "question": "Truthful and straightforward; frank",
+  "word": "Candid",
+  "question": "Candid",
   "options": [
-    "Candid",
-    "Quiet and withdrawn",
-    "Secretive and sly",
-    "Angry and loud"
+    "Strange or unusual in character",
+    "Showing careful and persistent effort",
+    "Truthful and straightforward; frank",
+    "Giving the impression that something bad will happen"
   ],
-  "answerOption": "A",
-  "answerText": "Candid",
+  "answerOption": "C",
+  "answerText": "Truthful and straightforward; frank",
   "difficulty": "medium",
   "sourceFile": "0026.json"
 }

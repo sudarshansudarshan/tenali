@@ -1,14 +1,15 @@
 {
   "id": 22,
-  "question": "Showing great attention to detail",
+  "word": "Meticulous",
+  "question": "Meticulous",
   "options": [
-    "Meticulous",
-    "Extremely careless",
-    "Overly aggressive",
-    "Stubbornly silent"
+    "Unwilling and hesitant to act",
+    "Existing in very large quantities",
+    "Able to recover quickly from difficulties",
+    "Showing great attention to detail"
   ],
-  "answerOption": "A",
-  "answerText": "Meticulous",
+  "answerOption": "D",
+  "answerText": "Showing great attention to detail",
   "difficulty": "medium",
   "sourceFile": "0022.json"
 }

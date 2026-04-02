@@ -1,14 +1,15 @@
 {
   "id": 18,
-  "question": "Strange or unusual in an interesting way",
+  "word": "Peculiar",
+  "question": "Peculiar",
   "options": [
-    "Peculiar",
-    "Completely normal",
-    "Extremely boring",
-    "Very predictable"
+    "Giving the impression that something bad will happen",
+    "A feeling that something is worthless",
+    "Strange or unusual in character",
+    "Acting with care and thought for the future"
   ],
-  "answerOption": "A",
-  "answerText": "Peculiar",
+  "answerOption": "C",
+  "answerText": "Strange or unusual in character",
   "difficulty": "medium",
   "sourceFile": "0018.json"
 }

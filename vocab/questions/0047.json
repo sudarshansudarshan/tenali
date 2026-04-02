@@ -1,14 +1,15 @@
 {
   "id": 47,
-  "question": "A person who attacks cherished beliefs or institutions",
+  "word": "Iconoclast",
+  "question": "Iconoclast",
   "options": [
-    "A careful historian",
-    "A passive observer",
-    "A devout follower",
-    "Iconoclast"
+    "Exceedingly idealistic; unrealistic and impractical",
+    "A person who attacks cherished beliefs",
+    "Carried out with minimum effort or care",
+    "Eager or quick to argue or fight"
   ],
-  "answerOption": "D",
-  "answerText": "Iconoclast",
+  "answerOption": "B",
+  "answerText": "A person who attacks cherished beliefs",
   "difficulty": "extra-hard",
   "sourceFile": "0047.json"
 }

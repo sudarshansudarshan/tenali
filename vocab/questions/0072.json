@@ -1,14 +1,15 @@
 {
   "id": 72,
-  "question": "Inability to identify and describe one's emotions",
+  "word": "Alexithymia",
+  "question": "Alexithymia",
   "options": [
-    "Talent for music",
-    "Fear of heights",
-    "Alexithymia",
-    "Love of animals"
+    "Realizing each passerby has a life as vivid as your own",
+    "Showing a lack of courage; timid",
+    "The lights you see when you rub your closed eyes",
+    "Inability to identify and describe one's emotions"
   ],
-  "answerOption": "C",
-  "answerText": "Alexithymia",
+  "answerOption": "D",
+  "answerText": "Inability to identify and describe one's emotions",
   "difficulty": "hardest",
   "sourceFile": "0072.json"
 }

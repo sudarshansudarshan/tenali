@@ -1,14 +1,15 @@
 {
   "id": 51,
-  "question": "Carried out with minimal effort or thought",
+  "word": "Perfunctory",
+  "question": "Perfunctory",
   "options": [
-    "Perfunctory",
-    "Done with great passion",
-    "Planned meticulously",
-    "Executed brilliantly"
+    "Indicating a good chance of success; favorable",
+    "Proceeding in a harmful way that is hard to notice",
+    "Carried out with minimum effort or care",
+    "Stubbornly resistant to authority or control"
   ],
-  "answerOption": "A",
-  "answerText": "Perfunctory",
+  "answerOption": "C",
+  "answerText": "Carried out with minimum effort or care",
   "difficulty": "extra-hard",
   "sourceFile": "0051.json"
 }

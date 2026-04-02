@@ -1,14 +1,15 @@
 {
   "id": 69,
-  "question": "A feeling of melancholy about the state of the world",
+  "word": "Weltschmerz",
+  "question": "Weltschmerz",
   "options": [
-    "Weltschmerz",
-    "Joy about a birthday",
-    "Excitement for travel",
-    "Hunger before dinner"
+    "A feeling of melancholy about the state of the world",
+    "Having a ready insight into things; shrewd",
+    "Having well-shaped or attractive buttocks",
+    "The state of being infatuated with another person"
   ],
   "answerOption": "A",
-  "answerText": "Weltschmerz",
+  "answerText": "A feeling of melancholy about the state of the world",
   "difficulty": "hardest",
   "sourceFile": "0069.json"
 }

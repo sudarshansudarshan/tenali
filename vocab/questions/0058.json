@@ -1,14 +1,15 @@
 {
   "id": 58,
-  "question": "Translucently clear in style or meaning",
+  "word": "Pellucid",
+  "question": "Pellucid",
   "options": [
-    "Pellucid",
-    "Dangerously misleading",
-    "Hopelessly muddled",
-    "Deliberately obscure"
+    "Translucently clear in style or meaning",
+    "Carried out with minimum effort or care",
+    "A person who attacks cherished beliefs",
+    "Excessively obedient or attentive to please"
   ],
   "answerOption": "A",
-  "answerText": "Pellucid",
+  "answerText": "Translucently clear in style or meaning",
   "difficulty": "extra-hard",
   "sourceFile": "0058.json"
 }

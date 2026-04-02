@@ -1,14 +1,15 @@
 {
   "id": 55,
-  "question": "Eager to argue or fight; aggressively defiant",
+  "word": "Truculent",
+  "question": "Truculent",
   "options": [
-    "Shy and withdrawn",
-    "Calm and composed",
-    "Truculent",
-    "Gentle and agreeable"
+    "Kept secret because it would not be approved",
+    "Expressing a strong opinion, especially controversial",
+    "Very generous or forgiving toward rivals",
+    "Eager or quick to argue or fight"
   ],
-  "answerOption": "C",
-  "answerText": "Truculent",
+  "answerOption": "D",
+  "answerText": "Eager or quick to argue or fight",
   "difficulty": "extra-hard",
   "sourceFile": "0055.json"
 }

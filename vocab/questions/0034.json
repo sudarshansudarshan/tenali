@@ -1,14 +1,15 @@
 {
   "id": 34,
-  "question": "Lasting for a very short time",
+  "word": "Ephemeral",
+  "question": "Ephemeral",
   "options": [
-    "Growing steadily",
-    "Existing forever",
-    "Ephemeral",
-    "Remaining unchanged"
+    "A person who flatters to gain advantage",
+    "Lacking energy; sluggish and apathetic",
+    "Lasting for a very short time",
+    "Something that deviates from what is standard"
   ],
   "answerOption": "C",
-  "answerText": "Ephemeral",
+  "answerText": "Lasting for a very short time",
   "difficulty": "hard",
   "sourceFile": "0034.json"
 }

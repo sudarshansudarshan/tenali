@@ -1,14 +1,15 @@
 {
   "id": 57,
-  "question": "Proceeding in a harmful way that is not easily noticed",
+  "word": "Insidious",
+  "question": "Insidious",
   "options": [
-    "Immediately helpful",
-    "Clearly visible",
-    "Obviously dangerous",
-    "Insidious"
+    "Expressing a strong opinion, especially controversial",
+    "Excessively obedient or attentive to please",
+    "Proceeding in a harmful way that is hard to notice",
+    "Using very few words to express meaning"
   ],
-  "answerOption": "D",
-  "answerText": "Insidious",
+  "answerOption": "C",
+  "answerText": "Proceeding in a harmful way that is hard to notice",
   "difficulty": "extra-hard",
   "sourceFile": "0057.json"
 }

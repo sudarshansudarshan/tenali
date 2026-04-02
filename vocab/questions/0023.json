@@ -1,14 +1,15 @@
 {
   "id": 23,
-  "question": "Producing strong, clear images in the mind",
+  "word": "Vivid",
+  "question": "Vivid",
   "options": [
-    "Silent and still",
-    "Heavy and slow",
-    "Dull and forgettable",
-    "Vivid"
+    "Producing powerful feelings or clear images",
+    "Able to recover quickly from difficulties",
+    "Producing no useful result; pointless",
+    "Showing great attention to detail"
   ],
-  "answerOption": "D",
-  "answerText": "Vivid",
+  "answerOption": "A",
+  "answerText": "Producing powerful feelings or clear images",
   "difficulty": "medium",
   "sourceFile": "0023.json"
 }

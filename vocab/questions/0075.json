@@ -1,14 +1,15 @@
 {
   "id": 75,
-  "question": "The lights you see when you rub your closed eyes",
+  "word": "Phosphenes",
+  "question": "Phosphenes",
   "options": [
-    "The smell of ozone",
-    "The taste of metal",
-    "The sound of your pulse",
-    "Phosphenes"
+    "The strange wistfulness of used bookshops",
+    "The pleasant smell of earth after rain",
+    "The lights you see when you rub your closed eyes",
+    "A feeling of melancholy about the state of the world"
   ],
-  "answerOption": "D",
-  "answerText": "Phosphenes",
+  "answerOption": "C",
+  "answerText": "The lights you see when you rub your closed eyes",
   "difficulty": "hardest",
   "sourceFile": "0075.json"
 }

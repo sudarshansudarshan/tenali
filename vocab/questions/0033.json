@@ -1,14 +1,15 @@
 {
   "id": 33,
-  "question": "A harsh mixture of unpleasant sounds",
+  "word": "Cacophony",
+  "question": "Cacophony",
   "options": [
-    "A gentle whisper",
-    "A beautiful melody",
-    "Cacophony",
-    "A moment of silence"
+    "A harsh mixture of discordant sounds",
+    "Lasting for a very short time",
+    "A person who flatters to gain advantage",
+    "Well-meaning and kindly toward others"
   ],
-  "answerOption": "C",
-  "answerText": "Cacophony",
+  "answerOption": "A",
+  "answerText": "A harsh mixture of discordant sounds",
   "difficulty": "hard",
   "sourceFile": "0033.json"
 }

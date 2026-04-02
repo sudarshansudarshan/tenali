@@ -1,14 +1,15 @@
 {
   "id": 17,
-  "question": "Fluent and persuasive in speaking or writing",
+  "word": "Eloquent",
+  "question": "Eloquent",
   "options": [
-    "Speaking very quietly",
-    "Writing illegibly",
-    "Eloquent",
-    "Stumbling over words"
+    "Fluent and persuasive in speaking or writing",
+    "A feeling that something is worthless",
+    "Truthful and straightforward; frank",
+    "Acting with care and thought for the future"
   ],
-  "answerOption": "C",
-  "answerText": "Eloquent",
+  "answerOption": "A",
+  "answerText": "Fluent and persuasive in speaking or writing",
   "difficulty": "medium",
   "sourceFile": "0017.json"
 }

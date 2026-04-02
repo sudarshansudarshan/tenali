@@ -1,14 +1,15 @@
 {
   "id": 64,
-  "question": "Showing a lack of courage; timid",
+  "word": "Pusillanimous",
+  "question": "Pusillanimous",
   "options": [
-    "Wildly adventurous",
-    "Exceptionally brave",
-    "Fiercely competitive",
-    "Pusillanimous"
+    "Showing a lack of courage; timid",
+    "Pleasure derived from another's misfortune",
+    "The act of throwing someone out of a window",
+    "The state of being infatuated with another person"
   ],
-  "answerOption": "D",
-  "answerText": "Pusillanimous",
+  "answerOption": "A",
+  "answerText": "Showing a lack of courage; timid",
   "difficulty": "hardest",
   "sourceFile": "0064.json"
 }

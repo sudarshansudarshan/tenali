@@ -1,14 +1,15 @@
 {
   "id": 35,
-  "question": "Fond of company; sociable",
+  "word": "Gregarious",
+  "question": "Gregarious",
   "options": [
-    "Gregarious",
-    "Feeling hostile",
-    "Acting mysterious",
-    "Preferring solitude"
+    "Having a harmful effect, especially gradually",
+    "Fond of company; sociable",
+    "To place side by side for comparison",
+    "Lacking energy; sluggish and apathetic"
   ],
-  "answerOption": "A",
-  "answerText": "Gregarious",
+  "answerOption": "B",
+  "answerText": "Fond of company; sociable",
   "difficulty": "hard",
   "sourceFile": "0035.json"
 }

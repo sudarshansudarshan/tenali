@@ -1,14 +1,15 @@
 {
   "id": 53,
-  "question": "Stubbornly uncooperative toward authority",
+  "word": "Recalcitrant",
+  "question": "Recalcitrant",
   "options": [
-    "Recalcitrant",
-    "Eagerly obedient",
-    "Quietly accepting",
-    "Happily submissive"
+    "Stubbornly resistant to authority or control",
+    "Proceeding in a harmful way that is hard to notice",
+    "Eager or quick to argue or fight",
+    "Very generous or forgiving toward rivals"
   ],
   "answerOption": "A",
-  "answerText": "Recalcitrant",
+  "answerText": "Stubbornly resistant to authority or control",
   "difficulty": "extra-hard",
   "sourceFile": "0053.json"
 }

@@ -1,14 +1,15 @@
 {
   "id": 63,
-  "question": "Having a ready insight into things; shrewd",
+  "word": "Perspicacious",
+  "question": "Perspicacious",
   "options": [
-    "Perspicacious",
-    "Completely oblivious",
-    "Easily deceived",
-    "Willfully ignorant"
+    "Having a ready insight into things; shrewd",
+    "The strange wistfulness of used bookshops",
+    "Pleasure derived from another's misfortune",
+    "A feeling of melancholy about the state of the world"
   ],
   "answerOption": "A",
-  "answerText": "Perspicacious",
+  "answerText": "Having a ready insight into things; shrewd",
   "difficulty": "hardest",
   "sourceFile": "0063.json"
 }

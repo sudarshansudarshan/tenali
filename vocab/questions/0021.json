@@ -1,14 +1,15 @@
 {
   "id": 21,
-  "question": "The feeling that someone is worthless",
+  "word": "Contempt",
+  "question": "Contempt",
   "options": [
-    "Mild curiosity",
-    "Great excitement",
-    "Deep admiration",
-    "Contempt"
+    "Truthful and straightforward; frank",
+    "A feeling that something is worthless",
+    "Existing in very large quantities",
+    "Producing powerful feelings or clear images"
   ],
-  "answerOption": "D",
-  "answerText": "Contempt",
+  "answerOption": "B",
+  "answerText": "A feeling that something is worthless",
   "difficulty": "medium",
   "sourceFile": "0021.json"
 }

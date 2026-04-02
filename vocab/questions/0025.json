@@ -1,14 +1,15 @@
 {
   "id": 25,
-  "question": "Incapable of producing any useful result",
+  "word": "Futile",
+  "question": "Futile",
   "options": [
-    "Highly effective",
-    "Extremely valuable",
-    "Futile",
-    "Perfectly timed"
+    "A feeling that something is worthless",
+    "Producing no useful result; pointless",
+    "Truthful and straightforward; frank",
+    "Fluent and persuasive in speaking or writing"
   ],
-  "answerOption": "C",
-  "answerText": "Futile",
+  "answerOption": "B",
+  "answerText": "Producing no useful result; pointless",
   "difficulty": "medium",
   "sourceFile": "0025.json"
 }

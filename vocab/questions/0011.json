@@ -1,14 +1,15 @@
 {
   "id": 11,
-  "question": "To throw in various directions",
+  "word": "Scatter",
+  "question": "Scatter",
   "options": [
-    "To hold tightly",
-    "To bury deep",
-    "To collect together",
-    "Scatter"
+    "Wanting to do something very much",
+    "To throw in various random directions",
+    "Belonging to the very distant past",
+    "A great victory or achievement"
   ],
-  "answerOption": "D",
-  "answerText": "Scatter",
+  "answerOption": "B",
+  "answerText": "To throw in various random directions",
   "difficulty": "easy",
   "sourceFile": "0011.json"
 }

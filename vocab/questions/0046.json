@@ -1,14 +1,15 @@
 {
   "id": 46,
-  "question": "To use ambiguous language to conceal the truth",
+  "word": "Equivocate",
+  "question": "Equivocate",
   "options": [
-    "To argue passionately",
-    "To agree wholeheartedly",
-    "To speak with clarity",
-    "Equivocate"
+    "Stubbornly resistant to authority or control",
+    "Indicating a good chance of success; favorable",
+    "Exceedingly idealistic; unrealistic and impractical",
+    "To use ambiguous language to conceal the truth"
   ],
   "answerOption": "D",
-  "answerText": "Equivocate",
+  "answerText": "To use ambiguous language to conceal the truth",
   "difficulty": "extra-hard",
   "sourceFile": "0046.json"
 }

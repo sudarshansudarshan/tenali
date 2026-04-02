@@ -1,14 +1,15 @@
 {
   "id": 60,
-  "question": "Expressing a strong opinion, especially controversial",
+  "word": "Tendentious",
+  "question": "Tendentious",
   "options": [
-    "Tendentious",
-    "Scientifically precise",
-    "Perfectly neutral",
-    "Utterly meaningless"
+    "A change of circumstances, typically unwelcome",
+    "Exceedingly idealistic; unrealistic and impractical",
+    "To use ambiguous language to conceal the truth",
+    "Expressing a strong opinion, especially controversial"
   ],
-  "answerOption": "A",
-  "answerText": "Tendentious",
+  "answerOption": "D",
+  "answerText": "Expressing a strong opinion, especially controversial",
   "difficulty": "extra-hard",
   "sourceFile": "0060.json"
 }

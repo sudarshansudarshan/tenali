@@ -1,14 +1,15 @@
 {
   "id": 5,
-  "question": "To pause before doing something",
+  "word": "Hesitate",
+  "question": "Hesitate",
   "options": [
-    "To sleep deeply",
-    "To shout loudly",
-    "To run quickly",
-    "Hesitate"
+    "To pause before doing something",
+    "A great victory or achievement",
+    "Shiny and smooth on the surface",
+    "Easily broken or damaged"
   ],
-  "answerOption": "D",
-  "answerText": "Hesitate",
+  "answerOption": "A",
+  "answerText": "To pause before doing something",
   "difficulty": "easy",
   "sourceFile": "0005.json"
 }

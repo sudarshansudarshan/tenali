@@ -1,14 +1,15 @@
 {
   "id": 59,
-  "question": "Indicating a good chance of success; favorable",
+  "word": "Propitious",
+  "question": "Propitious",
   "options": [
-    "Propitious",
-    "Deeply unfavorable",
-    "Entirely irrelevant",
-    "Moderately boring"
+    "To use ambiguous language to conceal the truth",
+    "Indicating a good chance of success; favorable",
+    "Expressing a strong opinion, especially controversial",
+    "Stubbornly resistant to authority or control"
   ],
-  "answerOption": "A",
-  "answerText": "Propitious",
+  "answerOption": "B",
+  "answerText": "Indicating a good chance of success; favorable",
   "difficulty": "extra-hard",
   "sourceFile": "0059.json"
 }

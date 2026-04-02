@@ -1,14 +1,15 @@
 {
   "id": 4,
-  "question": "Soft and kind in manner",
+  "word": "Gentle",
+  "question": "Gentle",
   "options": [
-    "Loud and rough",
-    "Dark and scary",
-    "Fast and wild",
-    "Gentle"
+    "Belonging to the very distant past",
+    "Very large in size or quantity",
+    "Mild and kind in manner",
+    "Wanting to do something very much"
   ],
-  "answerOption": "D",
-  "answerText": "Gentle",
+  "answerOption": "C",
+  "answerText": "Mild and kind in manner",
   "difficulty": "easy",
   "sourceFile": "0004.json"
 }

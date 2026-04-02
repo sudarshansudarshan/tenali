@@ -1,14 +1,15 @@
 {
   "id": 28,
-  "question": "A person new to a field or activity",
+  "word": "Novice",
+  "question": "Novice",
   "options": [
-    "A strict teacher",
-    "A retired veteran",
-    "A seasoned expert",
-    "Novice"
+    "Acting with care and thought for the future",
+    "Fluent and persuasive in speaking or writing",
+    "Showing careful and persistent effort",
+    "A person new to a field or activity"
   ],
   "answerOption": "D",
-  "answerText": "Novice",
+  "answerText": "A person new to a field or activity",
   "difficulty": "medium",
   "sourceFile": "0028.json"
 }

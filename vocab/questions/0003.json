@@ -1,14 +1,15 @@
 {
   "id": 3,
-  "question": "Extremely large in size",
+  "word": "Enormous",
+  "question": "Enormous",
   "options": [
-    "Slightly warm",
-    "Quite ordinary",
-    "Very tiny",
-    "Enormous"
+    "Shiny and smooth on the surface",
+    "Mild and kind in manner",
+    "Showing aggressive or violent force",
+    "Very large in size or quantity"
   ],
   "answerOption": "D",
-  "answerText": "Enormous",
+  "answerText": "Very large in size or quantity",
   "difficulty": "easy",
   "sourceFile": "0003.json"
 }

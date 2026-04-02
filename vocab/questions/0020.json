@@ -1,14 +1,15 @@
 {
   "id": 20,
-  "question": "Existing in large quantities; plentiful",
+  "word": "Abundant",
+  "question": "Abundant",
   "options": [
-    "Slightly broken",
-    "Extremely scarce",
-    "Mildly interesting",
-    "Abundant"
+    "Existing in very large quantities",
+    "Producing powerful feelings or clear images",
+    "Calm, peaceful, and untroubled",
+    "A feeling that something is worthless"
   ],
-  "answerOption": "D",
-  "answerText": "Abundant",
+  "answerOption": "A",
+  "answerText": "Existing in very large quantities",
   "difficulty": "medium",
   "sourceFile": "0020.json"
 }

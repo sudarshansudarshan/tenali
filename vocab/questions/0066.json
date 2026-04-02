@@ -1,14 +1,15 @@
 {
   "id": 66,
-  "question": "Having well-shaped, beautiful buttocks",
+  "word": "Callipygian",
+  "question": "Callipygian",
   "options": [
-    "Having long fingers",
-    "Having curly hair",
-    "Having a large nose",
-    "Callipygian"
+    "A feeling of melancholy about the state of the world",
+    "Having well-shaped or attractive buttocks",
+    "Having a ready insight into things; shrewd",
+    "Pleasure derived from another's misfortune"
   ],
-  "answerOption": "D",
-  "answerText": "Callipygian",
+  "answerOption": "B",
+  "answerText": "Having well-shaped or attractive buttocks",
   "difficulty": "hardest",
   "sourceFile": "0066.json"
 }

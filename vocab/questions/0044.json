@@ -1,14 +1,15 @@
 {
   "id": 44,
-  "question": "A person who flatters someone important for gain",
+  "word": "Sycophant",
+  "question": "Sycophant",
   "options": [
-    "An honest critic",
-    "Sycophant",
-    "A skilled teacher",
-    "A brave leader"
+    "A person who flatters to gain advantage",
+    "Lacking energy; sluggish and apathetic",
+    "Fond of company; sociable",
+    "Something that deviates from what is standard"
   ],
-  "answerOption": "B",
-  "answerText": "Sycophant",
+  "answerOption": "A",
+  "answerText": "A person who flatters to gain advantage",
   "difficulty": "hard",
   "sourceFile": "0044.json"
 }

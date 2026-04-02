@@ -1,14 +1,15 @@
 {
   "id": 31,
-  "question": "Open to more than one interpretation",
+  "word": "Ambiguous",
+  "question": "Ambiguous",
   "options": [
-    "Deeply offensive",
-    "Completely false",
-    "Ambiguous",
-    "Perfectly clear"
+    "A harsh mixture of discordant sounds",
+    "A person who flatters to gain advantage",
+    "Open to more than one interpretation",
+    "Lacking energy; sluggish and apathetic"
   ],
   "answerOption": "C",
-  "answerText": "Ambiguous",
+  "answerText": "Open to more than one interpretation",
   "difficulty": "hard",
   "sourceFile": "0031.json"
 }

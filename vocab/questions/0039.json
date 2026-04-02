@@ -1,14 +1,15 @@
 {
   "id": 39,
-  "question": "Dealing with things in a practical way",
+  "word": "Pragmatic",
+  "question": "Pragmatic",
   "options": [
-    "Pragmatic",
-    "Lost in daydreams",
-    "Focused on theories",
-    "Ignoring all evidence"
+    "Dealing with things sensibly and realistically",
+    "Something that deviates from what is standard",
+    "Insisting on beliefs without considering evidence",
+    "A person who flatters to gain advantage"
   ],
   "answerOption": "A",
-  "answerText": "Pragmatic",
+  "answerText": "Dealing with things sensibly and realistically",
   "difficulty": "hard",
   "sourceFile": "0039.json"
 }

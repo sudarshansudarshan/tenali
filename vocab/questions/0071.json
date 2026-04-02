@@ -1,14 +1,15 @@
 {
   "id": 71,
-  "question": "The state of being infatuated with another person",
+  "word": "Limerence",
+  "question": "Limerence",
   "options": [
-    "Mild annoyance",
-    "Deep hatred",
-    "Total indifference",
-    "Limerence"
+    "Having well-shaped or attractive buttocks",
+    "Characterized by the use of long words",
+    "Pleasure derived from another's misfortune",
+    "The state of being infatuated with another person"
   ],
   "answerOption": "D",
-  "answerText": "Limerence",
+  "answerText": "The state of being infatuated with another person",
   "difficulty": "hardest",
   "sourceFile": "0071.json"
 }

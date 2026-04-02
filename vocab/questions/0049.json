@@ -1,14 +1,15 @@
 {
   "id": 49,
-  "question": "Very generous or forgiving, especially to rivals",
+  "word": "Magnanimous",
+  "question": "Magnanimous",
   "options": [
-    "Timid and fearful",
-    "Loud and boastful",
-    "Magnanimous",
-    "Petty and vengeful"
+    "Stubbornly resistant to authority or control",
+    "Translucently clear in style or meaning",
+    "Very generous or forgiving toward rivals",
+    "Proceeding in a harmful way that is hard to notice"
   ],
   "answerOption": "C",
-  "answerText": "Magnanimous",
+  "answerText": "Very generous or forgiving toward rivals",
   "difficulty": "extra-hard",
   "sourceFile": "0049.json"
 }

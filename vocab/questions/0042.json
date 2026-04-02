@@ -1,14 +1,15 @@
 {
   "id": 42,
-  "question": "Inclined to impose beliefs as undeniable truths",
+  "word": "Dogmatic",
+  "question": "Dogmatic",
   "options": [
-    "Afraid to speak up",
-    "Open to all opinions",
-    "Dogmatic",
-    "Unsure of everything"
+    "Lacking energy; sluggish and apathetic",
+    "Insisting on beliefs without considering evidence",
+    "Present, appearing, or found everywhere",
+    "Lasting for a very short time"
   ],
-  "answerOption": "C",
-  "answerText": "Dogmatic",
+  "answerOption": "B",
+  "answerText": "Insisting on beliefs without considering evidence",
   "difficulty": "hard",
   "sourceFile": "0042.json"
 }

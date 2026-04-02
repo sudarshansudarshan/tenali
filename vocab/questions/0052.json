@@ -1,14 +1,15 @@
 {
   "id": 52,
-  "question": "Extremely idealistic; unrealistic and impractical",
+  "word": "Quixotic",
+  "question": "Quixotic",
   "options": [
-    "Scientifically proven",
-    "Boringly predictable",
-    "Ruthlessly practical",
-    "Quixotic"
+    "Excessively obedient or attentive to please",
+    "Exceedingly idealistic; unrealistic and impractical",
+    "Proceeding in a harmful way that is hard to notice",
+    "Kept secret because it would not be approved"
   ],
-  "answerOption": "D",
-  "answerText": "Quixotic",
+  "answerOption": "B",
+  "answerText": "Exceedingly idealistic; unrealistic and impractical",
   "difficulty": "extra-hard",
   "sourceFile": "0052.json"
 }

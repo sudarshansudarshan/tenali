@@ -1,14 +1,15 @@
 {
   "id": 41,
-  "question": "Something that deviates from what is normal",
+  "word": "Anomaly",
+  "question": "Anomaly",
   "options": [
-    "A standard practice",
-    "Anomaly",
-    "A common occurrence",
-    "A daily routine"
+    "A person who flatters to gain advantage",
+    "Lacking energy; sluggish and apathetic",
+    "A seemingly contradictory statement that may be true",
+    "Something that deviates from what is standard"
   ],
-  "answerOption": "B",
-  "answerText": "Anomaly",
+  "answerOption": "D",
+  "answerText": "Something that deviates from what is standard",
   "difficulty": "hard",
   "sourceFile": "0041.json"
 }

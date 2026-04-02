@@ -1,14 +1,15 @@
 {
   "id": 12,
-  "question": "To impress greatly or blind with light",
+  "word": "Dazzle",
+  "question": "Dazzle",
   "options": [
-    "To confuse mildly",
-    "To bore completely",
-    "To darken slowly",
-    "Dazzle"
+    "Showing aggressive or violent force",
+    "Eager to know or learn something",
+    "Not afraid of danger",
+    "To blind temporarily with bright light"
   ],
   "answerOption": "D",
-  "answerText": "Dazzle",
+  "answerText": "To blind temporarily with bright light",
   "difficulty": "easy",
   "sourceFile": "0012.json"
 }

@@ -1,14 +1,15 @@
 {
   "id": 37,
-  "question": "Sluggish and lacking energy",
+  "word": "Lethargic",
+  "question": "Lethargic",
   "options": [
-    "Lethargic",
-    "Intensely creative",
-    "Hyperactive and wild",
-    "Extremely focused"
+    "A seemingly contradictory statement that may be true",
+    "Lacking energy; sluggish and apathetic",
+    "Something that deviates from what is standard",
+    "A person who flatters to gain advantage"
   ],
-  "answerOption": "A",
-  "answerText": "Lethargic",
+  "answerOption": "B",
+  "answerText": "Lacking energy; sluggish and apathetic",
   "difficulty": "hard",
   "sourceFile": "0037.json"
 }

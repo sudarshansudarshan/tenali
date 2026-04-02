@@ -1,14 +1,15 @@
 {
   "id": 43,
-  "question": "Having a harmful effect, especially gradually",
+  "word": "Pernicious",
+  "question": "Pernicious",
   "options": [
-    "Pernicious",
-    "Completely harmless",
-    "Extremely beneficial",
-    "Mildly entertaining"
+    "Dealing with things sensibly and realistically",
+    "Having a harmful effect, especially gradually",
+    "Insisting on beliefs without considering evidence",
+    "A person who flatters to gain advantage"
   ],
-  "answerOption": "A",
-  "answerText": "Pernicious",
+  "answerOption": "B",
+  "answerText": "Having a harmful effect, especially gradually",
   "difficulty": "hard",
   "sourceFile": "0043.json"
 }

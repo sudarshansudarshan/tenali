@@ -1,14 +1,15 @@
 {
   "id": 7,
-  "question": "To disappear suddenly",
+  "word": "Vanish",
+  "question": "Vanish",
   "options": [
-    "To become louder",
-    "To turn red",
-    "Vanish",
-    "To grow bigger"
+    "Easily broken or damaged",
+    "To pause before doing something",
+    "To disappear suddenly and completely",
+    "Shiny and smooth on the surface"
   ],
   "answerOption": "C",
-  "answerText": "Vanish",
+  "answerText": "To disappear suddenly and completely",
   "difficulty": "easy",
   "sourceFile": "0007.json"
 }

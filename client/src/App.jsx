@@ -823,12 +823,14 @@ function VocabApp({ onBack }) {
       setIsCorrect(data.correct)
       if (data.correct) setScore((s) => s + 1)
       setFeedback(data.correct
-        ? `Correct! The word is "${data.correctAnswerText}".`
-        : `Incorrect. The correct word is "${data.correctAnswerText}".`)
+        ? `Correct! "${data.correctAnswerText}"`
+        : `Incorrect. The right definition is: "${data.correctAnswerText}"`)
+      const userDef = question.options[['A','B','C','D'].indexOf(selected)]
+      const truncate = (s) => s.length > 35 ? s.slice(0, 35) + '…' : s
       setResults((prev) => [...prev, {
-        question: question.question.length > 40 ? question.question.slice(0, 40) + '…' : question.question,
-        userAnswer: question.options[['A','B','C','D'].indexOf(selected)],
-        correctAnswer: data.correctAnswerText,
+        question: question.question,
+        userAnswer: truncate(userDef),
+        correctAnswer: truncate(data.correctAnswerText),
         correct: data.correct,
         time: timeTaken,
       }])
@@ -864,7 +866,7 @@ function VocabApp({ onBack }) {
   const difficultyLabels = { easy: 'Easy', medium: 'Medium', hard: 'Hard', 'extra-hard': 'Extra Hard', hardest: 'Hardest' }
 
   return (
-    <QuizLayout title="Vocab Builder" subtitle="Pick the word that matches the definition" onBack={onBack}>
+    <QuizLayout title="Vocab Builder" subtitle="Pick the correct definition for the word" onBack={onBack}>
       <div className="top-mini-row">
         {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
         <div className="score-pill">Score: {score}</div>
@@ -887,7 +889,7 @@ function VocabApp({ onBack }) {
       </div>}
       {started && !finished && <>
         <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
-        <div className="question-box vocab-definition">{loading || !question ? 'Loading question…' : `"${question.question}"`}</div>
+        <div className="question-box vocab-word">{loading || !question ? 'Loading question…' : question.question}</div>
         {question && (
           <div className="options-list">
             {question.options.map((option, idx) => {

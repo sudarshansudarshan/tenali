@@ -1,14 +1,15 @@
 {
   "id": 8,
-  "question": "Easily broken or damaged",
+  "word": "Fragile",
+  "question": "Fragile",
   "options": [
-    "Extremely heavy",
-    "Very strong",
-    "Fragile",
-    "Incredibly fast"
+    "Belonging to the very distant past",
+    "Free from pretence or deceit",
+    "Very large in size or quantity",
+    "Easily broken or damaged"
   ],
-  "answerOption": "C",
-  "answerText": "Fragile",
+  "answerOption": "D",
+  "answerText": "Easily broken or damaged",
   "difficulty": "easy",
   "sourceFile": "0008.json"
 }

@@ -1,14 +1,15 @@
 {
   "id": 48,
-  "question": "Using very few words to express something",
+  "word": "Laconic",
+  "question": "Laconic",
   "options": [
-    "Laconic",
-    "Extremely verbose",
-    "Emotionally dramatic",
-    "Technically complex"
+    "Exceedingly idealistic; unrealistic and impractical",
+    "Proceeding in a harmful way that is hard to notice",
+    "To use ambiguous language to conceal the truth",
+    "Using very few words to express meaning"
   ],
-  "answerOption": "A",
-  "answerText": "Laconic",
+  "answerOption": "D",
+  "answerText": "Using very few words to express meaning",
   "difficulty": "extra-hard",
   "sourceFile": "0048.json"
 }

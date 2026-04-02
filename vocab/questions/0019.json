@@ -1,14 +1,15 @@
 {
   "id": 19,
-  "question": "Unwilling and hesitant to do something",
+  "word": "Reluctant",
+  "question": "Reluctant",
   "options": [
-    "Strong and capable",
-    "Calm and relaxed",
-    "Excited and eager",
-    "Reluctant"
+    "Calm, peaceful, and untroubled",
+    "Showing great attention to detail",
+    "Able to recover quickly from difficulties",
+    "Unwilling and hesitant to act"
   ],
   "answerOption": "D",
-  "answerText": "Reluctant",
+  "answerText": "Unwilling and hesitant to act",
   "difficulty": "medium",
   "sourceFile": "0019.json"
 }

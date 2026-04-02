@@ -2,12 +2,13 @@
 
 ## 1. Purpose
 
-A 20-question quiz on evaluating quadratic expressions by substitution. The player selects a difficulty level (Easy, Medium, Hard), then computes y = ax² + bx + c for given values of a, b, c, and x. All values are single-digit integers — difficulty controls the range. After each answer, a full step-by-step substitution chain is displayed. A results table with per-question timing is shown at the end.
+A quiz with configurable question count (default 20) on evaluating quadratic expressions by substitution. The player selects a difficulty level (Easy, Medium, Hard), then computes y = ax² + bx + c for given values of a, b, c, and x. All values are single-digit integers — difficulty controls the range. After each answer, a full step-by-step substitution chain is displayed. Features an on-screen NumPad, auto-advance after 1.5s, and a running results table shown during gameplay.
 
 ## 2. Constants
 
 ```javascript
-const TOTAL_QUADRATIC = 20  // fixed number of questions per quiz
+const DEFAULT_TOTAL = 20  // default number of questions per quiz (shared across quizzes)
+const AUTO_ADVANCE_MS = 1500  // auto-advance delay in milliseconds
 ```
 
 ## 3. Difficulty Levels
@@ -30,6 +31,8 @@ function quadraticRange(difficulty) {
 ```
 
 All four values (a, b, c, x) are generated independently within the same range.
+
+**Important constraint on `a`:** The coefficient `a` must never be zero (otherwise the equation degenerates to linear). The server uses a `while (a === 0)` loop to ensure this.
 
 ## 4. API Specification
 
@@ -90,15 +93,19 @@ The `prompt` field is built using `formatSignedTerm(value, variablePart, isFirst
 |----------|------|---------|-------------|
 | difficulty | string | 'easy' | 'easy'/'medium'/'hard' |
 | started | boolean | false | Quiz has begun |
-| finished | boolean | false | All 20 questions done |
+| finished | boolean | false | All questions done |
 | question | object/null | null | `{ a, b, c, x, prompt, answer }` |
 | answer | string | '' | Player's typed answer |
 | score | number | 0 | Correct answers count |
-| questionNumber | number | 0 | Current question (1-20) |
+| questionNumber | number | 0 | Current question number |
+| numQuestions | string | '20' | Configurable question count input |
+| totalQ | number | 20 | Computed total questions |
 | feedback | string | '' | Multi-line feedback with reasoning |
 | loading | boolean | false | Fetching question |
 | revealed | boolean | false | Answer shown |
 | results | array | [] | Result objects |
+
+**advanceRef:** `useRef(() => {})` — updated every render with current advance logic, used by `useAutoAdvance` hook.
 
 ### 5.2 Question Display
 
@@ -163,28 +170,42 @@ The feedback div uses `white-space: pre-line` to render `\n` as line breaks.
 
 ```
 [Show difficulty selector: Easy / Medium / Hard]
+[Show "How many questions?" input (default 20)]
 [Show "Start Quiz" button]
         ↓ (click Start)
-[Lock difficulty, started=true, results=[]]
+[Lock difficulty, compute totalQ, started=true, results=[]]
 [fetchQuestion(difficulty)]
         ↓
-[Display: "Question N/20"]
+[Display: "Question N/totalQ"]
 [Display: "x = -3" (given line)]
 [Display: "y = 7x² + 3x − 4" (equation line)]
-[Input placeholder: "y = ?"]
+[Input placeholder: "y = ?", NumPad below]
 [Timer counting]
-        ↓ (submit)
+        ↓ (submit via physical keyboard or NumPad)
 [POST /quadratic-api/check]
 [Stop timer, compute reasoning, record result]
 [Show multi-line feedback]
-        ↓ (next)
-[If < 20: next question]
-[If = 20: show finish screen with ResultsTable]
+[Auto-advance after 1.5s OR press Enter to skip]
+        ↓
+[If < totalQ: next question]
+[If = totalQ: show finish screen with ResultsTable]
 ```
 
-### 5.6 Keyboard Support
+### 5.6 NumPad
 
-Enter key listener with dependencies: `[started, finished, question, answer, revealed, questionNumber, loading]`. Active when `started && !finished`.
+An on-screen numeric keypad is rendered below the input field via the shared `NumPad` component. It features digits 0–9, ± toggle, and ⌫ backspace. Physical keyboard input works alongside (input is `type="text"` with regex validation `/^-?\d+$/`).
+
+### 5.7 Auto-Advance
+
+Uses the shared `useAutoAdvance(revealed, advanceRef)` hook. After an answer is revealed, automatically advances to the next question after 1.5 seconds. The player can press Enter to skip the wait.
+
+### 5.8 Running Results Table
+
+The results table is displayed both during gameplay and on the finish screen.
+
+### 5.9 Keyboard Support
+
+Enter key listener with dependencies: `[started, finished, question, answer, revealed, questionNumber, loading, totalQ]`. Active when `started && !finished`.
 
 ## 6. Implementation Notes
 
@@ -192,5 +213,7 @@ Enter key listener with dependencies: `[started, finished, question, answer, rev
 - Difficulty selector uses the `.radio-pill` CSS pattern (shared with Addition app)
 - The `fetchQuestion()` call passes the current difficulty as a query parameter
 - `startQuiz()` resets: started=true, finished=false, score=0, questionNumber=1, results=[]
-- Finish screen spacing: results summary has `margin-bottom: 32px` before the Play Again button
+- Configurable question count defaults to 20 via `DEFAULT_TOTAL`
+- Input uses `type="text"` (not `type="number"`) to support NumPad and minus sign on all devices
+- Coefficient `a` is guaranteed non-zero by server-side `while (a === 0)` loop
 - Uses DM Sans (body/UI) and Source Serif 4 (heading) fonts from Google Fonts

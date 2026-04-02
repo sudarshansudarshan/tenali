@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-A continuous drill for estimating square roots to the nearest integer. The player is given a number and must provide an integer estimate. Both the floor and ceiling of the true square root are accepted as correct. There is no fixed question limit — the drill continues until the player navigates away. Difficulty increases automatically based on the question number. A running results table with per-question timing is displayed below the quiz.
+A continuous drill for estimating square roots to the nearest integer. The player is given a number and must provide an integer estimate. Both the floor and ceiling of the true square root are accepted as correct. There is no fixed question limit — the drill continues until the player navigates away. Difficulty increases automatically based on the question number. Features an on-screen NumPad, auto-advance after 1.5s, and a running results table with per-question timing displayed below the quiz.
 
 ## 2. Progressive Difficulty
 
@@ -99,17 +99,22 @@ const correct = (numericAnswer === floorAnswer) || (numericAnswer === ceilAnswer
 
 | Variable | Type | Initial | Description |
 |----------|------|---------|-------------|
+| numQuestions | string | '' | Optional question limit (empty = unlimited) |
 | started | boolean | false | Drill has begun |
+| finished | boolean | false | Drill complete (if limit set) |
 | question | object/null | null | `{ q, step, prompt, floorAnswer, ceilAnswer, sqrtRounded }` |
 | answer | string | '' | Player's typed answer |
 | score | number | 0 | Correct answers count |
 | questionNumber | number | 0 | Current question count |
+| totalQ | number | Infinity | Total questions (Infinity if no limit set) |
 | feedback | string | '' | Multi-line feedback |
 | loading | boolean | false | Fetching question |
 | revealed | boolean | false | Answer shown |
 | results | array | [] | Result objects |
 
-**Key difference from other quizzes:** No `finished` state, no difficulty selector, no finish screen.
+**Key differences from other quizzes:** No difficulty selector. Optional question limit (can run indefinitely). Has `numQuestions` input but defaults to unlimited.
+
+**advanceRef:** `useRef(() => {})` — updated every render, used by `useAutoAdvance` hook.
 
 ### 5.2 User Flow
 
@@ -121,15 +126,16 @@ const correct = (numericAnswer === floorAnswer) || (numericAnswer === ceilAnswer
 [fetchQuestion(1)]
         ↓
 [Display: "Question N" (no total)]
-[Display: "√47 = ?"]
+[Display: "√47 = ?", NumPad below input]
 [Timer counting]
-        ↓ (submit)
+        ↓ (submit via physical keyboard or NumPad)
 [POST /sqrt-api/check]
 [Stop timer, record result]
 [Show feedback with reasoning]
-        ↓ (next)
+[Auto-advance after 1.5s OR press Enter to skip]
+        ↓
 [questionNumber++, fetchQuestion(next)]
-[Loop indefinitely]
+[Loop until limit reached or user exits]
 
 [User clicks "← Home" to exit at any time]
 ```
@@ -204,15 +210,24 @@ Unlike fixed-length quizzes, the results table is displayed **below the quiz are
 └─────────────────────────────────┘
 ```
 
-### 5.7 Keyboard Support
+### 5.7 NumPad
 
-Enter key listener with dependencies: `[started, question, answer, revealed, questionNumber, loading]`. Active when `started` (always, since there's no finish state).
+An on-screen numeric keypad is rendered below the input field via the shared `NumPad` component. Features digits 0–9, ± toggle, and ⌫ backspace. Physical keyboard input works alongside (input is `type="text"` with regex validation).
+
+### 5.8 Auto-Advance
+
+Uses the shared `useAutoAdvance(revealed, advanceRef)` hook. After an answer is revealed, automatically advances to the next question after 1.5 seconds. The player can press Enter to skip the wait.
+
+### 5.9 Keyboard Support
+
+Enter key listener active when `started && !finished`.
 
 ## 6. Implementation Notes
 
 - `fetchQuestion(step)` uses the current `questionNumber + 1` as the step for the next question
 - The question number is incremented BEFORE fetching the next question
 - `startQuiz()` resets all state and fetches with step=1
-- No "Play Again" button — the drill just keeps going
+- Optional "How many questions?" input — if left empty, drill runs indefinitely
+- Input uses `type="text"` (not `type="number"`) to support NumPad and minus sign
 - The timer pill is visible whenever `started && !revealed`
 - Uses DM Sans (body/UI) and Source Serif 4 (heading) fonts from Google Fonts

@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-A multiple-choice general knowledge quiz that presents random questions from a bank of 991 curated questions. The quiz runs indefinitely — no fixed question count. Score and per-question results accumulate throughout the session. A running results table is displayed below the quiz.
+A multiple-choice general knowledge quiz that presents random questions from a bank of 991 curated questions. The quiz runs indefinitely — no fixed question count. Score and per-question results accumulate throughout the session. A running results table is displayed below the quiz. Features auto-advance after 1.5s.
 
 ## 2. Data Source
 
@@ -110,8 +110,7 @@ const correct = String(answerOption).toUpperCase() === String(q.answerOption).to
                                     ↓
                     [POST /gk-api/check] → [Show feedback]
                     [Record result with time] → [Stop timer]
-                                    ↓
-                        [User clicks Next Question / presses Enter]
+                    [Auto-advance after 1.5s OR press Enter to skip]
                                     ↓
                         loadQuestion() → [Loop back to display]
 ```
@@ -162,6 +161,16 @@ The results table is displayed below the quiz area and grows with each answered 
 ### 4.6 Keyboard Support
 
 Global `keydown` listener on `Enter` key triggers `handleSubmitOrNext()`. Dependencies: `[question, selected, revealed, loading]`.
+
+### 4.7 Auto-Advance
+
+Uses the shared `useAutoAdvance(revealed, advanceRef)` hook with the `useRef` pattern to avoid stale closures. After an answer is revealed, automatically advances to the next question after 1.5 seconds (`AUTO_ADVANCE_MS`). The player can press Enter to skip the wait.
+
+```javascript
+const advanceRef = useRef(() => {})
+advanceRef.current = () => loadQuestion()
+useAutoAdvance(revealed, advanceRef)
+```
 
 ## 5. Implementation Notes
 

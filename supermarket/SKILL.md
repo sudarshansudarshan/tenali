@@ -25,6 +25,9 @@ Tenali/
 │   ├── gk/SKILL.md           General Knowledge specification
 │   ├── addition/SKILL.md     Addition specification
 │   ├── quadratic/SKILL.md    Quadratic specification
+│   ├── multiply/SKILL.md     Multiplication Tables specification
+│   ├── vocab/SKILL.md        Vocab Builder specification
+│   ├── spotit/SKILL.md       Spot It specification
 │   └── sqrt/SKILL.md         Square Root specification
 ├── client/                   React frontend
 │   ├── src/
@@ -40,6 +43,8 @@ Tenali/
 │   └── package.json          Dependencies: express, cors
 ├── chitragupta/
 │   └── questions/            991 JSON files (0001.json to 0991.json)
+├── vocab/
+│   └── questions/            75 JSON files (0001.json to 0075.json)
 ├── render.yaml               Render.com deployment config
 └── .github/workflows/        GitHub Pages CI/CD
 ```
@@ -58,6 +63,9 @@ The root component renders a centered card on a cream-colored background. A `mod
 - `'gk'` → General Knowledge quiz
 - `'addition'` → Addition quiz
 - `'quadratic'` → Quadratic quiz
+- `'multiply'` → Multiplication Tables quiz
+- `'vocab'` → Vocab Builder quiz
+- `'spot'` → Spot It game
 - `'sqrt'` → Square Root drill
 
 Each quiz component receives an `onBack` callback that sets `mode` back to `null`.
@@ -68,8 +76,8 @@ The Home screen displays:
 1. Title "Tenali" in the heading
 2. Subtitle "Choose a learning game to begin"
 3. A **responsive CSS grid** with **16 slots total** using `auto-fill` (columns auto-adjust from 2 on mobile to 5–6 on wide screens):
-   - First 4 slots: active app cards (clickable buttons)
-   - Remaining 12 slots: placeholder cards with dashed borders and "Coming soon" text
+   - First 7 slots: active app cards (clickable buttons)
+   - Remaining 9 slots: placeholder cards with dashed borders and "Coming soon" text
 4. A **grid dimension indicator** below the grid showing current rows × columns (e.g., "4 × 4"), styled subtly
 
 **Grid dimension indicator implementation:** A `useRef` on the grid element reads `getComputedStyle().gridTemplateColumns` on mount and window resize to compute the current column count. Rows are derived from `Math.ceil(totalSlots / cols)`. Displayed as "rows × cols" in a subtle, low-opacity label below the grid.
@@ -82,6 +90,9 @@ Each active card shows a title, subtitle, and has a color class (`purple`, `blue
 | gk | General Knowledge | Chitragupta quiz | purple |
 | addition | Addition | 20-question addition practice | blue |
 | quadratic | Quadratic | Find y for y = ax² + bx + c | blue |
+| multiply | Multiplication | Practice any times table (1–10) | green |
+| vocab | Vocab Builder | Match words to definitions | blue |
+| spot | Spot It | Find the common object | purple |
 | sqrt | Square Root | Nearest-integer square root drill | green |
 
 #### 3.3 Shared Quiz Components
@@ -92,12 +103,29 @@ Each active card shows a title, subtitle, and has a color class (`purple`, `blue
 - An HTML `<table>` with columns: #, Question, Your Answer, Result, Time
 - Rows are styled with green text for correct, red for incorrect
 - A summary line below: "Total time: Ns · Average: Ns per question"
+- Displayed both during gameplay (below the active quiz) and on the finish screen
 
 **useTimer hook**: Custom hook that provides:
 - `elapsed` (number): seconds since last `start()`, updated every 250ms
 - `start()`: resets and begins counting
 - `stop()`: stops counting, returns seconds elapsed
 - `reset()`: stops counting, sets elapsed to 0
+
+**useAutoAdvance hook**: Auto-advances to the next question 1.5 seconds after an answer is revealed. Uses `useRef` pattern to avoid stale closure issues. Players can still press Enter to skip the wait.
+```javascript
+const AUTO_ADVANCE_MS = 1500
+function useAutoAdvance(revealed, advanceFnRef) {
+  useEffect(() => {
+    if (!revealed) return
+    const id = setTimeout(() => advanceFnRef.current(), AUTO_ADVANCE_MS)
+    return () => clearTimeout(id)
+  }, [revealed])
+}
+```
+
+**NumPad component**: An on-screen numeric keypad displayed across all math quizzes (Addition, Quadratic, Multiplication, Square Root). Features digits 0–9, a ± toggle, and a ⌫ backspace key. Physical keyboard input works alongside the on-screen keypad. All numeric inputs use `type="text"` with regex validation: `/^-?\d+$/.test(v)`.
+
+**Configurable question count**: All fixed-length quizzes (Addition, Quadratic, Multiplication, Vocab) show a "How many questions?" input before starting. Defaults to 20 (`DEFAULT_TOTAL`). Square Root and GK remain unlimited.
 
 #### 3.4 Per-Question Timer
 
@@ -121,7 +149,7 @@ Every quiz maintains a `results` state array. After each answer, a result object
 }
 ```
 
-For fixed-length quizzes (Addition, Quadratic), the results table is shown on the finish screen. For unlimited quizzes (GK, Square Root), the results table is shown below the current question (growing as the player progresses).
+All quizzes display the results table both during gameplay (growing as the player progresses) and on the finish screen.
 
 ### 4. Backend Specification
 
@@ -145,10 +173,14 @@ For fixed-length quizzes (Addition, Quadratic), the results table is shown on th
 | POST | `/quadratic-api/check` | — | `{ a, b, c, x, answer }` | `{ correct, correctAnswer, message }` |
 | GET | `/sqrt-api/question` | `step` (number) | — | `{ id, q, step, prompt, floorAnswer, ceilAnswer, sqrtRounded }` |
 | POST | `/sqrt-api/check` | — | `{ q, answer }` | `{ correct, floorAnswer, ceilAnswer, sqrtRounded, message }` |
+| GET | `/multiply-api/question` | `table` (number) | — | `{ id, table, multiplier, prompt, answer }` |
+| POST | `/multiply-api/check` | — | `{ table, multiplier, answer }` | `{ correct, correctAnswer, message }` |
+| GET | `/vocab-api/question` | `difficulty` | — | `{ id, question (word), options[] (definitions), difficulty }` |
+| POST | `/vocab-api/check` | — | `{ id, answerOption }` | `{ correct, correctAnswer, correctAnswerText, message }` |
 
 #### 4.3 Data Loading
 
-GK questions are loaded once at server startup from JSON files in `chitragupta/questions/`. Each file is parsed and stored in an in-memory array.
+GK questions are loaded once at server startup from JSON files in `chitragupta/questions/`. Each file is parsed and stored in an in-memory array. Vocab questions are similarly loaded from `vocab/questions/` at startup.
 
 ### 5. Design Specification
 
@@ -208,7 +240,7 @@ services:
 
 1. `cd server && node index.js` — starts Express on port 4000
 2. `cd client && npm run dev` — starts Vite on port 5173 with proxy to 4000
-3. Vite proxy forwards: `/api`, `/gk-api`, `/addition-api`, `/quadratic-api`, `/sqrt-api`
+3. Vite proxy forwards: `/api`, `/gk-api`, `/addition-api`, `/quadratic-api`, `/sqrt-api`, `/multiply-api`, `/vocab-api`
 
 ### 7. Adding a New App
 

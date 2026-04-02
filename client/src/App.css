@@ -539,6 +539,67 @@ button:disabled {
   font-weight: 500;
 }
 
+/* ── Numeric Keypad ─────────────────────────────────── */
+.numpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 20px auto 0;
+  max-width: 280px;
+}
+
+.numpad-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.numpad-key {
+  flex: 1;
+  padding: 14px 0;
+  font-family: var(--font-body);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--clr-text);
+  background: #fff;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(60, 40, 20, 0.06);
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1;
+}
+
+.numpad-key:hover {
+  background: rgba(60, 40, 20, 0.03);
+  transform: none;
+  box-shadow: 0 1px 3px rgba(60, 40, 20, 0.06);
+}
+
+.numpad-key:active {
+  background: rgba(60, 40, 20, 0.07);
+  transform: scale(0.96);
+}
+
+.numpad-key:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.numpad-key.numpad-special {
+  font-size: 1.05rem;
+  color: var(--clr-text-soft);
+  background: rgba(60, 40, 20, 0.04);
+}
+
+.numpad-key.numpad-special:hover {
+  background: rgba(60, 40, 20, 0.07);
+}
+
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 500px) {
   .card {

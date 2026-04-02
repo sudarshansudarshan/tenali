@@ -608,27 +608,27 @@ button:disabled {
   font-size: 1.1rem;
 }
 
-/* ── Spot It Panels ─────────────────────────────────── */
-.spot-panels {
+/* ── Twin Hunt Panels ──────────────────────────────── */
+.twin-panels {
   display: flex;
   gap: 0;
   align-items: stretch;
   margin: 16px 0 20px;
 }
 
-.spot-panel {
+.twin-panel {
   flex: 1;
   position: relative;
   min-height: 280px;
 }
 
-.spot-panel::before {
+.twin-panel::before {
   content: '';
   display: block;
   padding-top: 100%;
 }
 
-.spot-circle {
+.twin-circle {
   position: absolute;
   inset: 0;
   border-radius: 50%;
@@ -637,14 +637,14 @@ button:disabled {
   overflow: visible;
 }
 
-.spot-divider {
+.twin-divider {
   width: 1px;
   background: var(--clr-border);
   flex-shrink: 0;
   margin: 20px 0;
 }
 
-.spot-item {
+.twin-item {
   position: absolute;
   display: flex;
   align-items: center;
@@ -663,22 +663,22 @@ button:disabled {
   transform: translate(-50%, -50%);
 }
 
-.spot-item:hover:not(:disabled) {
+.twin-item:hover:not(:disabled) {
   transform: translate(-50%, -50%) scale(1.2);
   border-color: var(--clr-accent);
   box-shadow: 0 2px 12px rgba(224, 122, 58, 0.22);
   z-index: 10;
 }
 
-.spot-item:active:not(:disabled) {
+.twin-item:active:not(:disabled) {
   transform: translate(-50%, -50%) scale(0.95);
 }
 
-.spot-item:disabled {
+.twin-item:disabled {
   cursor: default;
 }
 
-.spot-item.spot-match {
+.twin-item.twin-match {
   border-color: var(--clr-correct);
   background: var(--clr-correct-bg);
   transform: translate(-50%, -50%) scale(1.25);
@@ -686,7 +686,7 @@ button:disabled {
   z-index: 10;
 }
 
-.spot-item.spot-dim {
+.twin-item.twin-dim {
   opacity: 0.25;
 }
 

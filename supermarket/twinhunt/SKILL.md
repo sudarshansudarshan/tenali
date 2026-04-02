@@ -1,4 +1,4 @@
-# Spot It — Formal Specification
+# Twin Hunt — Formal Specification
 
 ## 1. Purpose
 
@@ -7,7 +7,7 @@ A visual matching game where two circular panels each display a set of emoji obj
 ## 2. Constants
 
 ```javascript
-const SPOT_SYMBOLS = [
+const TWIN_SYMBOLS = [
   '🍎','🍊','🍋','🍇','🍉','🍓','🍒','🥝','🍌','🍑',
   '🌟','🌙','☀️','⚡','🔥','💧','🌈','❄️','🍀','🌸',
   '🐶','🐱','🐸','🐵','🐔','🐙','🦋','🐝','🐢','🐬',
@@ -26,7 +26,7 @@ const SPOT_SYMBOLS = [
 
 No server API is used. All rounds are generated client-side:
 
-1. Shuffle the full `SPOT_SYMBOLS` array
+1. Shuffle the full `TWIN_SYMBOLS` array
 2. Pick the first symbol as `common` (the answer)
 3. Pick the next `n-1` symbols as `leftOthers`
 4. Pick the next `n-1` symbols as `rightOthers`
@@ -69,7 +69,7 @@ Each item receives `style={{ left: '${x}%', top: '${y}%' }}` with CSS `position:
 
 ## 5. Frontend Component Specification
 
-### 5.1 Component: SpotApp
+### 5.1 Component: TwinHuntApp
 
 **Props:** `onBack` (function)
 
@@ -127,26 +127,26 @@ Each item receives `style={{ left: '${x}%', top: '${y}%' }}` with CSS `position:
 ### 5.4 CSS Structure
 
 ```css
-.spot-panels {
+.twin-panels {
   display: flex;
   gap: 0;
   align-items: stretch;
   margin: 16px 0 20px;
 }
 
-.spot-panel {
+.twin-panel {
   flex: 1;
   position: relative;
   min-height: 280px;
 }
 
-.spot-panel::before {
+.twin-panel::before {
   content: '';
   display: block;
   padding-top: 100%;  /* Square aspect ratio */
 }
 
-.spot-circle {
+.twin-circle {
   position: absolute;
   inset: 0;
   border-radius: 50%;
@@ -155,14 +155,14 @@ Each item receives `style={{ left: '${x}%', top: '${y}%' }}` with CSS `position:
   overflow: visible;
 }
 
-.spot-divider {
+.twin-divider {
   width: 1px;
   background: var(--clr-border);
   flex-shrink: 0;
   margin: 20px 0;
 }
 
-.spot-item {
+.twin-item {
   position: absolute;
   display: flex;
   align-items: center;
@@ -178,20 +178,20 @@ Each item receives `style={{ left: '${x}%', top: '${y}%' }}` with CSS `position:
   /* Inline style sets left and top percentages */
 }
 
-.spot-item:hover:not(:disabled) {
+.twin-item:hover:not(:disabled) {
   transform: translate(-50%, -50%) scale(1.2);
   border-color: var(--clr-accent);
   z-index: 10;
 }
 
-.spot-item.spot-match {
+.twin-item.twin-match {
   border-color: var(--clr-correct);
   background: var(--clr-correct-bg);
   transform: translate(-50%, -50%) scale(1.25);
   z-index: 10;
 }
 
-.spot-item.spot-dim {
+.twin-item.twin-dim {
   opacity: 0.25;
 }
 ```
@@ -199,12 +199,12 @@ Each item receives `style={{ left: '${x}%', top: '${y}%' }}` with CSS `position:
 ### 5.5 JSX Structure
 
 ```jsx
-<div className="spot-panels">
-  <div className="spot-panel">
-    <div className="spot-circle">
+<div className="twin-panels">
+  <div className="twin-panel">
+    <div className="twin-circle">
       {leftItems.map((sym, i) => (
         <button key={i} type="button"
-          className={`spot-item ${revealed && sym === commonSymbol ? 'spot-match' : ''} ${revealed && sym !== commonSymbol ? 'spot-dim' : ''}`}
+          className={`twin-item ${revealed && sym === commonSymbol ? 'twin-match' : ''} ${revealed && sym !== commonSymbol ? 'twin-dim' : ''}`}
           style={leftPositions[i] ? { left: `${leftPositions[i].x}%`, top: `${leftPositions[i].y}%` } : {}}
           onClick={() => handlePick(sym)} disabled={revealed}>
           {sym}
@@ -212,12 +212,12 @@ Each item receives `style={{ left: '${x}%', top: '${y}%' }}` with CSS `position:
       ))}
     </div>
   </div>
-  <div className="spot-divider"></div>
-  <div className="spot-panel">
-    <div className="spot-circle">
+  <div className="twin-divider"></div>
+  <div className="twin-panel">
+    <div className="twin-circle">
       {rightItems.map((sym, i) => (
         <button key={i} type="button"
-          className={`spot-item ${revealed && sym === commonSymbol ? 'spot-match' : ''} ${revealed && sym !== commonSymbol ? 'spot-dim' : ''}`}
+          className={`twin-item ${revealed && sym === commonSymbol ? 'twin-match' : ''} ${revealed && sym !== commonSymbol ? 'twin-dim' : ''}`}
           style={rightPositions[i] ? { left: `${rightPositions[i].x}%`, top: `${rightPositions[i].y}%` } : {}}
           onClick={() => handlePick(sym)} disabled={revealed}>
           {sym}

@@ -27,7 +27,7 @@ Tenali/
 │   ├── quadratic/SKILL.md    Quadratic specification
 │   ├── multiply/SKILL.md     Multiplication Tables specification
 │   ├── vocab/SKILL.md        Vocab Builder specification
-│   ├── spotit/SKILL.md       Spot It specification
+│   ├── twinhunt/SKILL.md       Twin Hunt specification
 │   ├── sqrt/SKILL.md         Square Root specification
 │   ├── polymul/SKILL.md      Polynomial Multiplication specification
 │   ├── polyfactor/SKILL.md   Polynomial Factorization specification
@@ -73,7 +73,7 @@ The root component renders a centered card on a cream-colored background. A `mod
 - `'quadratic'` → Quadratic quiz
 - `'multiply'` → Multiplication Tables quiz
 - `'vocab'` → Vocab Builder quiz
-- `'spot'` → Spot It game
+- `'spot'` → Twin Hunt game
 - `'sqrt'` → Square Root drill
 - `'polymul'` → Polynomial Multiplication quiz
 - `'polyfactor'` → Polynomial Factorization quiz
@@ -108,7 +108,7 @@ Each active card shows a title, subtitle, and has a color class (`purple`, `blue
 | quadratic | Quadratic | Find y for y = ax² + bx + c | blue |
 | multiply | Multiplication | Practice any times table (1–10) | green |
 | vocab | Vocab Builder | Match words to definitions | blue |
-| spot | Spot It | Find the common object | purple |
+| spot | Twin Hunt | Find the common object | purple |
 | sqrt | Square Root | Nearest-integer square root drill | green |
 | polymul | Polynomial Multiplication | Multiply polynomials and enter coefficients | blue |
 | polyfactor | Polynomial Factorization | Factor ax² + bx + c into (px + q)(rx + s) | blue |

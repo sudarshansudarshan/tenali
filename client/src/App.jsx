@@ -140,7 +140,7 @@ function App() {
         ) : mode === 'vocab' ? (
           <VocabApp onBack={() => setMode(null)} />
         ) : mode === 'spot' ? (
-          <SpotApp onBack={() => setMode(null)} />
+          <TwinHuntApp onBack={() => setMode(null)} />
         ) : mode === 'sqrt' ? (
           <SqrtApp onBack={() => setMode(null)} />
         ) : mode === 'polymul' ? (
@@ -173,7 +173,7 @@ function Home({ onSelect }) {
     { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
     { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (1–10)', color: 'green' },
     { key: 'vocab', name: 'Vocab Builder', subtitle: 'Match words to definitions', color: 'blue' },
-    { key: 'spot', name: 'Spot It', subtitle: 'Find the common object', color: 'purple' },
+    { key: 'spot', name: 'Twin Hunt', subtitle: 'Find the common object', color: 'purple' },
     { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
     { key: 'polymul', name: 'Poly Multiply', subtitle: 'Multiply two polynomials', color: 'blue' },
     { key: 'polyfactor', name: 'Poly Factor', subtitle: 'Factor a quadratic expression', color: 'green' },
@@ -943,15 +943,15 @@ function VocabApp({ onBack }) {
   )
 }
 
-/* ── Spot It App ────────────────────────────────────── */
-const SPOT_SYMBOLS = [
+/* ── Twin Hunt App ────────────────────────────────────── */
+const TWIN_SYMBOLS = [
   '🍎','🍊','🍋','🍇','🍉','🍓','🍒','🥝','🍌','🍑',
   '🌟','🌙','☀️','⚡','🔥','💧','🌈','❄️','🍀','🌸',
   '🐶','🐱','🐸','🐵','🐔','🐙','🦋','🐝','🐢','🐬',
   '⚽','🏀','🎾','🎯','🎲','🎸','🎨','📚','✏️','🔔',
 ]
 
-function SpotApp({ onBack }) {
+function TwinHuntApp({ onBack }) {
   const [count, setCount] = useState('5')
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -997,7 +997,7 @@ function SpotApp({ onBack }) {
   const [rightPositions, setRightPositions] = useState([])
 
   const generateRound = (n) => {
-    const pool = [...SPOT_SYMBOLS].sort(() => Math.random() - 0.5)
+    const pool = [...TWIN_SYMBOLS].sort(() => Math.random() - 0.5)
     const common = pool[0]
     const leftOthers = pool.slice(1, n)
     const rightOthers = pool.slice(n, 2 * n - 1)
@@ -1069,7 +1069,7 @@ function SpotApp({ onBack }) {
   useAutoAdvance(revealed, advanceRef, isCorrect)
 
   return (
-    <QuizLayout title="Spot It" subtitle="Find the common object in both panels" onBack={onBack}>
+    <QuizLayout title="Twin Hunt" subtitle="Find the common object in both panels" onBack={onBack}>
       <div className="top-mini-row">
         {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
         <div className="score-pill">Score: {score}</div>
@@ -1096,12 +1096,12 @@ function SpotApp({ onBack }) {
       )}
       {started && !finished && <>
         <div className="progress-pill center">Round {round}/{totalRounds}</div>
-        <div className="spot-panels">
-          <div className="spot-panel">
-            <div className="spot-circle">
+        <div className="twin-panels">
+          <div className="twin-panel">
+            <div className="twin-circle">
               {leftItems.map((sym, i) => (
                 <button key={i} type="button"
-                  className={`spot-item ${revealed && sym === commonSymbol ? 'spot-match' : ''} ${revealed && sym !== commonSymbol ? 'spot-dim' : ''}`}
+                  className={`twin-item ${revealed && sym === commonSymbol ? 'twin-match' : ''} ${revealed && sym !== commonSymbol ? 'twin-dim' : ''}`}
                   style={leftPositions[i] ? { left: `${leftPositions[i].x}%`, top: `${leftPositions[i].y}%` } : {}}
                   onClick={() => handlePick(sym)} disabled={revealed}>
                   {sym}
@@ -1109,12 +1109,12 @@ function SpotApp({ onBack }) {
               ))}
             </div>
           </div>
-          <div className="spot-divider"></div>
-          <div className="spot-panel">
-            <div className="spot-circle">
+          <div className="twin-divider"></div>
+          <div className="twin-panel">
+            <div className="twin-circle">
               {rightItems.map((sym, i) => (
                 <button key={i} type="button"
-                  className={`spot-item ${revealed && sym === commonSymbol ? 'spot-match' : ''} ${revealed && sym !== commonSymbol ? 'spot-dim' : ''}`}
+                  className={`twin-item ${revealed && sym === commonSymbol ? 'twin-match' : ''} ${revealed && sym !== commonSymbol ? 'twin-dim' : ''}`}
                   style={rightPositions[i] ? { left: `${rightPositions[i].x}%`, top: `${rightPositions[i].y}%` } : {}}
                   onClick={() => handlePick(sym)} disabled={revealed}>
                   {sym}

@@ -162,10 +162,11 @@ h1 {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   text-align: center;
   padding: 20px 16px 16px;
+  gap: 10px;
   width: 180px;
   height: 160px;
   border: 1px solid var(--clr-border);
@@ -257,7 +258,6 @@ h1 {
   justify-content: center;
   text-align: center;
   border-radius: 8px;
-  margin-bottom: auto;
   flex-shrink: 0;
 }
 

@@ -412,6 +412,11 @@ function AdaptiveTablesApp({ studentName }) {
                 {feedback && (
                   <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>
                 )}
+                {revealed && (
+                  <div className="button-row">
+                    <button onClick={() => nextQuestion()}>Next</button>
+                  </div>
+                )}
               </>
             )}
           </div>

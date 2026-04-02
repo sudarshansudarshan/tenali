@@ -504,7 +504,7 @@ function App() {
 /* ── Home ────────────────────────────────────────────── */
 function Home({ onSelect }) {
   const allApps = [
-    { key: 'gk', name: 'GK', subtitle: 'Chitragupta quiz', color: 'purple' },
+    { key: 'gk', name: 'GK', subtitle: 'General Knowledge questions', color: 'purple' },
     { key: 'addition', name: 'Addition', subtitle: '20-question addition practice', color: 'blue' },
     { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
     { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (1–10)', color: 'green' },

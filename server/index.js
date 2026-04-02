@@ -286,7 +286,8 @@ function formatPoly(coeffs) {
   for (let i = coeffs.length - 1; i >= 0; i--) {
     const c = coeffs[i];
     if (c === 0 && coeffs.length > 1) continue;
-    const varPart = i === 0 ? '' : i === 1 ? 'x' : `x^${i}`;
+    const sup = (n) => String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('');
+    const varPart = i === 0 ? '' : i === 1 ? 'x' : `x${sup(i)}`;
     if (parts.length === 0) {
       parts.push(c === 1 && i > 0 ? varPart : c === -1 && i > 0 ? `-${varPart}` : `${c}${varPart}`);
     } else {

@@ -1347,7 +1347,8 @@ function PolyMulApp({ onBack }) {
   }
   useAutoAdvance(revealed, advanceRef, isCorrect)
 
-  const formatCoeffLabel = (i) => i === 0 ? 'constant' : i === 1 ? 'x' : `x^${i}`
+  const sup = (n) => String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('')
+  const formatCoeffLabel = (i) => i === 0 ? 'constant' : i === 1 ? 'x' : `x${sup(i)}`
 
   return (
     <QuizLayout title="Poly Multiply" subtitle="Multiply two polynomials and enter the coefficients" onBack={onBack}>

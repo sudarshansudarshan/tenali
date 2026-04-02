@@ -218,6 +218,16 @@ function AdaptiveTablesApp({ studentName }) {
 
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
+  // Enter key advances after wrong answers (auto-advance handles correct ones)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const handleKey = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); nextQuestion() }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [revealed, isCorrect, currentTable])
+
   // Evaluate the rolling window and decide adaptation
   const evaluate = (window) => {
     if (window.length < 3) return { level: 'learning', avgTime: Infinity, accuracy: 0 }

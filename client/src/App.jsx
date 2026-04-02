@@ -390,7 +390,7 @@ function AdditionApp({ onBack }) {
       {started && !finished && <>
         <div className="progress-pill center">Question {questionNumber}/{TOTAL_ADDITION}</div>
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
-        <input className="answer-input" type="text" inputMode="none" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="Type your answer" readOnly />
+        <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_ADDITION ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
@@ -521,7 +521,7 @@ function QuadraticApp({ onBack }) {
             </>
           )}
         </div>
-        <input className="answer-input" type="text" inputMode="none" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="y = ?" readOnly />
+        <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="y = ?" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_QUADRATIC ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
@@ -621,7 +621,7 @@ function SqrtApp({ onBack }) {
       {started && <>
         <div className="progress-pill center">Question {questionNumber}</div>
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
-        <input className="answer-input" type="text" inputMode="none" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="Type your answer" readOnly />
+        <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? 'Next Question' : 'Submit'}</button></div>

@@ -1,0 +1,14 @@
+{
+  "id": 14,
+  "question": "Showing aggressive power or force",
+  "options": [
+    "Calm and peaceful",
+    "Quiet and shy",
+    "Slow and gentle",
+    "Fierce"
+  ],
+  "answerOption": "D",
+  "answerText": "Fierce",
+  "difficulty": "easy",
+  "sourceFile": "0014.json"
+}

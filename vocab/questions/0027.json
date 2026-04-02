@@ -1,0 +1,14 @@
+{
+  "id": 27,
+  "question": "Calm, peaceful, and untroubled",
+  "options": [
+    "Nervous and shaky",
+    "Aggressive and wild",
+    "Chaotic and noisy",
+    "Serene"
+  ],
+  "answerOption": "D",
+  "answerText": "Serene",
+  "difficulty": "medium",
+  "sourceFile": "0027.json"
+}

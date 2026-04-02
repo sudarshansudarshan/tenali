@@ -1,0 +1,14 @@
+{
+  "id": 31,
+  "question": "Open to more than one interpretation",
+  "options": [
+    "Deeply offensive",
+    "Completely false",
+    "Ambiguous",
+    "Perfectly clear"
+  ],
+  "answerOption": "C",
+  "answerText": "Ambiguous",
+  "difficulty": "hard",
+  "sourceFile": "0031.json"
+}

@@ -1,0 +1,14 @@
+{
+  "id": 33,
+  "question": "A harsh mixture of unpleasant sounds",
+  "options": [
+    "A gentle whisper",
+    "A beautiful melody",
+    "Cacophony",
+    "A moment of silence"
+  ],
+  "answerOption": "C",
+  "answerText": "Cacophony",
+  "difficulty": "hard",
+  "sourceFile": "0033.json"
+}

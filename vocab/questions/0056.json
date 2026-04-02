@@ -1,0 +1,14 @@
+{
+  "id": 56,
+  "question": "A change of circumstances, typically unwelcome",
+  "options": [
+    "Vicissitude",
+    "Permanent comfort",
+    "Perfect stability",
+    "Endless monotony"
+  ],
+  "answerOption": "A",
+  "answerText": "Vicissitude",
+  "difficulty": "extra-hard",
+  "sourceFile": "0056.json"
+}

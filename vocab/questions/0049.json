@@ -1,0 +1,14 @@
+{
+  "id": 49,
+  "question": "Very generous or forgiving, especially to rivals",
+  "options": [
+    "Timid and fearful",
+    "Loud and boastful",
+    "Magnanimous",
+    "Petty and vengeful"
+  ],
+  "answerOption": "C",
+  "answerText": "Magnanimous",
+  "difficulty": "extra-hard",
+  "sourceFile": "0049.json"
+}

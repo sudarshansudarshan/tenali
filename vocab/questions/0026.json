@@ -1,0 +1,14 @@
+{
+  "id": 26,
+  "question": "Truthful and straightforward; frank",
+  "options": [
+    "Candid",
+    "Quiet and withdrawn",
+    "Secretive and sly",
+    "Angry and loud"
+  ],
+  "answerOption": "A",
+  "answerText": "Candid",
+  "difficulty": "medium",
+  "sourceFile": "0026.json"
+}

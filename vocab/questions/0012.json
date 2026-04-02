@@ -1,0 +1,14 @@
+{
+  "id": 12,
+  "question": "To impress greatly or blind with light",
+  "options": [
+    "To confuse mildly",
+    "To bore completely",
+    "To darken slowly",
+    "Dazzle"
+  ],
+  "answerOption": "D",
+  "answerText": "Dazzle",
+  "difficulty": "easy",
+  "sourceFile": "0012.json"
+}

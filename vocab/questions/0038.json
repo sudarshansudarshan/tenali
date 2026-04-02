@@ -1,0 +1,14 @@
+{
+  "id": 38,
+  "question": "A statement that contradicts itself but contains truth",
+  "options": [
+    "A common greeting",
+    "Paradox",
+    "A proven scientific fact",
+    "A simple math equation"
+  ],
+  "answerOption": "B",
+  "answerText": "Paradox",
+  "difficulty": "hard",
+  "sourceFile": "0038.json"
+}

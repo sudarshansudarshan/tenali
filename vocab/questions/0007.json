@@ -1,0 +1,14 @@
+{
+  "id": 7,
+  "question": "To disappear suddenly",
+  "options": [
+    "To become louder",
+    "To turn red",
+    "Vanish",
+    "To grow bigger"
+  ],
+  "answerOption": "C",
+  "answerText": "Vanish",
+  "difficulty": "easy",
+  "sourceFile": "0007.json"
+}

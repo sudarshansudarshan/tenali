@@ -14,6 +14,7 @@ export default defineConfig({
       '/quadratic-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       '/sqrt-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       '/multiply-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/vocab-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
     },
   },
 })

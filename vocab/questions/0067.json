@@ -1,0 +1,14 @@
+{
+  "id": 67,
+  "question": "A tendency to extreme talkativeness",
+  "options": [
+    "Fear of speaking",
+    "Complete silence",
+    "Loss of memory",
+    "Logorrhea"
+  ],
+  "answerOption": "D",
+  "answerText": "Logorrhea",
+  "difficulty": "hardest",
+  "sourceFile": "0067.json"
+}

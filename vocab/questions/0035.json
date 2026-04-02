@@ -1,0 +1,14 @@
+{
+  "id": 35,
+  "question": "Fond of company; sociable",
+  "options": [
+    "Gregarious",
+    "Feeling hostile",
+    "Acting mysterious",
+    "Preferring solitude"
+  ],
+  "answerOption": "A",
+  "answerText": "Gregarious",
+  "difficulty": "hard",
+  "sourceFile": "0035.json"
+}

@@ -1,0 +1,14 @@
+{
+  "id": 4,
+  "question": "Soft and kind in manner",
+  "options": [
+    "Loud and rough",
+    "Dark and scary",
+    "Fast and wild",
+    "Gentle"
+  ],
+  "answerOption": "D",
+  "answerText": "Gentle",
+  "difficulty": "easy",
+  "sourceFile": "0004.json"
+}

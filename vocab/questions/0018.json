@@ -1,0 +1,14 @@
+{
+  "id": 18,
+  "question": "Strange or unusual in an interesting way",
+  "options": [
+    "Peculiar",
+    "Completely normal",
+    "Extremely boring",
+    "Very predictable"
+  ],
+  "answerOption": "A",
+  "answerText": "Peculiar",
+  "difficulty": "medium",
+  "sourceFile": "0018.json"
+}

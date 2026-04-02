@@ -1,0 +1,14 @@
+{
+  "id": 34,
+  "question": "Lasting for a very short time",
+  "options": [
+    "Growing steadily",
+    "Existing forever",
+    "Ephemeral",
+    "Remaining unchanged"
+  ],
+  "answerOption": "C",
+  "answerText": "Ephemeral",
+  "difficulty": "hard",
+  "sourceFile": "0034.json"
+}

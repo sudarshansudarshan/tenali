@@ -1,0 +1,14 @@
+{
+  "id": 51,
+  "question": "Carried out with minimal effort or thought",
+  "options": [
+    "Perfunctory",
+    "Done with great passion",
+    "Planned meticulously",
+    "Executed brilliantly"
+  ],
+  "answerOption": "A",
+  "answerText": "Perfunctory",
+  "difficulty": "extra-hard",
+  "sourceFile": "0051.json"
+}

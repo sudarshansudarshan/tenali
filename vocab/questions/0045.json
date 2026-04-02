@@ -1,0 +1,14 @@
+{
+  "id": 45,
+  "question": "Reserved or uncommunicative in speech",
+  "options": [
+    "Openly emotional",
+    "Taciturn",
+    "Extremely talkative",
+    "Wildly enthusiastic"
+  ],
+  "answerOption": "B",
+  "answerText": "Taciturn",
+  "difficulty": "hard",
+  "sourceFile": "0045.json"
+}

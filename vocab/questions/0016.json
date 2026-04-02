@@ -1,0 +1,14 @@
+{
+  "id": 16,
+  "question": "Showing careful and persistent effort",
+  "options": [
+    "Loud and disruptive",
+    "Quick but messy",
+    "Careless and sloppy",
+    "Diligent"
+  ],
+  "answerOption": "D",
+  "answerText": "Diligent",
+  "difficulty": "medium",
+  "sourceFile": "0016.json"
+}

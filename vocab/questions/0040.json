@@ -1,0 +1,14 @@
+{
+  "id": 40,
+  "question": "Present, appearing, or found everywhere",
+  "options": [
+    "Entirely forgotten",
+    "Completely invisible",
+    "Extremely rare",
+    "Ubiquitous"
+  ],
+  "answerOption": "D",
+  "answerText": "Ubiquitous",
+  "difficulty": "hard",
+  "sourceFile": "0040.json"
+}

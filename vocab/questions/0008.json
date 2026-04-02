@@ -1,0 +1,14 @@
+{
+  "id": 8,
+  "question": "Easily broken or damaged",
+  "options": [
+    "Extremely heavy",
+    "Very strong",
+    "Fragile",
+    "Incredibly fast"
+  ],
+  "answerOption": "C",
+  "answerText": "Fragile",
+  "difficulty": "easy",
+  "sourceFile": "0008.json"
+}

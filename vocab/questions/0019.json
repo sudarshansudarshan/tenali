@@ -1,0 +1,14 @@
+{
+  "id": 19,
+  "question": "Unwilling and hesitant to do something",
+  "options": [
+    "Strong and capable",
+    "Calm and relaxed",
+    "Excited and eager",
+    "Reluctant"
+  ],
+  "answerOption": "D",
+  "answerText": "Reluctant",
+  "difficulty": "medium",
+  "sourceFile": "0019.json"
+}

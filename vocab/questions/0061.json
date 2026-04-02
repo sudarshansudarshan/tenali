@@ -1,0 +1,14 @@
+{
+  "id": 61,
+  "question": "Characterized by the use of long words",
+  "options": [
+    "Sesquipedalian",
+    "Speaking only numbers",
+    "Avoiding all language",
+    "Preferring short phrases"
+  ],
+  "answerOption": "A",
+  "answerText": "Sesquipedalian",
+  "difficulty": "hardest",
+  "sourceFile": "0061.json"
+}

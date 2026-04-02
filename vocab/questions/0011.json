@@ -1,0 +1,14 @@
+{
+  "id": 11,
+  "question": "To throw in various directions",
+  "options": [
+    "To hold tightly",
+    "To bury deep",
+    "To collect together",
+    "Scatter"
+  ],
+  "answerOption": "D",
+  "answerText": "Scatter",
+  "difficulty": "easy",
+  "sourceFile": "0011.json"
+}

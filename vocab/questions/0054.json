@@ -1,0 +1,14 @@
+{
+  "id": 54,
+  "question": "Kept secret because it would not be approved of",
+  "options": [
+    "Celebrated publicly",
+    "Announced to everyone",
+    "Done openly and proudly",
+    "Surreptitious"
+  ],
+  "answerOption": "D",
+  "answerText": "Surreptitious",
+  "difficulty": "extra-hard",
+  "sourceFile": "0054.json"
+}

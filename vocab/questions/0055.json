@@ -1,0 +1,14 @@
+{
+  "id": 55,
+  "question": "Eager to argue or fight; aggressively defiant",
+  "options": [
+    "Shy and withdrawn",
+    "Calm and composed",
+    "Truculent",
+    "Gentle and agreeable"
+  ],
+  "answerOption": "C",
+  "answerText": "Truculent",
+  "difficulty": "extra-hard",
+  "sourceFile": "0055.json"
+}

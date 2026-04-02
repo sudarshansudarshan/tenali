@@ -185,6 +185,50 @@ app.post('/sqrt-api/check', (req, res) => {
   });
 });
 
+/* ── Vocab Builder ─────────────────────────────────── */
+const vocabDir = path.join(__dirname, '..', 'vocab', 'questions');
+
+function loadVocab() {
+  try {
+    const files = fs.readdirSync(vocabDir).filter((f) => f.endsWith('.json'));
+    return files.map((f) => JSON.parse(fs.readFileSync(path.join(vocabDir, f), 'utf8')));
+  } catch (e) {
+    return [];
+  }
+}
+
+const vocabQuestions = loadVocab();
+
+app.get('/vocab-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const pool = vocabQuestions.filter((q) => q.difficulty === difficulty);
+  if (!pool.length) {
+    return res.status(404).json({ error: `No vocab questions for difficulty: ${difficulty}` });
+  }
+  const q = pool[Math.floor(Math.random() * pool.length)];
+  res.json({
+    id: q.id,
+    question: q.question,
+    options: q.options,
+    difficulty: q.difficulty,
+  });
+});
+
+app.post('/vocab-api/check', (req, res) => {
+  const { id, answerOption } = req.body || {};
+  const q = vocabQuestions.find((item) => Number(item.id) === Number(id));
+  if (!q) {
+    return res.status(404).json({ error: 'Question not found' });
+  }
+  const correct = String(answerOption || '').toUpperCase() === String(q.answerOption || '').toUpperCase();
+  res.json({
+    correct,
+    correctAnswer: q.answerOption,
+    correctAnswerText: q.answerText,
+    message: correct ? 'Correct!' : 'Incorrect',
+  });
+});
+
 /* ── Multiplication Tables ──────────────────────────── */
 app.get('/multiply-api/question', (req, res) => {
   const table = Math.max(1, Number(req.query.table || 1));

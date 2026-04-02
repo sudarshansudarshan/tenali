@@ -1,0 +1,14 @@
+{
+  "id": 75,
+  "question": "The lights you see when you rub your closed eyes",
+  "options": [
+    "The smell of ozone",
+    "The taste of metal",
+    "The sound of your pulse",
+    "Phosphenes"
+  ],
+  "answerOption": "D",
+  "answerText": "Phosphenes",
+  "difficulty": "hardest",
+  "sourceFile": "0075.json"
+}

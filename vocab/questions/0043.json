@@ -1,0 +1,14 @@
+{
+  "id": 43,
+  "question": "Having a harmful effect, especially gradually",
+  "options": [
+    "Pernicious",
+    "Completely harmless",
+    "Extremely beneficial",
+    "Mildly entertaining"
+  ],
+  "answerOption": "A",
+  "answerText": "Pernicious",
+  "difficulty": "hard",
+  "sourceFile": "0043.json"
+}

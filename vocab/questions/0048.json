@@ -1,0 +1,14 @@
+{
+  "id": 48,
+  "question": "Using very few words to express something",
+  "options": [
+    "Laconic",
+    "Extremely verbose",
+    "Emotionally dramatic",
+    "Technically complex"
+  ],
+  "answerOption": "A",
+  "answerText": "Laconic",
+  "difficulty": "extra-hard",
+  "sourceFile": "0048.json"
+}

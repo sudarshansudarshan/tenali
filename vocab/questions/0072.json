@@ -1,0 +1,14 @@
+{
+  "id": 72,
+  "question": "Inability to identify and describe one's emotions",
+  "options": [
+    "Talent for music",
+    "Fear of heights",
+    "Alexithymia",
+    "Love of animals"
+  ],
+  "answerOption": "C",
+  "answerText": "Alexithymia",
+  "difficulty": "hardest",
+  "sourceFile": "0072.json"
+}

@@ -1,0 +1,14 @@
+{
+  "id": 39,
+  "question": "Dealing with things in a practical way",
+  "options": [
+    "Pragmatic",
+    "Lost in daydreams",
+    "Focused on theories",
+    "Ignoring all evidence"
+  ],
+  "answerOption": "A",
+  "answerText": "Pragmatic",
+  "difficulty": "hard",
+  "sourceFile": "0039.json"
+}

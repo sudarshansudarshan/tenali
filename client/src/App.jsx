@@ -137,6 +137,8 @@ function App() {
           <QuadraticApp onBack={() => setMode(null)} />
         ) : mode === 'multiply' ? (
           <MultiplyApp onBack={() => setMode(null)} />
+        ) : mode === 'vocab' ? (
+          <VocabApp onBack={() => setMode(null)} />
         ) : mode === 'spot' ? (
           <SpotApp onBack={() => setMode(null)} />
         ) : (
@@ -154,6 +156,7 @@ function Home({ onSelect }) {
     { key: 'addition', name: 'Addition', subtitle: '20-question addition practice', color: 'blue' },
     { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
     { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (1–10)', color: 'green' },
+    { key: 'vocab', name: 'Vocab Builder', subtitle: 'Match words to definitions', color: 'blue' },
     { key: 'spot', name: 'Spot It', subtitle: 'Find the common object', color: 'purple' },
     { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
   ]
@@ -763,6 +766,157 @@ function MultiplyApp({ onBack }) {
   )
 }
 
+/* ── Vocab Builder App ──────────────────────────────── */
+function VocabApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [selected, setSelected] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [score, setScore] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    setSelected('')
+    setFeedback('')
+    setIsCorrect(null)
+    setRevealed(false)
+    const res = await fetch(`${API}/vocab-api/question?difficulty=${difficulty}`)
+    const data = await res.json()
+    setQuestion(data)
+    setLoading(false)
+    timer.start()
+  }
+
+  const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
+    setTotalQ(count)
+    setStarted(true)
+    setFinished(false)
+    setScore(0)
+    setQuestionNumber(1)
+    setResults([])
+    await loadQuestion()
+  }
+
+  const handleSubmitOrNext = async () => {
+    if (!question) return
+
+    if (!revealed) {
+      if (!selected) return
+      const timeTaken = timer.stop()
+      const res = await fetch(`${API}/vocab-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: question.id, answerOption: selected }),
+      })
+      const data = await res.json()
+      setIsCorrect(data.correct)
+      if (data.correct) setScore((s) => s + 1)
+      setFeedback(data.correct
+        ? `Correct! The word is "${data.correctAnswerText}".`
+        : `Incorrect. The correct word is "${data.correctAnswerText}".`)
+      setResults((prev) => [...prev, {
+        question: question.question.length > 40 ? question.question.slice(0, 40) + '…' : question.question,
+        userAnswer: question.options[['A','B','C','D'].indexOf(selected)],
+        correctAnswer: data.correctAnswerText,
+        correct: data.correct,
+        time: timeTaken,
+      }])
+      setRevealed(true)
+      return
+    }
+
+    if (questionNumber >= totalQ) {
+      setFinished(true)
+      setQuestion(null)
+      timer.reset()
+      return
+    }
+
+    setQuestionNumber((n) => n + 1)
+    await loadQuestion()
+  }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = () => handleSubmitOrNext()
+  useAutoAdvance(revealed, advanceRef)
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== 'Enter' || !started || finished) return
+      event.preventDefault()
+      handleSubmitOrNext()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [started, finished, question, selected, revealed, loading, questionNumber, totalQ])
+
+  const difficultyLabels = { easy: 'Easy', medium: 'Medium', hard: 'Hard', 'extra-hard': 'Extra Hard', hardest: 'Hardest' }
+
+  return (
+    <QuizLayout title="Vocab Builder" subtitle="Pick the word that matches the definition" onBack={onBack}>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
+      <div className="radio-group">
+        {Object.entries(difficultyLabels).map(([key, label]) => (
+          <label key={key} className={`radio-pill ${difficulty === key ? 'active' : ''}`}>
+            <input type="radio" checked={difficulty === key} onChange={() => setDifficulty(key)} disabled={started && !finished} />
+            {label}
+          </label>
+        ))}
+      </div>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Test your vocabulary across 5 difficulty levels.</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} placeholder={String(DEFAULT_TOTAL)} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div className="question-box vocab-definition">{loading || !question ? 'Loading question…' : `"${question.question}"`}</div>
+        {question && (
+          <div className="options-list">
+            {question.options.map((option, idx) => {
+              const letter = ['A', 'B', 'C', 'D'][idx]
+              return (
+                <label key={letter} className={`option-card ${selected === letter ? 'selected' : ''} ${revealed && letter === selected && !isCorrect ? 'option-wrong' : ''} ${revealed && question && letter === ['A','B','C','D'][question.options.indexOf(results[results.length-1]?.correctAnswer)] ? 'option-correct' : ''}`}>
+                  <input type="radio" name="vocab" checked={selected === letter} onChange={() => !revealed && setSelected(letter)} disabled={revealed} />
+                  <span><strong>{letter})</strong> {option}</span>
+                </label>
+              )
+            })}
+          </div>
+        )}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          <button onClick={handleSubmitOrNext} disabled={loading || (!revealed && !selected)}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button>
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
 /* ── Spot It App ────────────────────────────────────── */
 const SPOT_SYMBOLS = [
   '🍎','🍊','🍋','🍇','🍉','🍓','🍒','🥝','🍌','🍑',
@@ -788,6 +942,34 @@ function SpotApp({ onBack }) {
   const [results, setResults] = useState([])
   const timer = useTimer()
 
+  const scatterPositions = (n) => {
+    const positions = []
+    // Place first item near center with small jitter
+    positions.push({
+      x: 50 + (Math.random() - 0.5) * 12,
+      y: 50 + (Math.random() - 0.5) * 12,
+    })
+    // Distribute remaining items in a ring with random jitter
+    const remaining = n - 1
+    const baseAngleOffset = Math.random() * Math.PI * 2
+    for (let i = 0; i < remaining; i++) {
+      const angle = baseAngleOffset + (i / remaining) * Math.PI * 2 + (Math.random() - 0.5) * 0.4
+      const radius = 28 + Math.random() * 10  // 28-38% from center
+      const x = 50 + Math.cos(angle) * radius
+      const y = 50 + Math.sin(angle) * radius
+      positions.push({ x: Math.max(10, Math.min(90, x)), y: Math.max(10, Math.min(90, y)) })
+    }
+    // Shuffle positions so center item isn't always first
+    for (let i = positions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [positions[i], positions[j]] = [positions[j], positions[i]]
+    }
+    return positions
+  }
+
+  const [leftPositions, setLeftPositions] = useState([])
+  const [rightPositions, setRightPositions] = useState([])
+
   const generateRound = (n) => {
     const pool = [...SPOT_SYMBOLS].sort(() => Math.random() - 0.5)
     const common = pool[0]
@@ -803,8 +985,12 @@ function SpotApp({ onBack }) {
       return a
     }
 
-    setLeftItems(shuffle([common, ...leftOthers]))
-    setRightItems(shuffle([common, ...rightOthers]))
+    const left = shuffle([common, ...leftOthers])
+    const right = shuffle([common, ...rightOthers])
+    setLeftItems(left)
+    setRightItems(right)
+    setLeftPositions(scatterPositions(left.length))
+    setRightPositions(scatterPositions(right.length))
     setCommonSymbol(common)
     setFeedback('')
     setIsCorrect(null)
@@ -886,21 +1072,29 @@ function SpotApp({ onBack }) {
         <div className="progress-pill center">Round {round}/{totalRounds}</div>
         <div className="spot-panels">
           <div className="spot-panel">
-            {leftItems.map((sym, i) => (
-              <button key={i} type="button" className={`spot-item ${revealed && sym === commonSymbol ? 'spot-match' : ''} ${revealed && sym !== commonSymbol ? 'spot-dim' : ''}`}
-                onClick={() => handlePick(sym)} disabled={revealed}>
-                {sym}
-              </button>
-            ))}
+            <div className="spot-circle">
+              {leftItems.map((sym, i) => (
+                <button key={i} type="button"
+                  className={`spot-item ${revealed && sym === commonSymbol ? 'spot-match' : ''} ${revealed && sym !== commonSymbol ? 'spot-dim' : ''}`}
+                  style={leftPositions[i] ? { left: `${leftPositions[i].x}%`, top: `${leftPositions[i].y}%` } : {}}
+                  onClick={() => handlePick(sym)} disabled={revealed}>
+                  {sym}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="spot-divider"></div>
           <div className="spot-panel">
-            {rightItems.map((sym, i) => (
-              <button key={i} type="button" className={`spot-item ${revealed && sym === commonSymbol ? 'spot-match' : ''} ${revealed && sym !== commonSymbol ? 'spot-dim' : ''}`}
-                onClick={() => handlePick(sym)} disabled={revealed}>
-                {sym}
-              </button>
-            ))}
+            <div className="spot-circle">
+              {rightItems.map((sym, i) => (
+                <button key={i} type="button"
+                  className={`spot-item ${revealed && sym === commonSymbol ? 'spot-match' : ''} ${revealed && sym !== commonSymbol ? 'spot-dim' : ''}`}
+                  style={rightPositions[i] ? { left: `${rightPositions[i].x}%`, top: `${rightPositions[i].y}%` } : {}}
+                  onClick={() => handlePick(sym)} disabled={revealed}>
+                  {sym}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}

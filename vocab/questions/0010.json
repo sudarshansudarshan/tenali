@@ -1,0 +1,14 @@
+{
+  "id": 10,
+  "question": "Genuine and honest in feelings",
+  "options": [
+    "Sincere",
+    "Fake and pretending",
+    "Loud and angry",
+    "Slow and lazy"
+  ],
+  "answerOption": "A",
+  "answerText": "Sincere",
+  "difficulty": "easy",
+  "sourceFile": "0010.json"
+}

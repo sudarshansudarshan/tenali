@@ -1,0 +1,14 @@
+{
+  "id": 32,
+  "question": "Well-meaning and kindly in nature",
+  "options": [
+    "Benevolent",
+    "Cruel and heartless",
+    "Selfish and greedy",
+    "Angry and bitter"
+  ],
+  "answerOption": "A",
+  "answerText": "Benevolent",
+  "difficulty": "hard",
+  "sourceFile": "0032.json"
+}

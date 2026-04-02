@@ -1,0 +1,14 @@
+{
+  "id": 69,
+  "question": "A feeling of melancholy about the state of the world",
+  "options": [
+    "Weltschmerz",
+    "Joy about a birthday",
+    "Excitement for travel",
+    "Hunger before dinner"
+  ],
+  "answerOption": "A",
+  "answerText": "Weltschmerz",
+  "difficulty": "hardest",
+  "sourceFile": "0069.json"
+}

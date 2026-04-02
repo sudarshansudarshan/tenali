@@ -1,0 +1,14 @@
+{
+  "id": 50,
+  "question": "Excessively obedient or attentive to gain favor",
+  "options": [
+    "Obsequious",
+    "Quietly indifferent",
+    "Boldly independent",
+    "Carelessly rebellious"
+  ],
+  "answerOption": "A",
+  "answerText": "Obsequious",
+  "difficulty": "extra-hard",
+  "sourceFile": "0050.json"
+}

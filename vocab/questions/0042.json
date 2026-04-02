@@ -1,0 +1,14 @@
+{
+  "id": 42,
+  "question": "Inclined to impose beliefs as undeniable truths",
+  "options": [
+    "Afraid to speak up",
+    "Open to all opinions",
+    "Dogmatic",
+    "Unsure of everything"
+  ],
+  "answerOption": "C",
+  "answerText": "Dogmatic",
+  "difficulty": "hard",
+  "sourceFile": "0042.json"
+}

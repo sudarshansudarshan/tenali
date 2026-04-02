@@ -1,0 +1,14 @@
+{
+  "id": 21,
+  "question": "The feeling that someone is worthless",
+  "options": [
+    "Mild curiosity",
+    "Great excitement",
+    "Deep admiration",
+    "Contempt"
+  ],
+  "answerOption": "D",
+  "answerText": "Contempt",
+  "difficulty": "medium",
+  "sourceFile": "0021.json"
+}

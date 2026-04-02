@@ -1,0 +1,14 @@
+{
+  "id": 3,
+  "question": "Extremely large in size",
+  "options": [
+    "Slightly warm",
+    "Quite ordinary",
+    "Very tiny",
+    "Enormous"
+  ],
+  "answerOption": "D",
+  "answerText": "Enormous",
+  "difficulty": "easy",
+  "sourceFile": "0003.json"
+}

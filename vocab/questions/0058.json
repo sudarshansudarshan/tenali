@@ -1,0 +1,14 @@
+{
+  "id": 58,
+  "question": "Translucently clear in style or meaning",
+  "options": [
+    "Pellucid",
+    "Dangerously misleading",
+    "Hopelessly muddled",
+    "Deliberately obscure"
+  ],
+  "answerOption": "A",
+  "answerText": "Pellucid",
+  "difficulty": "extra-hard",
+  "sourceFile": "0058.json"
+}

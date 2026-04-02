@@ -1,0 +1,14 @@
+{
+  "id": 68,
+  "question": "The pleasant smell of earth after rain",
+  "options": [
+    "The sound of thunder",
+    "The taste of salt",
+    "Petrichor",
+    "The color of sunset"
+  ],
+  "answerOption": "C",
+  "answerText": "Petrichor",
+  "difficulty": "hardest",
+  "sourceFile": "0068.json"
+}

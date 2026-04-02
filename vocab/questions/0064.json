@@ -1,0 +1,14 @@
+{
+  "id": 64,
+  "question": "Showing a lack of courage; timid",
+  "options": [
+    "Wildly adventurous",
+    "Exceptionally brave",
+    "Fiercely competitive",
+    "Pusillanimous"
+  ],
+  "answerOption": "D",
+  "answerText": "Pusillanimous",
+  "difficulty": "hardest",
+  "sourceFile": "0064.json"
+}

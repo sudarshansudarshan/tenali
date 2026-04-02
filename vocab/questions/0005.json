@@ -1,0 +1,14 @@
+{
+  "id": 5,
+  "question": "To pause before doing something",
+  "options": [
+    "To sleep deeply",
+    "To shout loudly",
+    "To run quickly",
+    "Hesitate"
+  ],
+  "answerOption": "D",
+  "answerText": "Hesitate",
+  "difficulty": "easy",
+  "sourceFile": "0005.json"
+}

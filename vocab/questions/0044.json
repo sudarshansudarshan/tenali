@@ -1,0 +1,14 @@
+{
+  "id": 44,
+  "question": "A person who flatters someone important for gain",
+  "options": [
+    "An honest critic",
+    "Sycophant",
+    "A skilled teacher",
+    "A brave leader"
+  ],
+  "answerOption": "B",
+  "answerText": "Sycophant",
+  "difficulty": "hard",
+  "sourceFile": "0044.json"
+}

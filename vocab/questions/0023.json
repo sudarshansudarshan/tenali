@@ -1,0 +1,14 @@
+{
+  "id": 23,
+  "question": "Producing strong, clear images in the mind",
+  "options": [
+    "Silent and still",
+    "Heavy and slow",
+    "Dull and forgettable",
+    "Vivid"
+  ],
+  "answerOption": "D",
+  "answerText": "Vivid",
+  "difficulty": "medium",
+  "sourceFile": "0023.json"
+}

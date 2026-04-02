@@ -1,0 +1,14 @@
+{
+  "id": 20,
+  "question": "Existing in large quantities; plentiful",
+  "options": [
+    "Slightly broken",
+    "Extremely scarce",
+    "Mildly interesting",
+    "Abundant"
+  ],
+  "answerOption": "D",
+  "answerText": "Abundant",
+  "difficulty": "medium",
+  "sourceFile": "0020.json"
+}

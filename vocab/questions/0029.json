@@ -1,0 +1,14 @@
+{
+  "id": 29,
+  "question": "Able to recover quickly from difficulties",
+  "options": [
+    "Resilient",
+    "Easily defeated",
+    "Constantly confused",
+    "Permanently broken"
+  ],
+  "answerOption": "A",
+  "answerText": "Resilient",
+  "difficulty": "medium",
+  "sourceFile": "0029.json"
+}

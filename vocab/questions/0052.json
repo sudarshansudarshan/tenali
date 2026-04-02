@@ -1,0 +1,14 @@
+{
+  "id": 52,
+  "question": "Extremely idealistic; unrealistic and impractical",
+  "options": [
+    "Scientifically proven",
+    "Boringly predictable",
+    "Ruthlessly practical",
+    "Quixotic"
+  ],
+  "answerOption": "D",
+  "answerText": "Quixotic",
+  "difficulty": "extra-hard",
+  "sourceFile": "0052.json"
+}

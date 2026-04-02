@@ -1,0 +1,14 @@
+{
+  "id": 9,
+  "question": "A great victory or achievement",
+  "options": [
+    "A quiet moment",
+    "Triumph",
+    "A terrible loss",
+    "A long journey"
+  ],
+  "answerOption": "B",
+  "answerText": "Triumph",
+  "difficulty": "easy",
+  "sourceFile": "0009.json"
+}

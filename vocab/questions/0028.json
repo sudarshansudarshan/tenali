@@ -1,0 +1,14 @@
+{
+  "id": 28,
+  "question": "A person new to a field or activity",
+  "options": [
+    "A strict teacher",
+    "A retired veteran",
+    "A seasoned expert",
+    "Novice"
+  ],
+  "answerOption": "D",
+  "answerText": "Novice",
+  "difficulty": "medium",
+  "sourceFile": "0028.json"
+}

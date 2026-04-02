@@ -1,0 +1,14 @@
+{
+  "id": 62,
+  "question": "The act of throwing someone out of a window",
+  "options": [
+    "Defenestration",
+    "Writing a letter",
+    "Planting a garden",
+    "Building a new house"
+  ],
+  "answerOption": "A",
+  "answerText": "Defenestration",
+  "difficulty": "hardest",
+  "sourceFile": "0062.json"
+}

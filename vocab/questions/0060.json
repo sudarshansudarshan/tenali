@@ -1,0 +1,14 @@
+{
+  "id": 60,
+  "question": "Expressing a strong opinion, especially controversial",
+  "options": [
+    "Tendentious",
+    "Scientifically precise",
+    "Perfectly neutral",
+    "Utterly meaningless"
+  ],
+  "answerOption": "A",
+  "answerText": "Tendentious",
+  "difficulty": "extra-hard",
+  "sourceFile": "0060.json"
+}

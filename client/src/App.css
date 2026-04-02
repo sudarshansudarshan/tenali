@@ -375,6 +375,11 @@ button:disabled {
   margin-bottom: 8px;
 }
 
+.vocab-definition {
+  font-style: italic;
+  color: var(--clr-text);
+}
+
 /* ── Answer Input ────────────────────────────────────── */
 .answer-input {
   width: 100%;
@@ -606,50 +611,64 @@ button:disabled {
   gap: 0;
   align-items: stretch;
   margin: 16px 0 20px;
-  min-height: 200px;
 }
 
 .spot-panel {
   flex: 1;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 20px 16px;
+  position: relative;
+  min-height: 280px;
+}
+
+.spot-panel::before {
+  content: '';
+  display: block;
+  padding-top: 100%;
+}
+
+.spot-circle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--clr-border);
+  background: rgba(255, 255, 255, 0.5);
+  overflow: visible;
 }
 
 .spot-divider {
   width: 1px;
   background: var(--clr-border);
   flex-shrink: 0;
+  margin: 20px 0;
 }
 
 .spot-item {
+  position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
-  font-size: 1.6rem;
+  width: 44px;
+  height: 44px;
+  font-size: 1.5rem;
   border: 1.5px solid var(--clr-border);
-  border-radius: var(--radius-sm);
+  border-radius: 50%;
   background: #fff;
   cursor: pointer;
   transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
   padding: 0;
   line-height: 1;
-  box-shadow: none;
+  box-shadow: 0 1px 4px rgba(60, 40, 20, 0.08);
+  transform: translate(-50%, -50%);
 }
 
 .spot-item:hover:not(:disabled) {
-  transform: scale(1.12);
+  transform: translate(-50%, -50%) scale(1.2);
   border-color: var(--clr-accent);
-  box-shadow: 0 2px 10px rgba(224, 122, 58, 0.18);
+  box-shadow: 0 2px 12px rgba(224, 122, 58, 0.22);
+  z-index: 10;
 }
 
 .spot-item:active:not(:disabled) {
-  transform: scale(0.95);
+  transform: translate(-50%, -50%) scale(0.95);
 }
 
 .spot-item:disabled {
@@ -659,12 +678,13 @@ button:disabled {
 .spot-item.spot-match {
   border-color: var(--clr-correct);
   background: var(--clr-correct-bg);
-  transform: scale(1.15);
-  box-shadow: 0 0 0 3px rgba(58, 138, 92, 0.2);
+  transform: translate(-50%, -50%) scale(1.25);
+  box-shadow: 0 0 0 3px rgba(58, 138, 92, 0.25);
+  z-index: 10;
 }
 
 .spot-item.spot-dim {
-  opacity: 0.3;
+  opacity: 0.25;
 }
 
 /* ── Numeric Keypad ─────────────────────────────────── */

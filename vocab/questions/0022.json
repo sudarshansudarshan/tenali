@@ -1,0 +1,14 @@
+{
+  "id": 22,
+  "question": "Showing great attention to detail",
+  "options": [
+    "Meticulous",
+    "Extremely careless",
+    "Overly aggressive",
+    "Stubbornly silent"
+  ],
+  "answerOption": "A",
+  "answerText": "Meticulous",
+  "difficulty": "medium",
+  "sourceFile": "0022.json"
+}

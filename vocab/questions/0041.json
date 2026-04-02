@@ -1,0 +1,14 @@
+{
+  "id": 41,
+  "question": "Something that deviates from what is normal",
+  "options": [
+    "A standard practice",
+    "Anomaly",
+    "A common occurrence",
+    "A daily routine"
+  ],
+  "answerOption": "B",
+  "answerText": "Anomaly",
+  "difficulty": "hard",
+  "sourceFile": "0041.json"
+}

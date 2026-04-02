@@ -1,0 +1,14 @@
+{
+  "id": 53,
+  "question": "Stubbornly uncooperative toward authority",
+  "options": [
+    "Recalcitrant",
+    "Eagerly obedient",
+    "Quietly accepting",
+    "Happily submissive"
+  ],
+  "answerOption": "A",
+  "answerText": "Recalcitrant",
+  "difficulty": "extra-hard",
+  "sourceFile": "0053.json"
+}

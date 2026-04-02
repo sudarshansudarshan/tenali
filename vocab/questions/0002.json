@@ -1,0 +1,14 @@
+{
+  "id": 2,
+  "question": "Eager to learn or know something",
+  "options": [
+    "Curious",
+    "Very sleepy",
+    "Completely lost",
+    "Feeling angry"
+  ],
+  "answerOption": "A",
+  "answerText": "Curious",
+  "difficulty": "easy",
+  "sourceFile": "0002.json"
+}

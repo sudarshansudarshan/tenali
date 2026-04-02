@@ -1,0 +1,14 @@
+{
+  "id": 24,
+  "question": "Giving the impression that something bad will happen",
+  "options": [
+    "Peaceful and calm",
+    "Sweet and gentle",
+    "Cheerful and bright",
+    "Ominous"
+  ],
+  "answerOption": "D",
+  "answerText": "Ominous",
+  "difficulty": "medium",
+  "sourceFile": "0024.json"
+}

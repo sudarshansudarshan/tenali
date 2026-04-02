@@ -1,0 +1,14 @@
+{
+  "id": 30,
+  "question": "Acting with care and thought for the future",
+  "options": [
+    "Loud and boastful",
+    "Reckless and wild",
+    "Prudent",
+    "Lazy and indifferent"
+  ],
+  "answerOption": "C",
+  "answerText": "Prudent",
+  "difficulty": "medium",
+  "sourceFile": "0030.json"
+}

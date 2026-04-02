@@ -382,10 +382,8 @@ app.get('/primefactor-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const range = primeRange(difficulty);
   let n = randomInt(range.min, range.max);
-  // Avoid primes for easy mode — ensure at least 2 factors
-  if (difficulty === 'easy') {
-    while (primeFactors(n).length < 2) n = randomInt(range.min, range.max);
-  }
+  // Never give a prime number — ensure at least 2 prime factors
+  while (primeFactors(n).length < 2) n = randomInt(range.min, range.max);
   res.json({
     id: `prime-${Date.now()}-${Math.random()}`,
     number: n,

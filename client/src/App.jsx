@@ -137,6 +137,8 @@ function App() {
           <QuadraticApp onBack={() => setMode(null)} />
         ) : mode === 'multiply' ? (
           <MultiplyApp onBack={() => setMode(null)} />
+        ) : mode === 'spot' ? (
+          <SpotApp onBack={() => setMode(null)} />
         ) : (
           <SqrtApp onBack={() => setMode(null)} />
         )}
@@ -152,6 +154,7 @@ function Home({ onSelect }) {
     { key: 'addition', name: 'Addition', subtitle: '20-question addition practice', color: 'blue' },
     { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
     { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (1–10)', color: 'green' },
+    { key: 'spot', name: 'Spot It', subtitle: 'Find the common object', color: 'purple' },
     { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
   ]
 
@@ -756,6 +759,159 @@ function MultiplyApp({ onBack }) {
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false); setSelectedTables([]); setQuestionPool([]); setNumQuestions('') }}>Play Again</button>
       </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Spot It App ────────────────────────────────────── */
+const SPOT_SYMBOLS = [
+  '🍎','🍊','🍋','🍇','🍉','🍓','🍒','🥝','🍌','🍑',
+  '🌟','🌙','☀️','⚡','🔥','💧','🌈','❄️','🍀','🌸',
+  '🐶','🐱','🐸','🐵','🐔','🐙','🦋','🐝','🐢','🐬',
+  '⚽','🏀','🎾','🎯','🎲','🎸','🎨','📚','✏️','🔔',
+]
+
+function SpotApp({ onBack }) {
+  const [count, setCount] = useState('5')
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [round, setRound] = useState(0)
+  const [totalRounds, setTotalRounds] = useState(10)
+  const [numRoundsInput, setNumRoundsInput] = useState('10')
+  const [score, setScore] = useState(0)
+  const [leftItems, setLeftItems] = useState([])
+  const [rightItems, setRightItems] = useState([])
+  const [commonSymbol, setCommonSymbol] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+
+  const generateRound = (n) => {
+    const pool = [...SPOT_SYMBOLS].sort(() => Math.random() - 0.5)
+    const common = pool[0]
+    const leftOthers = pool.slice(1, n)
+    const rightOthers = pool.slice(n, 2 * n - 1)
+
+    const shuffle = (arr) => {
+      const a = [...arr]
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]]
+      }
+      return a
+    }
+
+    setLeftItems(shuffle([common, ...leftOthers]))
+    setRightItems(shuffle([common, ...rightOthers]))
+    setCommonSymbol(common)
+    setFeedback('')
+    setIsCorrect(null)
+    setRevealed(false)
+    timer.start()
+  }
+
+  const startGame = () => {
+    const n = Math.max(3, Math.min(Number(count) || 5, 15))
+    setCount(String(n))
+    const rounds = numRoundsInput !== '' && Number(numRoundsInput) > 0 ? Number(numRoundsInput) : 10
+    setTotalRounds(rounds)
+    setStarted(true)
+    setFinished(false)
+    setScore(0)
+    setRound(1)
+    setResults([])
+    generateRound(n)
+  }
+
+  const handlePick = (symbol) => {
+    if (revealed) return
+    const timeTaken = timer.stop()
+    const correct = symbol === commonSymbol
+    if (correct) setScore((s) => s + 1)
+    setIsCorrect(correct)
+    setFeedback(correct
+      ? `Correct! ${commonSymbol} was the match.`
+      : `Wrong — you picked ${symbol}. The match was ${commonSymbol}.`)
+    setResults((prev) => [...prev, {
+      question: `Round ${round}`,
+      userAnswer: symbol,
+      correctAnswer: commonSymbol,
+      correct,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = () => {
+    if (round >= totalRounds) {
+      setFinished(true)
+      timer.reset()
+      return
+    }
+    setRound((r) => r + 1)
+    generateRound(Number(count))
+  }
+  useAutoAdvance(revealed, advanceRef)
+
+  return (
+    <QuizLayout title="Spot It" subtitle="Find the common object in both panels" onBack={onBack}>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
+      {!started && !finished && (
+        <div className="welcome-box">
+          <p className="welcome-text">Two panels, one match. Tap the common object!</p>
+          <div className="question-count-row">
+            <label className="question-count-label">Objects per panel</label>
+            <input className="answer-input question-count-input" type="text" value={count}
+              onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setCount(v) }}
+              placeholder="5" />
+          </div>
+          <div className="question-count-row">
+            <label className="question-count-label">How many rounds?</label>
+            <input className="answer-input question-count-input" type="text" value={numRoundsInput}
+              onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumRoundsInput(v) }}
+              placeholder="10" />
+          </div>
+          <div className="button-row">
+            <button onClick={startGame}>Start Game</button>
+          </div>
+        </div>
+      )}
+      {started && !finished && <>
+        <div className="progress-pill center">Round {round}/{totalRounds}</div>
+        <div className="spot-panels">
+          <div className="spot-panel">
+            {leftItems.map((sym, i) => (
+              <button key={i} type="button" className={`spot-item ${revealed && sym === commonSymbol ? 'spot-match' : ''} ${revealed && sym !== commonSymbol ? 'spot-dim' : ''}`}
+                onClick={() => handlePick(sym)} disabled={revealed}>
+                {sym}
+              </button>
+            ))}
+          </div>
+          <div className="spot-divider"></div>
+          <div className="spot-panel">
+            {rightItems.map((sym, i) => (
+              <button key={i} type="button" className={`spot-item ${revealed && sym === commonSymbol ? 'spot-match' : ''} ${revealed && sym !== commonSymbol ? 'spot-dim' : ''}`}
+                onClick={() => handlePick(sym)} disabled={revealed}>
+                {sym}
+              </button>
+            ))}
+          </div>
+        </div>
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Game complete!</p>
+        <p className="final-score">Score: {score}/{totalRounds}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+      {started && !finished && results.length > 0 && <ResultsTable results={results} />}
     </QuizLayout>
   )
 }

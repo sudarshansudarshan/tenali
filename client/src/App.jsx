@@ -4,6 +4,16 @@ import './App.css'
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
 const DEFAULT_TOTAL = 20
+const AUTO_ADVANCE_MS = 1500
+
+/* ── Auto-advance Hook ──────────────────────────────── */
+function useAutoAdvance(revealed, advanceFnRef) {
+  useEffect(() => {
+    if (!revealed) return
+    const id = setTimeout(() => advanceFnRef.current(), AUTO_ADVANCE_MS)
+    return () => clearTimeout(id)
+  }, [revealed])
+}
 
 /* ── Timer Hook ──────────────────────────────────────── */
 function useTimer() {
@@ -249,6 +259,10 @@ function GKApp({ onBack }) {
     await loadQuestion()
   }
 
+  const advanceRef = useRef(() => {})
+  advanceRef.current = () => loadQuestion()
+  useAutoAdvance(revealed, advanceRef)
+
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.key !== 'Enter') return
@@ -378,8 +392,12 @@ function AdditionApp({ onBack }) {
     await fetchQuestion(digits)
   }
 
+  const advanceRef = useRef(() => {})
+  advanceRef.current = () => handleSubmitOrNext()
+  useAutoAdvance(revealed, advanceRef)
+
   return (
-    <QuizLayout title="Addition" subtitle="Choose a level and solve 20 addition questions" onBack={onBack}>
+    <QuizLayout title="Addition" subtitle="Choose a level and solve addition questions" onBack={onBack}>
       <div className="top-mini-row">
         {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
         <div className="score-pill">Score: {score}</div>
@@ -512,6 +530,10 @@ function QuadraticApp({ onBack }) {
     setQuestionNumber((n) => n + 1)
     await fetchQuestion()
   }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = () => handleSubmitOrNext()
+  useAutoAdvance(revealed, advanceRef)
 
   return (
     <QuizLayout title="Quadratic" subtitle="Given x, find y = ax² + bx + c" onBack={onBack}>
@@ -677,6 +699,10 @@ function MultiplyApp({ onBack }) {
     nextFromPool(questionPool, nextIdx)
   }
 
+  const advanceRef = useRef(() => {})
+  advanceRef.current = () => handleSubmitOrNext()
+  useAutoAdvance(revealed, advanceRef)
+
   const tablesLabel = selectedTables.sort((a, b) => a - b).join(', ')
 
   return (
@@ -823,6 +849,10 @@ function SqrtApp({ onBack }) {
     setQuestionNumber(next)
     await fetchQuestion(next)
   }
+
+  const advanceRef = useRef(() => {})
+  advanceRef.current = () => handleSubmitOrNext()
+  useAutoAdvance(revealed, advanceRef)
 
   return (
     <QuizLayout title="Square Root" subtitle="Floor or ceiling is accepted" onBack={onBack}>

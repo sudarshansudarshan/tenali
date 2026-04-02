@@ -588,34 +588,34 @@ function GKApp({ onBack }) {
     loadQuestion()
   }, [])
 
+  const submitGK = async (option) => {
+    if (!question || revealed) return
+    const timeTaken = timer.stop()
+    setSelected(option)
+    const res = await fetch(`${API}/gk-api/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: question.id, answerOption: option }),
+    })
+    const data = await res.json()
+    setIsCorrect(data.correct)
+    if (data.correct) setScore((s) => s + 1)
+    setFeedback(data.correct
+      ? `Correct! The answer is ${data.correctAnswer}) ${data.correctAnswerText}`
+      : `Incorrect. The correct answer is ${data.correctAnswer}) ${data.correctAnswerText}`)
+    setResults((prev) => [...prev, {
+      question: question.question.length > 50 ? question.question.slice(0, 50) + '…' : question.question,
+      userAnswer: option,
+      correctAnswer: `${data.correctAnswer}) ${data.correctAnswerText}`,
+      correct: data.correct,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
   const handleSubmitOrNext = async () => {
     if (!question) return
-
-    if (!revealed) {
-      if (!selected) return
-      const timeTaken = timer.stop()
-      const res = await fetch(`${API}/gk-api/check`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: question.id, answerOption: selected }),
-      })
-      const data = await res.json()
-      setIsCorrect(data.correct)
-      if (data.correct) setScore((s) => s + 1)
-      setFeedback(data.correct
-        ? `Correct! The answer is ${data.correctAnswer}) ${data.correctAnswerText}`
-        : `Incorrect. The correct answer is ${data.correctAnswer}) ${data.correctAnswerText}`)
-      setResults((prev) => [...prev, {
-        question: question.question.length > 50 ? question.question.slice(0, 50) + '…' : question.question,
-        userAnswer: selected,
-        correctAnswer: `${data.correctAnswer}) ${data.correctAnswerText}`,
-        correct: data.correct,
-        time: timeTaken,
-      }])
-      setRevealed(true)
-      return
-    }
-
+    if (!revealed) { if (selected) submitGK(selected); return }
     await loadQuestion()
   }
 
@@ -623,34 +623,26 @@ function GKApp({ onBack }) {
   advanceRef.current = () => loadQuestion()
   useAutoAdvance(revealed, advanceRef, isCorrect)
 
-  // Keyboard shortcuts: 1-4, a-d to select+submit; Enter to submit/next
-  const handleSubmitRef = useRef(handleSubmitOrNext)
-  handleSubmitRef.current = handleSubmitOrNext
-  const selectedRef = useRef(selected)
-  selectedRef.current = selected
-  const revealedRef = useRef(revealed)
-  revealedRef.current = revealed
+  // Keyboard: 1-4 / a-d instantly select+submit; Enter for submit/next
+  const submitGKRef = useRef(submitGK)
+  submitGKRef.current = submitGK
+  const handleNextRef = useRef(handleSubmitOrNext)
+  handleNextRef.current = handleSubmitOrNext
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault()
-        handleSubmitRef.current()
-        return
-      }
-      if (revealedRef.current || loading) return
+      if (event.key === 'Enter') { event.preventDefault(); handleNextRef.current(); return }
+      if (revealed || loading || !question) return
       const keyMap = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', 'a': 'A', 'b': 'B', 'c': 'C', 'd': 'D' }
       const letter = keyMap[event.key.toLowerCase()]
-      if (letter && question && question.options.length >= ['A','B','C','D'].indexOf(letter) + 1) {
+      if (letter && question.options.length >= ['A','B','C','D'].indexOf(letter) + 1) {
         event.preventDefault()
-        setSelected(letter)
-        // auto-submit after selecting
-        setTimeout(() => handleSubmitRef.current(), 50)
+        submitGKRef.current(letter)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [question, loading])
+  }, [revealed, loading, question])
 
   return (
     <QuizLayout title="General Knowledge" subtitle="Random question picker" onBack={onBack}>
@@ -1308,43 +1300,37 @@ function VocabApp({ onBack }) {
     await loadQuestion()
   }
 
+  const submitVocab = async (option) => {
+    if (!question || revealed) return
+    const timeTaken = timer.stop()
+    setSelected(option)
+    const res = await fetch(`${API}/vocab-api/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: question.id, answerOption: option }),
+    })
+    const data = await res.json()
+    setIsCorrect(data.correct)
+    if (data.correct) setScore((s) => s + 1)
+    setFeedback(data.correct
+      ? `Correct! "${data.correctAnswerText}"`
+      : `Incorrect. The right definition is: "${data.correctAnswerText}"`)
+    const userDef = question.options[['A','B','C','D'].indexOf(option)]
+    const truncate = (s) => s.length > 35 ? s.slice(0, 35) + '…' : s
+    setResults((prev) => [...prev, {
+      question: question.question,
+      userAnswer: truncate(userDef),
+      correctAnswer: truncate(data.correctAnswerText),
+      correct: data.correct,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
   const handleSubmitOrNext = async () => {
     if (!question) return
-
-    if (!revealed) {
-      if (!selected) return
-      const timeTaken = timer.stop()
-      const res = await fetch(`${API}/vocab-api/check`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: question.id, answerOption: selected }),
-      })
-      const data = await res.json()
-      setIsCorrect(data.correct)
-      if (data.correct) setScore((s) => s + 1)
-      setFeedback(data.correct
-        ? `Correct! "${data.correctAnswerText}"`
-        : `Incorrect. The right definition is: "${data.correctAnswerText}"`)
-      const userDef = question.options[['A','B','C','D'].indexOf(selected)]
-      const truncate = (s) => s.length > 35 ? s.slice(0, 35) + '…' : s
-      setResults((prev) => [...prev, {
-        question: question.question,
-        userAnswer: truncate(userDef),
-        correctAnswer: truncate(data.correctAnswerText),
-        correct: data.correct,
-        time: timeTaken,
-      }])
-      setRevealed(true)
-      return
-    }
-
-    if (questionNumber >= totalQ) {
-      setFinished(true)
-      setQuestion(null)
-      timer.reset()
-      return
-    }
-
+    if (!revealed) { if (selected) submitVocab(selected); return }
+    if (questionNumber >= totalQ) { setFinished(true); setQuestion(null); timer.reset(); return }
     setQuestionNumber((n) => n + 1)
     await loadQuestion()
   }
@@ -1353,32 +1339,31 @@ function VocabApp({ onBack }) {
   advanceRef.current = () => handleSubmitOrNext()
   useAutoAdvance(revealed, advanceRef, isCorrect)
 
-  // Keyboard shortcuts: 1-4, a-d to select+submit; Enter to submit/next
-  const handleSubmitRefV = useRef(handleSubmitOrNext)
-  handleSubmitRefV.current = handleSubmitOrNext
-  const revealedRefV = useRef(revealed)
-  revealedRefV.current = revealed
+  // Keyboard: 1-4 / a-d instantly select+submit; Enter for submit/next
+  const submitVocabRef = useRef(submitVocab)
+  submitVocabRef.current = submitVocab
+  const handleNextRefV = useRef(handleSubmitOrNext)
+  handleNextRefV.current = handleSubmitOrNext
 
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.key === 'Enter') {
         if (!started || finished) return
         event.preventDefault()
-        handleSubmitRefV.current()
+        handleNextRefV.current()
         return
       }
-      if (!started || finished || revealedRefV.current || loading) return
+      if (!started || finished || revealed || loading || !question) return
       const keyMap = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', 'a': 'A', 'b': 'B', 'c': 'C', 'd': 'D' }
       const letter = keyMap[event.key.toLowerCase()]
-      if (letter && question && question.options.length >= ['A','B','C','D'].indexOf(letter) + 1) {
+      if (letter && question.options.length >= ['A','B','C','D'].indexOf(letter) + 1) {
         event.preventDefault()
-        setSelected(letter)
-        setTimeout(() => handleSubmitRefV.current(), 50)
+        submitVocabRef.current(letter)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [started, finished, question, loading])
+  }, [started, finished, revealed, loading, question])
 
   const difficultyLabels = { easy: 'Easy', medium: 'Medium', hard: 'Hard', 'extra-hard': 'Extra Hard', hardest: 'Hardest' }
 
@@ -2824,10 +2809,11 @@ function CustomApp({ onBack }) {
   }
 
   // Submit answer
-  const handleSubmit = async () => {
+  const handleSubmit = async (overrideOption) => {
     if (!question || revealed) return
     const timeTaken = timer.stop()
     let res, data, correct, correctDisplay, userDisplay
+    const optionToUse = overrideOption || selectedOption
 
     switch (curType) {
       case 'basicarith': {
@@ -2943,11 +2929,12 @@ function CustomApp({ onBack }) {
         break
       }
       case 'gk': case 'vocab': {
-        if (!selectedOption) return
+        if (!optionToUse) return
+        setSelectedOption(optionToUse)
         const url = curType === 'gk' ? `${API}/gk-api/check` : `${API}/vocab-api/check`
-        res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: question.id, answerOption: selectedOption }) })
+        res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: question.id, answerOption: optionToUse }) })
         data = await res.json()
-        correct = data.correct; correctDisplay = `${data.correctAnswer}: ${data.correctAnswerText}`; userDisplay = selectedOption
+        correct = data.correct; correctDisplay = `${data.correctAnswer}: ${data.correctAnswerText}`; userDisplay = optionToUse
         setFeedback(data.correct ? `Correct! ${data.correctAnswerText}` : `Incorrect. ${data.correctAnswerText}`)
         break
       }
@@ -2976,27 +2963,24 @@ function CustomApp({ onBack }) {
   }
   useAutoAdvance(revealed, advanceRef, isCorrect)
 
-  // Keyboard shortcuts for GK/Vocab options in custom mode: 1-4 / a-d
+  // Keyboard: 1-4 / a-d instantly select+submit for GK/Vocab in custom mode
   const handleSubmitRefC = useRef(handleSubmit)
   handleSubmitRefC.current = handleSubmit
-  const revealedRefC = useRef(revealed)
-  revealedRefC.current = revealed
   useEffect(() => {
     if (phase !== 'quiz') return
     const onKeyDown = (event) => {
-      if (revealedRefC.current || loading) return
+      if (revealed || loading) return
       if (curType !== 'gk' && curType !== 'vocab') return
       const keyMap = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', 'a': 'A', 'b': 'B', 'c': 'C', 'd': 'D' }
       const letter = keyMap[event.key.toLowerCase()]
       if (letter && question && question.options) {
         event.preventDefault()
-        setSelectedOption(letter)
-        setTimeout(() => handleSubmitRefC.current(), 50)
+        handleSubmitRefC.current(letter)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [phase, curType, question, loading])
+  }, [phase, curType, question, loading, revealed])
 
   const valInput = (key) => (e) => {
     const v = e.target.value

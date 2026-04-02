@@ -185,6 +185,28 @@ app.post('/sqrt-api/check', (req, res) => {
   });
 });
 
+/* ── Multiplication Tables ──────────────────────────── */
+app.get('/multiply-api/question', (req, res) => {
+  const table = Math.max(1, Number(req.query.table || 1));
+  const multiplier = randomInt(1, 10);
+  const answer = table * multiplier;
+
+  res.json({
+    id: `multiply-${Date.now()}-${Math.random()}`,
+    table,
+    multiplier,
+    prompt: `${table} × ${multiplier}`,
+    answer,
+  });
+});
+
+app.post('/multiply-api/check', (req, res) => {
+  const { table, multiplier, answer } = req.body || {};
+  const correctAnswer = Number(table) * Number(multiplier);
+  const correct = Number(answer) === correctAnswer;
+  res.json({ correct, correctAnswer, message: correct ? 'Correct' : 'Incorrect' });
+});
+
 app.get(/.*/, (_req, res) => {
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });

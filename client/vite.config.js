@@ -13,6 +13,7 @@ export default defineConfig({
       '/addition-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       '/quadratic-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       '/sqrt-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/multiply-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
     },
   },
 })

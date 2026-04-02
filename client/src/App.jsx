@@ -3,8 +3,7 @@ import './App.css'
 
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
-const TOTAL_ADDITION = 20
-const TOTAL_QUADRATIC = 20
+const DEFAULT_TOTAL = 20
 
 /* ── Timer Hook ──────────────────────────────────────── */
 function useTimer() {
@@ -126,6 +125,8 @@ function App() {
           <AdditionApp onBack={() => setMode(null)} />
         ) : mode === 'quadratic' ? (
           <QuadraticApp onBack={() => setMode(null)} />
+        ) : mode === 'multiply' ? (
+          <MultiplyApp onBack={() => setMode(null)} />
         ) : (
           <SqrtApp onBack={() => setMode(null)} />
         )}
@@ -140,6 +141,7 @@ function Home({ onSelect }) {
     { key: 'gk', name: 'General Knowledge', subtitle: 'Chitragupta quiz', color: 'purple' },
     { key: 'addition', name: 'Addition', subtitle: '20-question addition practice', color: 'blue' },
     { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
+    { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (1–10)', color: 'green' },
     { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
   ]
 
@@ -289,12 +291,14 @@ function GKApp({ onBack }) {
 /* ── Addition App ────────────────────────────────────── */
 function AdditionApp({ onBack }) {
   const [digits, setDigits] = useState(1)
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
   const [question, setQuestion] = useState(null)
   const [answer, setAnswer] = useState('')
   const [score, setScore] = useState(0)
   const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
   const [feedback, setFeedback] = useState('')
   const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
@@ -314,6 +318,8 @@ function AdditionApp({ onBack }) {
   }
 
   const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
+    setTotalQ(count)
     setStarted(true)
     setFinished(false)
     setScore(0)
@@ -330,7 +336,7 @@ function AdditionApp({ onBack }) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [started, finished, question, answer, revealed, score, questionNumber, digits, loading])
+  }, [started, finished, question, answer, revealed, score, questionNumber, digits, loading, totalQ])
 
   const handleSubmitOrNext = async () => {
     if (!question) return
@@ -361,7 +367,7 @@ function AdditionApp({ onBack }) {
       return
     }
 
-    if (questionNumber >= TOTAL_ADDITION) {
+    if (questionNumber >= totalQ) {
       setFinished(true)
       setQuestion(null)
       timer.reset()
@@ -386,19 +392,26 @@ function AdditionApp({ onBack }) {
           </label>
         ))}
       </div>
-      {!started && !finished && <div className="welcome-box"><p className="welcome-text">The quiz is ready to begin.</p><button onClick={startQuiz}>Start Quiz</button></div>}
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">The quiz is ready to begin.</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} placeholder={String(DEFAULT_TOTAL)} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{TOTAL_ADDITION}</div>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
-        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_ADDITION ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
+        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete.</p>
-        <p className="final-score">Final score: {score}/{TOTAL_ADDITION}</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
         <ResultsTable results={results} />
         <button onClick={startQuiz}>Play Again</button>
       </div>}
@@ -409,12 +422,14 @@ function AdditionApp({ onBack }) {
 /* ── Quadratic App ───────────────────────────────────── */
 function QuadraticApp({ onBack }) {
   const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
   const [question, setQuestion] = useState(null)
   const [answer, setAnswer] = useState('')
   const [score, setScore] = useState(0)
   const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
   const [feedback, setFeedback] = useState('')
   const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
@@ -434,6 +449,8 @@ function QuadraticApp({ onBack }) {
   }
 
   const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
+    setTotalQ(count)
     setStarted(true)
     setFinished(false)
     setScore(0)
@@ -450,7 +467,7 @@ function QuadraticApp({ onBack }) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [started, finished, question, answer, revealed, questionNumber, loading])
+  }, [started, finished, question, answer, revealed, questionNumber, loading, totalQ])
 
   const handleSubmitOrNext = async () => {
     if (!question) return
@@ -485,7 +502,7 @@ function QuadraticApp({ onBack }) {
       return
     }
 
-    if (questionNumber >= TOTAL_QUADRATIC) {
+    if (questionNumber >= totalQ) {
       setFinished(true)
       setQuestion(null)
       timer.reset()
@@ -510,9 +527,16 @@ function QuadraticApp({ onBack }) {
           </label>
         ))}
       </div>
-      {!started && !finished && <div className="welcome-box"><p className="welcome-text">You will get 20 quadratic substitution questions.</p><button onClick={startQuiz}>Start Quiz</button></div>}
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Quadratic substitution practice.</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} placeholder={String(DEFAULT_TOTAL)} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{TOTAL_QUADRATIC}</div>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
         <div className="question-box">
           {loading || !question ? 'Loading question…' : (
             <>
@@ -524,12 +548,12 @@ function QuadraticApp({ onBack }) {
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="y = ?" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
-        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_QUADRATIC ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
+        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete.</p>
-        <p className="final-score">Final score: {score}/{TOTAL_QUADRATIC}</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
         <ResultsTable results={results} />
         <button onClick={startQuiz}>Play Again</button>
       </div>}
@@ -537,13 +561,189 @@ function QuadraticApp({ onBack }) {
   )
 }
 
-/* ── Square Root App ─────────────────────────────────── */
-function SqrtApp({ onBack }) {
+/* ── Multiplication App ─────────────────────────────── */
+function MultiplyApp({ onBack }) {
+  const [selectedTables, setSelectedTables] = useState([])
+  const [numQuestions, setNumQuestions] = useState('')
   const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
   const [question, setQuestion] = useState(null)
   const [answer, setAnswer] = useState('')
   const [score, setScore] = useState(0)
   const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQuestions, setTotalQuestions] = useState(0)
+  const [feedback, setFeedback] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const [questionPool, setQuestionPool] = useState([])
+  const timer = useTimer()
+
+  const maxQuestions = selectedTables.length * 10
+
+  const toggleTable = (num) => {
+    setSelectedTables((prev) =>
+      prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num]
+    )
+  }
+
+  const buildPool = (tables) => {
+    const pool = []
+    tables.forEach((t) => {
+      for (let m = 1; m <= 10; m++) {
+        pool.push({ table: t, multiplier: m })
+      }
+    })
+    // Shuffle
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]]
+    }
+    return pool
+  }
+
+  const nextFromPool = (pool, index) => {
+    const q = pool[index]
+    setQuestion({ table: q.table, multiplier: q.multiplier, prompt: `${q.table} × ${q.multiplier}` })
+    setAnswer('')
+    setFeedback('')
+    setRevealed(false)
+    setLoading(false)
+    timer.start()
+  }
+
+  const startQuiz = () => {
+    if (selectedTables.length === 0) return
+    const pool = buildPool(selectedTables)
+    const count = numQuestions !== '' ? Math.min(Number(numQuestions), pool.length) : pool.length
+    const trimmedPool = pool.slice(0, count)
+    setQuestionPool(trimmedPool)
+    setTotalQuestions(count)
+    setStarted(true)
+    setFinished(false)
+    setScore(0)
+    setQuestionNumber(1)
+    setResults([])
+    nextFromPool(trimmedPool, 0)
+  }
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== 'Enter') return
+      event.preventDefault()
+      if (!started && selectedTables.length > 0) {
+        startQuiz()
+      } else if (started && !finished) {
+        handleSubmitOrNext()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [started, finished, question, answer, revealed, questionNumber, loading, selectedTables, questionPool])
+
+  const handleSubmitOrNext = async () => {
+    if (!question) return
+
+    if (!revealed) {
+      if (answer === '') return
+      const timeTaken = timer.stop()
+      const correctAnswer = question.table * question.multiplier
+      const correct = Number(answer) === correctAnswer
+      if (correct) setScore((s) => s + 1)
+      const reasoning = `${question.table} × ${question.multiplier} = ${correctAnswer}`
+      setFeedback(correct
+        ? `Correct! ${reasoning}`
+        : `Incorrect. ${reasoning}`)
+      setResults((prev) => [...prev, {
+        question: question.prompt,
+        userAnswer: answer,
+        correctAnswer,
+        correct,
+        time: timeTaken,
+      }])
+      setRevealed(true)
+      return
+    }
+
+    if (questionNumber >= totalQuestions) {
+      setFinished(true)
+      setQuestion(null)
+      timer.reset()
+      return
+    }
+
+    const nextIdx = questionNumber
+    setQuestionNumber((n) => n + 1)
+    nextFromPool(questionPool, nextIdx)
+  }
+
+  const tablesLabel = selectedTables.sort((a, b) => a - b).join(', ')
+
+  return (
+    <QuizLayout title="Multiplication" subtitle="Practice your times tables" onBack={onBack}>
+      <div className="top-mini-row">
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        <div className="score-pill">Score: {score}</div>
+      </div>
+      {!started && !finished && (
+        <div className="welcome-box">
+          <p className="welcome-text">Select the tables you want to practice</p>
+          <div className="checkbox-group">
+            {[2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <label key={num} className={`checkbox-pill ${selectedTables.includes(num) ? 'active' : ''}`}>
+                <input type="checkbox" checked={selectedTables.includes(num)} onChange={() => toggleTable(num)} />
+                {num}
+              </label>
+            ))}
+          </div>
+          {selectedTables.length > 0 && (
+            <div className="question-count-row">
+              <label className="question-count-label">How many questions?</label>
+              <input
+                className="answer-input question-count-input"
+                type="text"
+                value={numQuestions}
+                onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }}
+                placeholder={`All ${maxQuestions}`}
+              />
+            </div>
+          )}
+          <div className="button-row">
+            <button onClick={startQuiz} disabled={selectedTables.length === 0}>
+              Start Quiz ({numQuestions && Number(numQuestions) > 0 ? Math.min(Number(numQuestions), maxQuestions) : maxQuestions} questions)
+            </button>
+          </div>
+        </div>
+      )}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQuestions} — Tables: {tablesLabel}</div>
+        <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
+        <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
+        <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
+        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQuestions ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
+        {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete — Tables: {tablesLabel}</p>
+        <p className="final-score">Final score: {score}/{totalQuestions}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false); setSelectedTables([]); setQuestionPool([]); setNumQuestions('') }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Square Root App ─────────────────────────────────── */
+function SqrtApp({ onBack }) {
+  const [numQuestions, setNumQuestions] = useState('')
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [score, setScore] = useState(0)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(0)
   const [feedback, setFeedback] = useState('')
   const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
@@ -563,22 +763,27 @@ function SqrtApp({ onBack }) {
   }
 
   const startQuiz = async () => {
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : 0
+    setTotalQ(count)
     setStarted(true)
+    setFinished(false)
     setScore(0)
     setQuestionNumber(1)
     setResults([])
     await fetchQuestion(1)
   }
 
+  const unlimited = totalQ === 0
+
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key !== 'Enter' || !started) return
+      if (event.key !== 'Enter' || !started || finished) return
       event.preventDefault()
       handleSubmitOrNext()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [started, question, answer, revealed, questionNumber, loading])
+  }, [started, finished, question, answer, revealed, questionNumber, loading, totalQ])
 
   const handleSubmitOrNext = async () => {
     if (!question) return
@@ -606,6 +811,14 @@ function SqrtApp({ onBack }) {
       setRevealed(true)
       return
     }
+
+    if (!unlimited && questionNumber >= totalQ) {
+      setFinished(true)
+      setQuestion(null)
+      timer.reset()
+      return
+    }
+
     const next = questionNumber + 1
     setQuestionNumber(next)
     await fetchQuestion(next)
@@ -614,19 +827,32 @@ function SqrtApp({ onBack }) {
   return (
     <QuizLayout title="Square Root" subtitle="Floor or ceiling is accepted" onBack={onBack}>
       <div className="top-mini-row">
-        {started && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
+        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
         <div className="score-pill">Score: {score}</div>
       </div>
-      {!started && <div className="welcome-box"><p className="welcome-text">The square-root drill will keep going until you stop.</p><button onClick={startQuiz}>Start Drill</button></div>}
-      {started && <>
-        <div className="progress-pill center">Question {questionNumber}</div>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">The square-root drill.</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} placeholder="Unlimited" />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Drill</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}{!unlimited ? `/${totalQ}` : ''}</div>
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
-        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? 'Next Question' : 'Submit'}</button></div>
+        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (!unlimited && questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
       </>}
-      {results.length > 0 && <ResultsTable results={results} />}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete.</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false); setNumQuestions('') }}>Play Again</button>
+      </div>}
+      {!finished && results.length > 0 && <ResultsTable results={results} />}
     </QuizLayout>
   )
 }

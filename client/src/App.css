@@ -1083,17 +1083,20 @@ button:disabled {
 /* ── Adaptive Tables ────────────────────────────────── */
 .tables-layout {
   display: flex;
-  gap: 32px;
+  gap: 24px;
   align-items: flex-start;
+  justify-content: center;
 }
 
 .tables-quiz-area {
   flex: 1;
+  max-width: 480px;
 }
 
 .ref-table {
-  min-width: 160px;
-  padding: 16px;
+  flex-shrink: 0;
+  width: 200px;
+  padding: 14px 16px;
   border-radius: var(--radius);
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);

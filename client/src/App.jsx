@@ -7,12 +7,12 @@ const DEFAULT_TOTAL = 20
 const AUTO_ADVANCE_MS = 1500
 
 /* ── Auto-advance Hook ──────────────────────────────── */
-function useAutoAdvance(revealed, advanceFnRef) {
+function useAutoAdvance(revealed, advanceFnRef, isCorrect) {
   useEffect(() => {
-    if (!revealed) return
+    if (!revealed || !isCorrect) return
     const id = setTimeout(() => advanceFnRef.current(), AUTO_ADVANCE_MS)
     return () => clearTimeout(id)
-  }, [revealed])
+  }, [revealed, isCorrect])
 }
 
 /* ── Timer Hook ──────────────────────────────────────── */
@@ -291,7 +291,7 @@ function GKApp({ onBack }) {
 
   const advanceRef = useRef(() => {})
   advanceRef.current = () => loadQuestion()
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -424,7 +424,7 @@ function AdditionApp({ onBack }) {
 
   const advanceRef = useRef(() => {})
   advanceRef.current = () => handleSubmitOrNext()
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   return (
     <QuizLayout title="Addition" subtitle="Choose a level and solve addition questions" onBack={onBack}>
@@ -563,7 +563,7 @@ function QuadraticApp({ onBack }) {
 
   const advanceRef = useRef(() => {})
   advanceRef.current = () => handleSubmitOrNext()
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   return (
     <QuizLayout title="Quadratic" subtitle="Given x, find y = ax² + bx + c" onBack={onBack}>
@@ -731,7 +731,7 @@ function MultiplyApp({ onBack }) {
 
   const advanceRef = useRef(() => {})
   advanceRef.current = () => handleSubmitOrNext()
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   const tablesLabel = selectedTables.sort((a, b) => a - b).join(', ')
 
@@ -875,7 +875,7 @@ function VocabApp({ onBack }) {
 
   const advanceRef = useRef(() => {})
   advanceRef.current = () => handleSubmitOrNext()
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -1066,7 +1066,7 @@ function SpotApp({ onBack }) {
     setRound((r) => r + 1)
     generateRound(Number(count))
   }
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   return (
     <QuizLayout title="Spot It" subtitle="Find the common object in both panels" onBack={onBack}>
@@ -1228,7 +1228,7 @@ function SqrtApp({ onBack }) {
 
   const advanceRef = useRef(() => {})
   advanceRef.current = () => handleSubmitOrNext()
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   return (
     <QuizLayout title="Square Root" subtitle="Floor or ceiling is accepted" onBack={onBack}>
@@ -1333,7 +1333,7 @@ function PolyMulApp({ onBack }) {
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   const formatCoeffLabel = (i) => i === 0 ? 'constant' : i === 1 ? 'x' : `x^${i}`
 
@@ -1462,7 +1462,7 @@ function PolyFactorApp({ onBack }) {
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setter(v) }
 
@@ -1605,7 +1605,7 @@ function PrimeFactorApp({ onBack }) {
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   const buildChain = () => {
     if (enteredFactors.length === 0) return String(question?.number || '')
@@ -1735,7 +1735,7 @@ function QFormulaApp({ onBack }) {
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setter(v) }
 
@@ -1864,7 +1864,7 @@ function LinearApp({ onBack }) {
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setter(v) }
   const fmtEq = (eq) => `${eq.a}x ${eq.b >= 0 ? '+' : '−'} ${Math.abs(eq.b)}y = ${eq.c}`
@@ -1989,7 +1989,7 @@ function SimulApp({ onBack }) {
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setter(v) }
   const fmtEq3 = (eq) => `${eq.a}x ${eq.b >= 0 ? '+' : '−'} ${Math.abs(eq.b)}y ${eq.c >= 0 ? '+' : '−'} ${Math.abs(eq.c)}z = ${eq.d}`
@@ -2113,7 +2113,7 @@ function FuncEvalApp({ onBack }) {
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   const varStr = question ? Object.entries(question.vars).map(([k, v]) => `${k} = ${v}`).join(', ') : ''
 
@@ -2236,7 +2236,7 @@ function LineEqApp({ onBack }) {
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
-  useAutoAdvance(revealed, advanceRef)
+  useAutoAdvance(revealed, advanceRef, isCorrect)
 
   const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setter(v) }
 

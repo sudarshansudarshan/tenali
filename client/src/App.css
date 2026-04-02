@@ -1124,26 +1124,31 @@ button:disabled {
 @media (max-width: 700px) {
   .tables-layout {
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+  }
+  .tables-quiz-area {
+    order: -1;          /* question + input always on top */
   }
   .ref-table {
     min-width: auto;
     width: 100%;
-    padding: 10px 12px;
+    padding: 8px 10px;
+    max-height: 180px;
+    overflow-y: auto;
   }
   .ref-table-rows {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2px 16px;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px 10px;
   }
   .ref-table-row {
-    font-size: 0.82rem;
-    padding: 2px 0;
+    font-size: 0.78rem;
+    padding: 1px 0;
   }
   .ref-table-title {
-    font-size: 0.92rem;
-    margin-bottom: 6px;
-    padding-bottom: 6px;
+    font-size: 0.88rem;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
   }
 }
 

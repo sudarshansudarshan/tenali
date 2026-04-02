@@ -124,7 +124,8 @@ function buildQuadraticPrompt(a, b, c, x) {
 app.get('/quadratic-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'hard';
   const range = quadraticRange(difficulty);
-  const a = randomInRange(range.min, range.max);
+  let a = 0;
+  while (a === 0) a = randomInRange(range.min, range.max);
   const b = randomInRange(range.min, range.max);
   const c = randomInRange(range.min, range.max);
   const x = randomInRange(range.min, range.max);

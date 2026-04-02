@@ -351,7 +351,7 @@ function AdditionApp({ onBack }) {
       {started && !finished && <>
         <div className="progress-pill center">Question {questionNumber}/{TOTAL_ADDITION}</div>
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
-        <input className="answer-input" type="number" inputMode="numeric" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="Type your answer" />
+        <input className="answer-input" type="number" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="Type your answer" />
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_ADDITION ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
       </>}
@@ -480,7 +480,7 @@ function QuadraticApp({ onBack }) {
             </>
           )}
         </div>
-        <input className="answer-input" type="number" inputMode="numeric" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="y = ?" />
+        <input className="answer-input" type="number" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="y = ?" />
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= TOTAL_QUADRATIC ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
       </>}
@@ -578,7 +578,7 @@ function SqrtApp({ onBack }) {
       {started && <>
         <div className="progress-pill center">Question {questionNumber}</div>
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
-        <input className="answer-input" type="number" inputMode="numeric" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="Type your answer" />
+        <input className="answer-input" type="number" value={answer} onChange={(e) => !revealed && setAnswer(e.target.value)} disabled={revealed} placeholder="Type your answer" />
         {feedback && <div className={`feedback ${feedback.startsWith('Correct') ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? 'Next Question' : 'Submit'}</button></div>
       </>}

@@ -120,6 +120,256 @@ function NumPad({ value, onChange, onSubmit, disabled }) {
   )
 }
 
+/* ── Adaptive Tables App ────────────────────────────── */
+const MASTERY_STREAK = 3          // correct in a row to pass a phase
+const FAST_MS = 5000              // "fast" answer threshold
+const TABLES_PER_QUIZ = 10       // questions per quiz round
+
+function AdaptiveTablesApp({ studentName }) {
+  const storageKey = `tenali-tables-${studentName}`
+  const loadProgress = () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey))
+      if (saved && saved.currentTable >= 2) return saved
+    } catch {}
+    return { currentTable: 2, phase: 'learn', streak: 0 }
+  }
+
+  const [progress, setProgress] = useState(loadProgress)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNum, setQuestionNum] = useState(0)
+  const [score, setScore] = useState(0)
+  const [startTime, setStartTime] = useState(null)
+  const [results, setResults] = useState([])
+  const [finished, setFinished] = useState(false)
+  const inputRef = useRef(null)
+  const advanceFnRef = useRef(null)
+
+  const { currentTable, phase, streak } = progress
+
+  const saveProgress = (p) => {
+    setProgress(p)
+    try { localStorage.setItem(storageKey, JSON.stringify(p)) } catch {}
+  }
+
+  const generateQuestion = () => {
+    const multiplier = Math.floor(Math.random() * 10) + 1
+    return { table: currentTable, multiplier, answer: currentTable * multiplier }
+  }
+
+  const startRound = () => {
+    setQuestionNum(0)
+    setScore(0)
+    setResults([])
+    setFinished(false)
+    nextQuestion()
+  }
+
+  const nextQuestion = () => {
+    const q = generateQuestion()
+    setQuestion(q)
+    setAnswer('')
+    setFeedback('')
+    setIsCorrect(null)
+    setRevealed(false)
+    setStartTime(Date.now())
+    setQuestionNum(n => n + 1)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
+
+  advanceFnRef.current = () => {
+    if (questionNum >= TABLES_PER_QUIZ) {
+      setFinished(true)
+    } else {
+      nextQuestion()
+    }
+  }
+
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (revealed || !question) return
+    const userAns = parseInt(answer, 10)
+    const correct = userAns === question.answer
+    const elapsed = Date.now() - startTime
+    const fast = elapsed < FAST_MS
+
+    setIsCorrect(correct)
+    setRevealed(true)
+    if (correct) setScore(s => s + 1)
+
+    const fb = correct
+      ? `Correct! ${question.table} × ${question.multiplier} = ${question.answer}${fast ? ' (fast!)' : ''}`
+      : `${question.table} × ${question.multiplier} = ${question.answer} (you said ${userAns || '?'})`
+    setFeedback(fb)
+
+    setResults(r => [...r, {
+      q: `${question.table} × ${question.multiplier}`,
+      yourAnswer: answer || '?',
+      correct: question.answer,
+      isCorrect: correct,
+      time: (elapsed / 1000).toFixed(1)
+    }])
+
+    // Update mastery progress
+    if (correct && fast) {
+      const newStreak = streak + 1
+      if (phase === 'learn' && newStreak >= MASTERY_STREAK) {
+        saveProgress({ currentTable, phase: 'quiz', streak: 0 })
+      } else if (phase === 'quiz' && newStreak >= MASTERY_STREAK) {
+        const nextTable = currentTable + 1
+        if (nextTable <= 20) {
+          saveProgress({ currentTable: nextTable, phase: 'learn', streak: 0 })
+        } else {
+          saveProgress({ currentTable: 20, phase: 'done', streak: newStreak })
+        }
+      } else {
+        saveProgress({ ...progress, streak: newStreak })
+      }
+    } else {
+      saveProgress({ ...progress, streak: 0 })
+    }
+  }
+
+  const handleReset = () => {
+    saveProgress({ currentTable: 2, phase: 'learn', streak: 0 })
+    setFinished(false)
+    setQuestion(null)
+    setQuestionNum(0)
+  }
+
+  // Render the reference table
+  const renderTable = () => (
+    <div className="ref-table">
+      <div className="ref-table-title">{currentTable} × Table</div>
+      {Array.from({ length: 10 }, (_, i) => i + 1).map(m => (
+        <div key={m} className="ref-table-row">
+          <span>{currentTable} × {m}</span>
+          <span>= {currentTable * m}</span>
+        </div>
+      ))}
+    </div>
+  )
+
+  if (progress.phase === 'done') {
+    return (
+      <div className="app-shell">
+        <div className="card">
+          <h1>Congratulations, {studentName}!</h1>
+          <div className="welcome-box">
+            <p className="welcome-text">You've mastered all tables from 2 to 20!</p>
+            <button onClick={handleReset}>Start Over</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!question) {
+    return (
+      <div className="app-shell">
+        <div className="card">
+          <h1>{studentName}'s Tables</h1>
+          <div className="welcome-box">
+            <p className="welcome-text">
+              Currently on: <strong>{currentTable} × table</strong>
+              {phase === 'learn' ? ' (with reference table shown)' : ' (quiz mode — no table shown)'}
+            </p>
+            <p className="welcome-text" style={{ fontSize: '0.88rem', marginBottom: '12px' }}>
+              Streak: {streak}/{MASTERY_STREAK} fast correct answers needed to advance
+            </p>
+            <button onClick={startRound}>Start Practice</button>
+            {currentTable > 2 && (
+              <button className="secondary" onClick={handleReset} style={{ marginLeft: 12 }}>Reset All</button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (finished) {
+    return (
+      <div className="app-shell">
+        <div className="card">
+          <h1>{studentName}'s Tables</h1>
+          <div className="final-score">{score} / {TABLES_PER_QUIZ}</div>
+          <p className="welcome-text">
+            Table: {currentTable} × | Phase: {progress.phase === 'learn' ? 'Learning' : 'Quiz'} | Streak: {progress.streak}/{MASTERY_STREAK}
+          </p>
+          <div className="results-table-wrapper">
+            <table className="results-table">
+              <thead>
+                <tr><th>#</th><th>Question</th><th>You</th><th>Answer</th><th>Time</th></tr>
+              </thead>
+              <tbody>
+                {results.map((r, i) => (
+                  <tr key={i} className={r.isCorrect ? 'row-correct' : 'row-wrong'}>
+                    <td>{i + 1}</td><td>{r.q}</td><td>{r.yourAnswer}</td><td>{r.correct}</td><td>{r.time}s</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="button-row">
+            <button onClick={startRound}>Practice Again</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="app-shell">
+      <div className="card">
+        <h1>{studentName}'s Tables</h1>
+        <div className="top-mini-row">
+          <span className="score-pill">Score {score}</span>
+          <span className="progress-pill">{questionNum} / {TABLES_PER_QUIZ}</span>
+        </div>
+        <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--clr-text-soft)', margin: '0 0 8px' }}>
+          {currentTable}× table — {phase === 'learn' ? 'Learning' : 'Quiz'} — Streak: {streak}/{MASTERY_STREAK}
+        </p>
+
+        <div className={phase === 'learn' ? 'tables-layout' : ''}>
+          {phase === 'learn' && renderTable()}
+          <div className="tables-quiz-area">
+            <div className="question-box">
+              {question.table} × {question.multiplier} = ?
+            </div>
+            <form onSubmit={handleSubmit}>
+              <input
+                ref={inputRef}
+                className="answer-input"
+                type="text"
+                inputMode="numeric"
+                value={answer}
+                onChange={e => { if (/^-?\d*$/.test(e.target.value)) setAnswer(e.target.value) }}
+                placeholder="?"
+                disabled={revealed}
+                autoFocus
+              />
+              {!revealed && (
+                <div className="button-row">
+                  <button type="submit" disabled={!answer}>Check</button>
+                </div>
+              )}
+            </form>
+            {feedback && (
+              <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── App Shell ───────────────────────────────────────── */
 function App() {
   const [mode, setMode] = useState(null)
@@ -133,6 +383,29 @@ function App() {
   }, [theme])
 
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
+
+  // URL-based routing for student pages
+  const pathname = window.location.pathname.replace(/\/$/, '').toLowerCase()
+  if (pathname === '/taittiriya') {
+    return (
+      <>
+        <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+        <AdaptiveTablesApp studentName="Taittiriya" />
+      </>
+    )
+  }
+  if (pathname === '/tatsavit') {
+    return (
+      <>
+        <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+        <AdaptiveTablesApp studentName="Tatsavit" />
+      </>
+    )
+  }
 
   const modeMap = {
     gk: GKApp, addition: AdditionApp, quadratic: QuadraticApp,

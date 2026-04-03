@@ -740,14 +740,14 @@ function ScaffoldedTablesApp({ studentName }) {
   const [results, setResults] = useState([])             // Per-question results log
 
   // ── Scaffolding State ────────────────────────────────────────────────
-  // Number of visible reference tables: 3 (all), 2, 1, or 0 (none)
-  // Restored from localStorage — if student was doing well last time, tables stay hidden
-  const [visibleTables, setVisibleTables] = useState(() => {
+  // Whether the reference table for the current multiplication table is shown
+  // Restored from localStorage — if student was doing well last time, table stays hidden
+  const [showTable, setShowTable] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey))
-      if (saved && typeof saved.visibleTables === 'number') return saved.visibleTables
+      if (saved && typeof saved.showTable === 'boolean') return saved.showTable
     } catch {}
-    return 3 // Default: all 3 tables shown for new students
+    return true // Default: table shown for new students
   })
   // Consecutive fast+correct answers (resets on slow or wrong)
   const [fastStreak, setFastStreak] = useState(0)
@@ -761,13 +761,13 @@ function ScaffoldedTablesApp({ studentName }) {
   const advanceFnRef = useRef(null)
 
   /**
-   * save(tbl): Persist current table and visible tables count to localStorage
+   * save(tbl, tableVisible): Persist current table and show/hide state to localStorage
    */
-  const save = (tbl, visTables) => {
+  const save = (tbl, tableVisible) => {
     try {
       localStorage.setItem(storageKey, JSON.stringify({
         currentTable: tbl,
-        visibleTables: visTables ?? visibleTables
+        showTable: tableVisible ?? showTable
       }))
     } catch {}
   }
@@ -793,7 +793,7 @@ function ScaffoldedTablesApp({ studentName }) {
     setResults([])
     setRecentWindow([])
     setFastStreak(0)
-    setStatusMsg(visibleTables > 0 ? `${visibleTables} reference table${visibleTables > 1 ? 's' : ''} shown — let's go!` : 'No tables — you\'ve got this!')
+    setStatusMsg(showTable ? 'Reference table shown — let\'s go!' : 'No table — you\'ve got this!')
 
     const q = generateQuestion(currentTable)
     setQuestion(q)
@@ -817,7 +817,7 @@ function ScaffoldedTablesApp({ studentName }) {
       setRevealed(false)
       setStartTime(Date.now())
       setQuestionNum(1)
-      setStatusMsg(visibleTables > 0 ? `${visibleTables} reference table${visibleTables > 1 ? 's' : ''} shown — let's go!` : 'No tables — you\'ve got this!')
+      setStatusMsg(showTable ? 'Reference table shown — let\'s go!' : 'No table — you\'ve got this!')
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [])
@@ -906,39 +906,33 @@ function ScaffoldedTablesApp({ studentName }) {
       const newStreak = fastStreak + 1
       setFastStreak(newStreak)
 
-      if (newStreak >= CONSECUTIVE_FAST_TO_REMOVE && visibleTables > 0) {
-        // Remove one table
-        const newVis = visibleTables - 1
-        setVisibleTables(newVis)
-        setFastStreak(0) // Reset streak after removal
-        save(currentTable, newVis)
-        if (newVis === 0) {
-          setStatusMsg('All tables hidden — you\'re on your own!')
-        } else {
-          setStatusMsg(`Nice! Removed a table. ${newVis} table${newVis > 1 ? 's' : ''} remaining.`)
-        }
+      if (newStreak >= CONSECUTIVE_FAST_TO_REMOVE && showTable) {
+        // Hide the table — student doesn't need it anymore
+        setShowTable(false)
+        setFastStreak(0)
+        save(currentTable, false)
+        setStatusMsg('Table hidden — you\'re on your own!')
         return
       }
 
-      // Show streak progress toward next removal
-      if (visibleTables > 0) {
-        setStatusMsg(`Streak: ${newStreak}/${CONSECUTIVE_FAST_TO_REMOVE} fast answers to hide a table`)
+      // Show streak progress toward hiding
+      if (showTable) {
+        setStatusMsg(`Streak: ${newStreak}/${CONSECUTIVE_FAST_TO_REMOVE} fast answers to hide the table`)
       } else {
-        setStatusMsg(`Excellent — no tables needed! (${(elapsed / 1000).toFixed(1)}s)`)
+        setStatusMsg(`Excellent — no table needed! (${(elapsed / 1000).toFixed(1)}s)`)
       }
     } else {
       // Wrong or slow → reset streak
       setFastStreak(0)
 
-      // Check if we need to restore a table
-      if (errorsInWindow >= ERRORS_TO_RESTORE && visibleTables < 3) {
-        const newVis = Math.min(visibleTables + 1, 3)
-        setVisibleTables(newVis)
+      // Check if we need to restore the table
+      if (errorsInWindow >= ERRORS_TO_RESTORE && !showTable) {
+        setShowTable(true)
         setRecentWindow([]) // Clear window after restoration to give fresh start
-        save(currentTable, newVis)
-        setStatusMsg(`Table restored — ${newVis} table${newVis > 1 ? 's' : ''} shown. Take your time!`)
+        save(currentTable, true)
+        setStatusMsg('Table restored. Take your time!')
       } else if (!correct) {
-        setStatusMsg(`Keep trying! ${visibleTables > 0 ? 'Use the tables to help.' : ''}`)
+        setStatusMsg(`Keep trying! ${showTable ? 'Use the table to help.' : ''}`)
       } else {
         // Correct but slow
         setStatusMsg(`Correct but a bit slow (${(elapsed / 1000).toFixed(1)}s). Try to be faster!`)
@@ -947,39 +941,17 @@ function ScaffoldedTablesApp({ studentName }) {
   }
 
   /**
-   * getTableNumbers(): Determine which table numbers to display
-   * Returns array of up to `visibleTables` table numbers centered around currentTable
-   *
-   * Strategy: show currentTable first, then neighbors (current-1, current+1)
-   * Clamp to valid range (2-20)
+   * renderRefTable(): Render the reference table for the current multiplication table
+   * Only shows the single table being practiced (e.g., "2 × Table")
    */
-  const getTableNumbers = () => {
-    if (visibleTables <= 0) return []
-    const tables = [currentTable]
-    if (visibleTables >= 2 && currentTable > 2) tables.unshift(currentTable - 1)
-    else if (visibleTables >= 2 && currentTable <= 2) tables.push(currentTable + 1)
-    if (visibleTables >= 3) {
-      // Add one more neighbor
-      const hasLower = tables.includes(currentTable - 1)
-      const hasHigher = tables.includes(currentTable + 1)
-      if (!hasHigher && currentTable + 1 <= 20) tables.push(currentTable + 1)
-      else if (!hasLower && currentTable - 1 >= 2) tables.unshift(currentTable - 1)
-      else if (currentTable + 2 <= 20) tables.push(currentTable + 2)
-    }
-    return tables.sort((a, b) => a - b)
-  }
-
-  /**
-   * renderRefTable(tbl): Render a single reference multiplication table
-   */
-  const renderRefTable = (tbl) => (
-    <div className="ref-table" key={tbl}>
-      <div className="ref-table-title">{tbl} × Table</div>
+  const renderRefTable = () => (
+    <div className="ref-table">
+      <div className="ref-table-title">{currentTable} × Table</div>
       <div className="ref-table-rows">
         {Array.from({ length: 10 }, (_, i) => i + 1).map(m => (
           <div key={m} className="ref-table-row">
-            <span>{tbl} × {m}</span>
-            <span>= {tbl * m}</span>
+            <span>{currentTable} × {m}</span>
+            <span>= {currentTable * m}</span>
           </div>
         ))}
       </div>
@@ -1008,7 +980,7 @@ function ScaffoldedTablesApp({ studentName }) {
               Average time: {computeAvgTime()}s per question
             </p>
             <p style={{ opacity: 0.7, fontSize: '0.9rem' }}>
-              Tables visible at end: {visibleTables} of 3
+              Table was {showTable ? 'shown' : 'hidden'} at end
             </p>
             {/* Results table */}
             <div className="results-table" style={{ marginTop: '1rem' }}>
@@ -1045,8 +1017,6 @@ function ScaffoldedTablesApp({ studentName }) {
   }
 
   // ══════════ RENDER: PLAYING PHASE ══════════
-  const tablesToShow = getTableNumbers()
-
   return (
     <div className="app-shell">
       <div className="card">
@@ -1055,7 +1025,6 @@ function ScaffoldedTablesApp({ studentName }) {
           <span className="score-pill">Score {score}</span>
           <span className="progress-pill">Q {questionNum}/{TOTAL_QUESTIONS}</span>
           <span className="timer-pill">{currentTable}× table</span>
-          <span className="score-pill">{visibleTables}/3 tables</span>
         </div>
         {statusMsg && (
           <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--clr-text-soft)', margin: '4px 0 8px', fontWeight: 500 }}>
@@ -1063,13 +1032,9 @@ function ScaffoldedTablesApp({ studentName }) {
           </p>
         )}
 
-        <div className={tablesToShow.length > 0 ? 'scaffold-layout' : ''}>
-          {/* Reference tables */}
-          {tablesToShow.length > 0 && (
-            <div className="scaffold-tables">
-              {tablesToShow.map(tbl => renderRefTable(tbl))}
-            </div>
-          )}
+        <div className={showTable ? 'tables-layout' : ''}>
+          {/* Reference table — only the current table being practiced */}
+          {showTable && renderRefTable()}
 
           {/* Quiz area */}
           <div className="tables-quiz-area">

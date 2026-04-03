@@ -6644,6 +6644,12 @@ function QFormulaApp({ onBack }) {
   }
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advanceFnRef.current() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
 
   /**
    * valInput(setter): Create input change handler for root value fields
@@ -6869,6 +6875,12 @@ function SimulApp({ onBack }) {
   }
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advanceFnRef.current() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
 
   /**
    * valInput(setter): Create input change handler for solution value fields
@@ -7083,6 +7095,12 @@ function FuncEvalApp({ onBack }) {
   }
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advanceFnRef.current() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
 
   // Format variable string for display in question (e.g., "x = 2, y = 3")
   const varStr = question ? Object.entries(question.vars).map(([k, v]) => `${k} = ${v}`).join(', ') : ''
@@ -7282,6 +7300,12 @@ function LineEqApp({ onBack }) {
   }
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advanceFnRef.current() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
 
   /**
    * valInput(setter): Create input change handler for m and c fields

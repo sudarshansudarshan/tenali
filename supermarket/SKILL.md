@@ -6,12 +6,15 @@ This document is the definitive specification for the Tenali educational platfor
 
 ## 1. Overview
 
-**Tenali** is a web-based educational learning platform featuring 16+ interactive quiz and puzzle games covering mathematics, language arts, and general knowledge. The platform uses a "supermarket" metaphor: a home screen displays a grid of game cards that users click to enter individual learning experiences.
+**Tenali** is a web-based educational learning platform featuring 56 interactive quiz and puzzle games covering mathematics (primary through secondary/GCSE level), geometry, language arts, and general knowledge, plus a Random Mix cross-topic quiz mode. The platform uses a "supermarket" metaphor: a home screen displays a grid of game cards that users click to enter individual learning experiences.
 
 **Key characteristics:**
 - Real-time per-question timing and adaptive difficulty
 - No database—questions generated algorithmically or loaded from JSON files at startup
 - Single-file frontend monolith (App.jsx, App.css) for simplicity
+- `makeQuizApp` factory function generates standardized quiz components from configuration objects
+- Adaptive difficulty mode on every quiz: floating-point skill score (0.0–3.0) with smooth +0.25/-0.35 adjustments
+- Random Mix mode: pulls from all 56 topics with progressive difficulty and topic tracking
 - Dark/light theme toggle with localStorage persistence
 - Student-specific URL routes for adaptive learning (e.g., `/taittiriya` for student "Taittiriya")
 - Responsive design: works from 300px phones to 4K displays
@@ -55,14 +58,14 @@ Tenali/
 │   ├── src/
 │   │   ├── main.jsx                       # React entry: ReactDOM.createRoot(App)
 │   │   ├── index.css                      # Global reset (body { margin: 0; })
-│   │   ├── App.jsx                        # All components (~5400 lines)
+│   │   ├── App.jsx                        # All components (~8000 lines)
 │   │   └── App.css                        # All styles (~2000 lines)
 │   └── dist/                              # Built output (created by npm run build)
 │       ├── index.html
 │       ├── assets/
 │       └── ...
 ├── server/
-│   ├── index.js                           # Express server (~1600 lines)
+│   ├── index.js                           # Express server (~5000 lines)
 │   └── package.json                       # express, cors
 ├── chitragupta/
 │   └── questions/
@@ -76,22 +79,66 @@ Tenali/
 │       └── ... (3964 files total)
 ├── supermarket/
 │   ├── SKILL.md                           # This file (master spec)
-│   ├── gk/SKILL.md                        # General Knowledge specification
-│   ├── addition/SKILL.md                  # Addition specification
-│   ├── quadratic/SKILL.md                 # Quadratic specification
-│   ├── multiply/SKILL.md                  # Multiplication Tables specification
-│   ├── vocab/SKILL.md                     # Vocab Builder specification
-│   ├── spot/SKILL.md                      # Twin Hunt specification
-│   ├── sqrt/SKILL.md                      # Square Root specification
-│   ├── polymul/SKILL.md                   # Polynomial Multiplication specification
-│   ├── polyfactor/SKILL.md                # Polynomial Factorization specification
-│   ├── primefactor/SKILL.md               # Prime Factorization specification
-│   ├── qformula/SKILL.md                  # Quadratic Formula specification
-│   ├── simul/SKILL.md                     # Simultaneous Equations specification
-│   ├── funceval/SKILL.md                  # Function Evaluation specification
-│   ├── lineq/SKILL.md                     # Line Equation specification
-│   ├── basicarith/SKILL.md                # Basic Arithmetic specification
-│   └── custom/SKILL.md                    # Custom Lesson specification
+│   │
+│   │   # Original 16 Apps
+│   ├── gk/SKILL.md                        # General Knowledge
+│   ├── addition/SKILL.md                  # Addition
+│   ├── quadratic/SKILL.md                 # Quadratic Evaluation
+│   ├── multiply/SKILL.md                  # Multiplication Tables
+│   ├── vocab/SKILL.md                     # Vocabulary Builder
+│   ├── spot/SKILL.md                      # Twin Hunt
+│   ├── sqrt/SKILL.md                      # Square Root
+│   ├── polymul/SKILL.md                   # Polynomial Multiplication
+│   ├── polyfactor/SKILL.md                # Polynomial Factorization
+│   ├── primefactor/SKILL.md               # Prime Factorization
+│   ├── qformula/SKILL.md                  # Quadratic Formula
+│   ├── simul/SKILL.md                     # Simultaneous Equations
+│   ├── funceval/SKILL.md                  # Function Evaluation
+│   ├── lineq/SKILL.md                     # Line Equation
+│   ├── basicarith/SKILL.md                # Basic Arithmetic
+│   ├── custom/SKILL.md                    # Custom Lesson
+│   │
+│   │   # Factory-Generated Puzzles (14 via makeQuizApp)
+│   ├── sets/SKILL.md                      # Sets (union, intersection, Venn)
+│   ├── sequences/SKILL.md                 # Sequences (AP, GP, Fibonacci)
+│   ├── ratio/SKILL.md                     # Ratio & Proportion
+│   ├── percent/SKILL.md                   # Percentages
+│   ├── indices/SKILL.md                   # Indices & Powers
+│   ├── surds/SKILL.md                     # Surds
+│   ├── prob/SKILL.md                      # Probability
+│   ├── stats/SKILL.md                     # Statistics (mean, median, mode)
+│   ├── trig/SKILL.md                      # Trigonometry (SOHCAHTOA)
+│   ├── vectors/SKILL.md                   # Vectors
+│   ├── matrix/SKILL.md                    # Matrices
+│   ├── log/SKILL.md                       # Logarithms
+│   ├── diff/SKILL.md                      # Differentiation
+│   ├── circleth/SKILL.md                  # Circle Theorems
+│   │
+│   │   # Additional Factory Puzzles (16 newer topics)
+│   ├── ineq/SKILL.md                      # Inequalities
+│   ├── bearings/SKILL.md                  # Bearings
+│   ├── coordgeom/SKILL.md                 # Coordinate Geometry
+│   ├── transform/SKILL.md                 # Transformations
+│   ├── mensur/SKILL.md                    # Mensuration (area, volume)
+│   ├── bases/SKILL.md                     # Number Bases
+│   ├── integ/SKILL.md                     # Integration
+│   ├── stdform/SKILL.md                   # Standard Form
+│   ├── bounds/SKILL.md                    # Bounds (upper & lower)
+│   ├── sdt/SKILL.md                       # Speed, Distance, Time
+│   ├── variation/SKILL.md                 # Variation (direct & inverse)
+│   ├── hcflcm/SKILL.md                    # HCF & LCM
+│   ├── profitloss/SKILL.md                # Profit & Loss
+│   ├── rounding/SKILL.md                  # Rounding
+│   ├── binomial/SKILL.md                  # Binomial Theorem
+│   ├── complex/SKILL.md                   # Complex Numbers
+│   │
+│   │   # Geometry Puzzles (6 topics, primary through 10th Std CBSE)
+│   ├── angles/SKILL.md                    # Angles (types, on a line, vertically opposite)
+│   ├── triangles/SKILL.md                 # Triangles (angle sum, isosceles, exterior angle)
+│   ├── congruence/SKILL.md                # Congruence (SSS, SAS, ASA, RHS)
+│   ├── pythag/SKILL.md                    # Pythagoras' Theorem (2D and 3D)
+│   ├── polygons/SKILL.md                  # Polygons (interior/exterior angles, diagonals)
+│   └── similarity/SKILL.md               # Similarity (scale factor, area/volume ratios)
 ├── render.yaml                            # Render.com deployment config
 └── .github/workflows/                     # CI/CD (if using GitHub Pages)
 ```
@@ -291,28 +338,16 @@ return <Home />
 - **Opacity**: 0.6
 - **Implementation**: useRef on grid element, read `getComputedStyle(gridEl).gridTemplateColumns` on mount and resize, compute column count, calculate row count as `Math.ceil(apps.length / cols)`
 
-### All Apps Registry (Hardcoded Array)
+### All Apps Registry (56 apps + Random Mix + Custom Lesson)
 
-```javascript
-const allApps = [
-  { key: 'gk', name: 'GK', subtitle: 'General Knowledge questions', color: 'purple' },
-  { key: 'addition', name: 'Addition', subtitle: '20-question addition practice', color: 'blue' },
-  { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
-  { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (1–10)', color: 'green' },
-  { key: 'vocab', name: 'Vocabulary', subtitle: 'Match words to definitions', color: 'blue' },
-  { key: 'spot', name: 'Twin Hunt', subtitle: 'Find the common object', color: 'purple' },
-  { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
-  { key: 'polymul', name: 'Poly Multiply', subtitle: 'Multiply two polynomials', color: 'blue' },
-  { key: 'polyfactor', name: 'Poly Factor', subtitle: 'Factor a quadratic expression', color: 'green' },
-  { key: 'primefactor', name: 'Prime Factors', subtitle: 'Break a number into primes', color: 'purple' },
-  { key: 'qformula', name: 'Quadratics', subtitle: 'Find roots of ax² + bx + c = 0', color: 'blue' },
-  { key: 'simul', name: 'Sim. Eq.', subtitle: '2×2 (easy) or 3×3 (hard)', color: 'purple' },
-  { key: 'funceval', name: 'Functions', subtitle: 'Evaluate f(x), f(x,y), f(x,y,z)', color: 'blue' },
-  { key: 'lineq', name: 'Line Equation', subtitle: 'Find m and c from two points', color: 'green' },
-  { key: 'basicarith', name: 'Arithmetic', subtitle: '+, −, × with positive & negative', color: 'purple' },
-  { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'green' }
-]
-```
+The `allApps` array contains all 56 quiz topics plus Random Mix and Custom Lesson. Each entry has `key`, `name`, `subtitle`, and `color` ('purple', 'blue', or 'green'). Topics span:
+
+- **Original 16**: GK, Addition, Quadratic, Multiplication, Vocabulary, Twin Hunt, Square Root, Poly Multiply, Poly Factor, Prime Factors, Quadratics (formula), Sim. Eq., Functions, Line Equation, Arithmetic, Custom Lesson
+- **14 Factory Puzzles**: Sets, Sequences, Ratio, Percentages, Indices, Surds, Probability, Statistics, Trigonometry, Vectors, Matrices, Logarithms, Differentiation, Circle Theorems
+- **10 Additional Topics**: Inequalities, Bearings, Coordinate Geometry, Transformations, Mensuration, Number Bases, Integration, Standard Form, Bounds, Speed/Distance/Time
+- **6 More Topics**: Variation, HCF & LCM, Profit & Loss, Rounding, Binomial Theorem, Complex Numbers
+- **6 Geometry**: Angles, Triangles, Congruence, Pythagoras' Theorem, Polygons, Similarity
+- **Special**: Random Mix (cross-topic adaptive quiz)
 
 ---
 
@@ -416,6 +451,59 @@ const advanceRef = useRef(null)
 useAutoAdvance(revealed, advanceRef, isCorrect)
 ```
 
+### makeQuizApp Factory Function
+
+Most quiz components (36 of 56) are generated by the `makeQuizApp` factory rather than hand-written. The factory accepts a configuration object and returns a complete React component with setup, playing, and finished phases.
+
+**Signature:**
+```javascript
+const MyApp = makeQuizApp({
+  title: 'Quiz Title',
+  subtitle: 'Short description',
+  apiPath: 'quiz-api',          // GET /quiz-api/question, POST /quiz-api/check
+  diffLabels: {
+    easy: 'Easy — Description',
+    medium: 'Medium — Description',
+    hard: 'Hard — Description',
+    extrahard: 'Extra Hard — Description'
+  }
+})
+```
+
+**Features included automatically:**
+- Four difficulty buttons (Easy, Medium, Hard, Extra Hard) plus Adaptive
+- Question count selector (default 20)
+- Timer, score tracking, results table
+- Auto-advance on correct answers
+- Keyboard Enter support
+- Adaptive difficulty mode with smooth score adjustments
+
+### Adaptive Difficulty Mode
+
+Every quiz app (factory-generated and hand-written) includes an "Adaptive" difficulty button alongside Easy/Medium/Hard/Extra Hard. When selected, difficulty adjusts smoothly based on performance.
+
+**Implementation:**
+```javascript
+const ADAPT_DIFFS = ['easy', 'medium', 'hard', 'extrahard']
+const ADAPT_LABELS = { easy: 'Easy', medium: 'Medium', hard: 'Hard', extrahard: 'Extra Hard' }
+const ADAPT_COLORS = { easy: '#4caf50', medium: '#ff9800', hard: '#f44336', extrahard: '#9c27b0' }
+
+function adaptiveLevel(score) {
+  return ADAPT_DIFFS[Math.min(Math.max(Math.round(score), 0), 3)]
+}
+function adaptivePct(score) {
+  return Math.min(100, Math.max(0, (score / 3) * 100))
+}
+```
+
+**Score mechanics:** Float score 0.0–3.0, +0.25 on correct, -0.35 on wrong. Uses `adaptScoreRef` (useRef) for synchronous access in `loadQuestion()`, preventing stale closure issues. Maps to discrete difficulty levels for API calls.
+
+**Visual indicators:** Gradient-colored adaptive pill button, progress bar during play showing current level, "Reached level" display on finished screen.
+
+### Random Mix Mode
+
+Cross-topic adaptive quiz pulling from all 56 topics randomly. Uses `RANDOM_MIX_TOPICS` array (key/name/api for each topic). Progressive difficulty: 3 consecutive correct → level up, 2 consecutive wrong → level down. Features skip-topic button, topic stats breakdown on finished screen, and skipped topics shown as crossed-out clickable pills.
+
 ### NumPad Component
 **Props**: `{ value, onChange, disabled }`
 
@@ -437,7 +525,7 @@ useAutoAdvance(revealed, advanceRef, isCorrect)
 
 ## 9. Standard Quiz Pattern
 
-All 16+ quiz components follow a consistent three-phase flow:
+All 56 quiz components follow a consistent three-phase flow:
 
 ### Phase 1: Setup
 - **State variables**: `difficulty`, `numQuestions`, `started`
@@ -974,7 +1062,15 @@ export default defineConfig({
       '/custom-api': {
         target: 'http://localhost:4000',
         changeOrigin: true
-      }
+      },
+      // Plus 36 additional proxy entries for all newer puzzles:
+      // sets-api, sequences-api, ratio-api, percent-api, indices-api, surds-api,
+      // prob-api, stats-api, trig-api, vectors-api, matrix-api, log-api, diff-api,
+      // circleth-api, ineq-api, bearings-api, coordgeom-api, transform-api,
+      // mensur-api, bases-api, integ-api, stdform-api, bounds-api, sdt-api,
+      // variation-api, hcflcm-api, profitloss-api, rounding-api, binomial-api,
+      // complex-api, angles-api, triangles-api, congruence-api, pythag-api,
+      // polygons-api, similarity-api
     }
   }
 })
@@ -1184,57 +1280,48 @@ PORT=4000 node index.js
 
 ## 23. Adding a New Quiz to the Platform
 
-To add a new quiz (e.g., "Trigonometry"):
+There are **7 registration points** for each new puzzle. Most puzzles use the `makeQuizApp` factory.
 
-1. **Add to home registry** (App.jsx):
+### Using makeQuizApp (recommended):
+
+1. **Server endpoints** (server/index.js): Add GET `/newpuzzle-api/question` and POST `/newpuzzle-api/check` before the catch-all route.
+
+2. **Factory component** (App.jsx):
    ```javascript
-   allApps.push({
-     key: 'trig',
-     name: 'Trigonometry',
-     subtitle: 'Solve trig problems',
-     color: 'blue'
+   const NewPuzzleApp = makeQuizApp({
+     title: 'New Puzzle',
+     subtitle: 'Description',
+     apiPath: 'newpuzzle-api',
+     diffLabels: { easy: 'Easy — ...', medium: 'Medium — ...', hard: 'Hard — ...', extrahard: 'Extra Hard — ...' }
    })
    ```
 
-2. **Create quiz component** (App.jsx):
-   - Follow standard quiz pattern (Phase 1–3)
-   - Use `useTimer`, `useAutoAdvance`, `ResultsTable`
-   - Implement setup state, playing state, finished state
+3. **7 Registration Points** (all in App.jsx):
+   - `modeMap`: Add `newpuzzle: NewPuzzleApp` to component lookup
+   - `allApps`: Add `{ key: 'newpuzzle', name: 'New Puzzle', subtitle: '...', color: 'blue' }`
+   - `CUSTOM_PUZZLES`: Add `'New Puzzle'` to the array
+   - `fetchQuestionForType`: Add URL mapping `newpuzzle: '/newpuzzle-api/question'`
+   - `getPromptForType`: Add prompt extraction logic for the puzzle type
+   - `CustomApp handleSubmit`: Add answer-checking case
+   - `CustomApp renderInputs`: Add input rendering case
+   - `apiMap`: Add `newpuzzle: { fetchQuestion: '/newpuzzle-api/question', checkAnswer: '/newpuzzle-api/check' }`
 
-3. **Add mode switch** (App.jsx):
+4. **API proxy** (client/vite.config.js):
    ```javascript
-   case 'trig':
-     return <TrigQuiz onBack={() => setMode(null)} />
+   '/newpuzzle-api': { target: 'http://localhost:4000', changeOrigin: true }
    ```
 
-4. **Create server endpoints** (server/index.js):
-   ```javascript
-   app.get('/trig-api/question', (req, res) => { /* generate question */ })
-   app.post('/trig-api/check', (req, res) => { /* check answer */ })
-   ```
-
-5. **Add API proxy** (client/vite.config.js):
-   ```javascript
-   '/trig-api': {
-     target: 'http://localhost:4000',
-     changeOrigin: true
-   }
-   ```
-
-6. **Create formal spec** (`supermarket/trig/SKILL.md`):
-   - Document question generation algorithm
-   - Document answer validation logic
-   - Document UI layout and interaction
+5. **Formal spec** (`supermarket/newpuzzle/SKILL.md`): Document generation algorithm, answer checking, registration points, and adaptive mode support.
 
 ---
 
 ## 24. Summary of File Line Counts
 
-- **App.jsx**: ~5400 lines (all components, state management, hooks, styling embedded)
+- **App.jsx**: ~8000 lines (all components, makeQuizApp factory, 56 quiz apps, adaptive mode, Random Mix)
 - **App.css**: ~2000 lines (all styles, responsive, theme variables)
-- **server/index.js**: ~1600 lines (all endpoints, algorithms, question loading)
+- **server/index.js**: ~5000 lines (all 56+ API endpoint pairs, question generation algorithms, helper functions)
 - **index.html**: ~15 lines (minimal shell, font links)
-- **vite.config.js**: ~50 lines (proxy configuration)
+- **vite.config.js**: ~120 lines (proxy configuration for all API paths)
 
 ---
 
@@ -1244,10 +1331,12 @@ When implementing Tenali from this specification:
 
 - [ ] Dark theme (default) and light theme colors match exactly
 - [ ] Theme toggle button in fixed top-right position (16px from edge)
-- [ ] All 16 apps appear in home grid with correct colors
+- [ ] All 56 apps plus Random Mix and Custom Lesson appear in home grid with correct colors
 - [ ] Search bar filters apps in real-time
 - [ ] Grid dimension indicator displays correctly
-- [ ] All 15 API endpoints implemented with correct parameters and responses
+- [ ] All 56+ API endpoint pairs implemented with correct parameters and responses
+- [ ] Adaptive difficulty mode works on every quiz (smooth score transitions)
+- [ ] Random Mix mode pulls from all topics with progressive difficulty
 - [ ] GK and vocab questions load from JSON files at startup
 - [ ] NumPad component works in math quizzes
 - [ ] Auto-advance works for correct answers only
@@ -1261,4 +1350,4 @@ When implementing Tenali from this specification:
 
 ## End of Master Specification
 
-This document defines the complete technical blueprint for Tenali. Every component, API endpoint, color value, dimension, algorithm, and behavior is documented here. An implementation team with this document and the individual puzzle SKILL.md files should be able to recreate the entire platform from scratch.
+This document defines the complete technical blueprint for Tenali. Every component, API endpoint, color value, dimension, algorithm, and behavior is documented here. An implementation team with this document and the 36 individual puzzle SKILL.md files (each containing comprehensive formal specifications with algorithms, API formats, and registration points) should be able to recreate the entire platform from scratch.

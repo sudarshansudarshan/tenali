@@ -9248,7 +9248,8 @@ function ExtendedEuclidApp() {
     const nb = parseInt(b, 10)
     if (isNaN(na) || isNaN(nb) || (na === 0 && nb === 0)) return
 
-    // ─────── Initialize Algorithm     const rows = []
+    // ─────── Initialize Algorithm
+    const rows = []
     let r0 = Math.abs(na), r1 = Math.abs(nb)
     let s0 = 1, s1 = 0
     let t0 = 0, t1 = 1

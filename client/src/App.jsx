@@ -1782,74 +1782,80 @@ function App() {
  * @param {Function} props.onSelect - Callback when user selects a quiz: receives mode key (e.g., 'gk')
  */
 function Home({ onSelect }) {
-  // Complete list of all available quiz apps with metadata
-  const allApps = [
-    { key: 'gk', name: 'GK', subtitle: 'General Knowledge questions', color: 'purple' },
-    { key: 'addition', name: 'Addition', subtitle: '20-question addition practice', color: 'blue' },
-    { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
-    { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (1–10)', color: 'green' },
-    { key: 'vocab', name: 'Vocabulary', subtitle: 'Match words to definitions', color: 'blue' },
-    { key: 'spot', name: 'Twin Hunt', subtitle: 'Find the common object', color: 'purple' },
-    { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
-    { key: 'polymul', name: 'Poly Multiply', subtitle: 'Multiply two polynomials', color: 'blue' },
-    { key: 'polyfactor', name: 'Poly Factor', subtitle: 'Factor a quadratic expression', color: 'green' },
-    { key: 'primefactor', name: 'Prime Factors', subtitle: 'Break a number into primes', color: 'purple' },
-    { key: 'qformula', name: 'Quadratics', subtitle: 'Find roots of ax² + bx + c = 0', color: 'blue' },
-    { key: 'simul', name: 'Sim. Eq.', subtitle: '2×2 (easy) or 3×3 (hard)', color: 'purple' },
-    { key: 'funceval', name: 'Functions', subtitle: 'Evaluate f(x), f(x,y), f(x,y,z)', color: 'blue' },
-    { key: 'lineq', name: 'Line Equation', subtitle: 'Find m and c from two points', color: 'green' },
-    { key: 'basicarith', name: 'Arithmetic', subtitle: '+, −, × with positive & negative', color: 'purple' },
-    { key: 'fractionadd', name: 'Fractions (Add)', subtitle: 'Add fractions and simplify', color: 'blue' },
-    { key: 'surds', name: 'Surds', subtitle: 'Simplify, add, multiply, rationalise', color: 'green' },
-    { key: 'indices', name: 'Indices', subtitle: 'Laws of exponents', color: 'purple' },
-    { key: 'sequences', name: 'Sequences', subtitle: 'Arithmetic & geometric sequences', color: 'blue' },
-    { key: 'ratio', name: 'Ratio', subtitle: 'Ratio & proportion', color: 'green' },
-    { key: 'percent', name: 'Percentages', subtitle: 'Find, increase, reverse, compound', color: 'purple' },
-    { key: 'sets', name: 'Sets', subtitle: 'Union, intersection, Venn diagrams', color: 'blue' },
-    { key: 'trig', name: 'Trigonometry', subtitle: 'SOH-CAH-TOA, sine/cosine rule', color: 'green' },
-    { key: 'ineq', name: 'Inequalities', subtitle: 'Linear & quadratic inequalities', color: 'purple' },
-    { key: 'coordgeom', name: 'Coord. Geometry', subtitle: 'Midpoint, distance, gradient', color: 'blue' },
-    { key: 'prob', name: 'Probability', subtitle: 'Single & combined events', color: 'green' },
-    { key: 'stats', name: 'Statistics', subtitle: 'Mean, median, mode, range', color: 'purple' },
-    { key: 'matrix', name: 'Matrices', subtitle: 'Add, multiply, determinant', color: 'blue' },
-    { key: 'vectors', name: 'Vectors', subtitle: 'Add, scale, magnitude', color: 'green' },
-    { key: 'transform', name: 'Transformations', subtitle: 'Reflect, rotate, translate, enlarge', color: 'purple' },
-    { key: 'mensur', name: 'Mensuration', subtitle: 'Area, volume, surface area', color: 'blue' },
-    { key: 'bearings', name: 'Bearings', subtitle: 'Three-figure bearings', color: 'green' },
-    { key: 'log', name: 'Logarithms', subtitle: 'Evaluate, simplify, solve', color: 'purple' },
-    { key: 'diff', name: 'Differentiation', subtitle: 'Power rule, turning points', color: 'blue' },
-    { key: 'bases', name: 'Number Bases', subtitle: 'Binary, decimal, hexadecimal', color: 'green' },
-    { key: 'circleth', name: 'Circle Theorems', subtitle: 'Angles, tangents, cyclic quads', color: 'purple' },
-    { key: 'integ', name: 'Integration', subtitle: 'Reverse differentiation & areas', color: 'blue' },
-    { key: 'stdform', name: 'Standard Form', subtitle: 'Scientific notation operations', color: 'green' },
-    { key: 'bounds', name: 'Bounds', subtitle: 'Upper & lower bounds', color: 'purple' },
-    { key: 'sdt', name: 'Speed, Distance, Time', subtitle: 'Rate problems & conversions', color: 'blue' },
-    { key: 'variation', name: 'Variation', subtitle: 'Direct & inverse proportion', color: 'green' },
-    { key: 'hcflcm', name: 'HCF & LCM', subtitle: 'Highest common factor & LCM', color: 'purple' },
-    { key: 'profitloss', name: 'Profit & Loss', subtitle: 'Cost price, discounts, markup', color: 'blue' },
-    { key: 'rounding', name: 'Rounding', subtitle: 'D.P., sig. figs, estimation', color: 'green' },
-    { key: 'binomial', name: 'Binomial Theorem', subtitle: 'Expansions & coefficients', color: 'purple' },
-    { key: 'complex', name: 'Complex Numbers', subtitle: 'Add, multiply, modulus', color: 'blue' },
-    { key: 'angles', name: 'Angles', subtitle: 'Lines, points, parallel lines', color: 'green' },
-    { key: 'triangles', name: 'Triangles', subtitle: 'Angle sum, isosceles, exterior', color: 'purple' },
-    { key: 'congruence', name: 'Congruence', subtitle: 'SSS, SAS, ASA, RHS', color: 'blue' },
-    { key: 'pythag', name: "Pythagoras' Theorem", subtitle: 'Hypotenuse, legs, 3D', color: 'green' },
-    { key: 'polygons', name: 'Polygons', subtitle: 'Interior & exterior angles', color: 'purple' },
-    { key: 'similarity', name: 'Similarity', subtitle: 'Scale factor, area & volume ratios', color: 'blue' },
-    { key: 'randommix', name: 'Random Mix', subtitle: 'Adaptive cross-topic quiz', color: 'green' },
-    { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'green' },
+  // Special featured apps (shown in highlighted first row)
+  const featuredApps = [
+    { key: 'randommix', name: 'Random Mix', subtitle: 'Adaptive cross-topic quiz', color: 'featured' },
+    { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'featured' },
   ]
+
+  // All regular quiz apps sorted alphabetically by name
+  const regularApps = [
+    { key: 'addition', name: 'Addition', subtitle: '20-question addition practice', color: 'blue' },
+    { key: 'angles', name: 'Angles', subtitle: 'Lines, points, parallel lines', color: 'green' },
+    { key: 'basicarith', name: 'Arithmetic', subtitle: '+, −, × with positive & negative', color: 'purple' },
+    { key: 'bearings', name: 'Bearings', subtitle: 'Three-figure bearings', color: 'green' },
+    { key: 'binomial', name: 'Binomial Theorem', subtitle: 'Expansions & coefficients', color: 'purple' },
+    { key: 'bounds', name: 'Bounds', subtitle: 'Upper & lower bounds', color: 'blue' },
+    { key: 'circleth', name: 'Circle Theorems', subtitle: 'Angles, tangents, cyclic quads', color: 'purple' },
+    { key: 'complex', name: 'Complex Numbers', subtitle: 'Add, multiply, modulus', color: 'blue' },
+    { key: 'congruence', name: 'Congruence', subtitle: 'SSS, SAS, ASA, RHS', color: 'green' },
+    { key: 'coordgeom', name: 'Coord. Geometry', subtitle: 'Midpoint, distance, gradient', color: 'blue' },
+    { key: 'diff', name: 'Differentiation', subtitle: 'Power rule, turning points', color: 'purple' },
+    { key: 'fractionadd', name: 'Fractions (Add)', subtitle: 'Add fractions and simplify', color: 'blue' },
+    { key: 'funceval', name: 'Functions', subtitle: 'Evaluate f(x), f(x,y), f(x,y,z)', color: 'green' },
+    { key: 'gk', name: 'GK', subtitle: 'General Knowledge questions', color: 'purple' },
+    { key: 'hcflcm', name: 'HCF & LCM', subtitle: 'Highest common factor & LCM', color: 'blue' },
+    { key: 'indices', name: 'Indices', subtitle: 'Laws of exponents', color: 'purple' },
+    { key: 'ineq', name: 'Inequalities', subtitle: 'Linear & quadratic inequalities', color: 'green' },
+    { key: 'integ', name: 'Integration', subtitle: 'Reverse differentiation & areas', color: 'blue' },
+    { key: 'lineq', name: 'Line Equation', subtitle: 'Find m and c from two points', color: 'green' },
+    { key: 'log', name: 'Logarithms', subtitle: 'Evaluate, simplify, solve', color: 'purple' },
+    { key: 'matrix', name: 'Matrices', subtitle: 'Add, multiply, determinant', color: 'blue' },
+    { key: 'mensur', name: 'Mensuration', subtitle: 'Area, volume, surface area', color: 'green' },
+    { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (1–10)', color: 'purple' },
+    { key: 'bases', name: 'Number Bases', subtitle: 'Binary, decimal, hexadecimal', color: 'green' },
+    { key: 'percent', name: 'Percentages', subtitle: 'Find, increase, reverse, compound', color: 'blue' },
+    { key: 'polyfactor', name: 'Poly Factor', subtitle: 'Factor a quadratic expression', color: 'green' },
+    { key: 'polymul', name: 'Poly Multiply', subtitle: 'Multiply two polynomials', color: 'blue' },
+    { key: 'polygons', name: 'Polygons', subtitle: 'Interior & exterior angles', color: 'purple' },
+    { key: 'primefactor', name: 'Prime Factors', subtitle: 'Break a number into primes', color: 'green' },
+    { key: 'prob', name: 'Probability', subtitle: 'Single & combined events', color: 'blue' },
+    { key: 'profitloss', name: 'Profit & Loss', subtitle: 'Cost price, discounts, markup', color: 'purple' },
+    { key: 'pythag', name: "Pythagoras' Theorem", subtitle: 'Hypotenuse, legs, 3D', color: 'green' },
+    { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
+    { key: 'qformula', name: 'Quadratics (Formula)', subtitle: 'Find roots of ax² + bx + c = 0', color: 'purple' },
+    { key: 'ratio', name: 'Ratio', subtitle: 'Ratio & proportion', color: 'green' },
+    { key: 'rounding', name: 'Rounding', subtitle: 'D.P., sig. figs, estimation', color: 'blue' },
+    { key: 'sequences', name: 'Sequences', subtitle: 'Arithmetic & geometric sequences', color: 'purple' },
+    { key: 'sets', name: 'Sets', subtitle: 'Union, intersection, Venn diagrams', color: 'blue' },
+    { key: 'similarity', name: 'Similarity', subtitle: 'Scale factor, area & volume ratios', color: 'green' },
+    { key: 'simul', name: 'Sim. Equations', subtitle: '2×2 (easy) or 3×3 (hard)', color: 'purple' },
+    { key: 'sdt', name: 'Speed, Distance, Time', subtitle: 'Rate problems & conversions', color: 'blue' },
+    { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
+    { key: 'stdform', name: 'Standard Form', subtitle: 'Scientific notation operations', color: 'purple' },
+    { key: 'stats', name: 'Statistics', subtitle: 'Mean, median, mode, range', color: 'blue' },
+    { key: 'surds', name: 'Surds', subtitle: 'Simplify, add, multiply, rationalise', color: 'green' },
+    { key: 'transform', name: 'Transformations', subtitle: 'Reflect, rotate, translate, enlarge', color: 'purple' },
+    { key: 'triangles', name: 'Triangles', subtitle: 'Angle sum, isosceles, exterior', color: 'blue' },
+    { key: 'trig', name: 'Trigonometry', subtitle: 'SOH-CAH-TOA, sine/cosine rule', color: 'green' },
+    { key: 'variation', name: 'Variation', subtitle: 'Direct & inverse proportion', color: 'purple' },
+    { key: 'vectors', name: 'Vectors', subtitle: 'Add, scale, magnitude', color: 'blue' },
+    { key: 'vocab', name: 'Vocabulary', subtitle: 'Match words to definitions', color: 'green' },
+    { key: 'spot', name: 'Twin Hunt', subtitle: 'Find the common object', color: 'purple' },
+  ]
+
+  // Combined list for search filtering
+  const allApps = [...featuredApps, ...regularApps]
 
   // Search term for filtering apps
   const [search, setSearch] = useState('')
 
-  // Filtered list: show matching apps, or all if search is empty
-  const apps = search.trim()
-    ? allApps.filter(a =>
-        a.name.toLowerCase().includes(search.toLowerCase()) ||
-        a.subtitle.toLowerCase().includes(search.toLowerCase())
-      )
-    : allApps
+  // Filtered lists
+  const isSearching = search.trim() !== ''
+  const matchFilter = (a) => a.name.toLowerCase().includes(search.toLowerCase()) || a.subtitle.toLowerCase().includes(search.toLowerCase())
+  const filteredFeatured = isSearching ? featuredApps.filter(matchFilter) : featuredApps
+  const filteredRegular = isSearching ? regularApps.filter(matchFilter) : regularApps
+  const apps = isSearching ? allApps.filter(matchFilter) : allApps
 
   // Grid layout tracking (for responsive display)
   const gridRef = useRef(null)
@@ -1890,8 +1896,17 @@ function Home({ onSelect }) {
           onChange={e => setSearch(e.target.value)}
         />
       </div>
+      {filteredFeatured.length > 0 && <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginBottom: '18px', flexWrap: 'wrap' }}>
+        {filteredFeatured.map((app) => (
+          <button key={app.key} className="menu-card featured" onClick={() => onSelect(app.key)}
+            style={{ border: '2px solid var(--clr-accent)', boxShadow: '0 0 12px rgba(232, 134, 74, 0.25), var(--shadow-card)', background: 'linear-gradient(135deg, var(--clr-card), var(--clr-surface))' }}>
+            <span className="menu-title">{app.name}</span>
+            <span className="menu-subtitle">{app.subtitle}</span>
+          </button>
+        ))}
+      </div>}
       <div className="menu-grid" ref={gridRef}>
-        {apps.map((app) => (
+        {filteredRegular.map((app) => (
           <button key={app.key} className={`menu-card ${app.color}`} onClick={() => onSelect(app.key)}>
             <span className="menu-title">{app.name}</span>
             <span className="menu-subtitle">{app.subtitle}</span>

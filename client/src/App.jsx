@@ -1847,6 +1847,18 @@ function Home({ onSelect }) {
   // Combined list for search filtering
   const allApps = [...featuredApps, ...regularApps]
 
+  // Hamburger menu open state
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return
+    const handleClick = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false) }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [menuOpen])
+
   // Search term for filtering apps
   const [search, setSearch] = useState('')
 
@@ -1880,11 +1892,42 @@ function Home({ onSelect }) {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '4px' }}>
-        <img src="/tenali.png" alt="Tenali Raman" style={{ width: '80px', height: 'auto', flexShrink: 0 }} />
-        <div>
-          <h1 style={{ margin: 0 }}>Tenali</h1>
-          <p className="subtitle" style={{ margin: 0 }}>Choose a learning game to begin</p>
+      <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '4px' }}>
+          <img src="/tenali.png" alt="Tenali Raman" style={{ width: '80px', height: 'auto', flexShrink: 0 }} />
+          <div>
+            <h1 style={{ margin: 0 }}>Tenali</h1>
+            <p className="subtitle" style={{ margin: 0 }}>Choose a learning game to begin</p>
+          </div>
+        </div>
+        {/* Hamburger menu — top right */}
+        <div ref={menuRef} style={{ position: 'absolute', top: '8px', right: '0' }}>
+          <button onClick={() => setMenuOpen(o => !o)} style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: '8px',
+            display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center'
+          }} aria-label="Menu">
+            <span style={{ display: 'block', width: '22px', height: '2.5px', background: 'var(--clr-text)', borderRadius: '2px', transition: 'transform 0.2s, opacity 0.2s', transform: menuOpen ? 'rotate(45deg) translate(4.5px, 4.5px)' : 'none' }} />
+            <span style={{ display: 'block', width: '22px', height: '2.5px', background: 'var(--clr-text)', borderRadius: '2px', transition: 'opacity 0.2s', opacity: menuOpen ? 0 : 1 }} />
+            <span style={{ display: 'block', width: '22px', height: '2.5px', background: 'var(--clr-text)', borderRadius: '2px', transition: 'transform 0.2s, opacity 0.2s', transform: menuOpen ? 'rotate(-45deg) translate(4.5px, -4.5px)' : 'none' }} />
+          </button>
+          {menuOpen && <div style={{
+            position: 'absolute', top: '100%', right: 0, zIndex: 50,
+            background: 'var(--clr-card)', border: '1.5px solid var(--clr-border)',
+            borderRadius: 'var(--radius-sm)', boxShadow: 'var(--shadow-card)',
+            padding: '6px 0', minWidth: '200px', overflow: 'hidden'
+          }}>
+            {featuredApps.map(app => (
+              <button key={app.key} onClick={() => { setMenuOpen(false); onSelect(app.key) }} style={{
+                display: 'block', width: '100%', textAlign: 'left', padding: '10px 16px',
+                background: 'none', border: 'none', cursor: 'pointer', color: 'var(--clr-text)',
+                fontFamily: 'var(--font-body)', fontSize: '0.95rem', transition: 'background var(--transition)'
+              }} onMouseEnter={e => e.target.style.background = 'var(--clr-hover-strong)'}
+                 onMouseLeave={e => e.target.style.background = 'none'}>
+                <strong style={{ color: 'var(--clr-accent)' }}>{app.name}</strong>
+                <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--clr-text-soft)', marginTop: '2px' }}>{app.subtitle}</span>
+              </button>
+            ))}
+          </div>}
         </div>
       </div>
       <div className="search-bar-row">
@@ -1896,15 +1939,6 @@ function Home({ onSelect }) {
           onChange={e => setSearch(e.target.value)}
         />
       </div>
-      {filteredFeatured.length > 0 && <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {filteredFeatured.map((app) => (
-          <button key={app.key} className="menu-card featured" onClick={() => onSelect(app.key)}
-            style={{ border: '2px solid var(--clr-accent)', boxShadow: '0 0 12px rgba(232, 134, 74, 0.25), var(--shadow-card)', background: 'linear-gradient(135deg, var(--clr-card), var(--clr-surface))' }}>
-            <span className="menu-title">{app.name}</span>
-            <span className="menu-subtitle">{app.subtitle}</span>
-          </button>
-        ))}
-      </div>}
       <div className="menu-grid" ref={gridRef}>
         {filteredRegular.map((app) => (
           <button key={app.key} className={`menu-card ${app.color}`} onClick={() => onSelect(app.key)}>

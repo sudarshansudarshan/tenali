@@ -1238,13 +1238,13 @@ function AdaptiveMixedApp({ studentName }) {
     const sum = a + b
     const sup = (n) => String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('')
     const expStr = exp === 1 ? '' : sup(exp)
-    const fmtTerm = (c, showPlus) => {
-      if (c === 1) return `${showPlus ? '+ ' : ''}x${expStr}`
-      if (c === -1) return `- x${expStr}`
-      if (c < 0) return `- ${Math.abs(c)}x${expStr}`
-      return `${showPlus ? '+ ' : ''}${c}x${expStr}`
+    const fmtTerm = (c) => {
+      if (c === 1) return `x${expStr}`
+      if (c === -1) return `-x${expStr}`
+      if (c < 0) return `-${Math.abs(c)}x${expStr}`
+      return `${c}x${expStr}`
     }
-    const prompt = `${fmtTerm(a, false)} ${b >= 0 ? '+' : ''} ${fmtTerm(b, b >= 0)}`
+    const prompt = `${fmtTerm(a)} + ${fmtTerm(b)}`
     const ansStr = sum === 0 ? '0' : sum === 1 ? `x${expStr}` : sum === -1 ? `-x${expStr}` : `${sum}x${expStr}`
     return {
       type: 'monomial-add',

@@ -3277,33 +3277,26 @@ function FractionAddApp({ onBack }) {
   return (
     <QuizLayout title="Fractions (Add)" subtitle="Add fractions and simplify" onBack={onBack} timer={started && !finished ? timer : null}>
       {/* ── Setup Phase ── */}
-      {!started && !finished && (
-        <div className="welcome-box">
-          <p className="welcome-text">Practice adding fractions!</p>
-          <p style={{ opacity: 0.8, margin: '0.5rem 0' }}>
-            {difficulty === 'easy' && 'Same denominators — add and simplify.'}
-            {difficulty === 'medium' && 'Different denominators — find LCD, add, and simplify.'}
-            {difficulty === 'hard' && 'Mixed numbers — convert, add, and simplify.'}
-          </p>
-          <div className="setup-row">
-            <label>Difficulty</label>
-            <select value={difficulty} onChange={e => setDifficulty(e.target.value)}>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-          </div>
-          <div className="setup-row">
-            <label>Questions</label>
-            <input type="number" min="1" max="100" value={numQuestions} onChange={e => setNumQuestions(e.target.value)} />
-          </div>
-          <button onClick={startQuiz}>Start Quiz</button>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Practice adding fractions!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard'].map(d => (
+            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="frac-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+              {d === 'easy' ? 'Easy' : d === 'medium' ? 'Medium' : 'Hard'}
+            </label>
+          ))}
         </div>
-      )}
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
 
       {/* ── Playing Phase ── */}
       {started && !finished && <>
-        <p className="progress-text">Question {questionNumber} of {totalQ} | Score: {score}</p>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
         {question && (
           <div className="fraction-problem">
             {/* Render the problem: n1/d1 + n2/d2 or mixed numbers */}

@@ -824,9 +824,20 @@ function ScaffoldedTablesApp({ studentName }) {
 
   /**
    * nextQuestion(): Advance to the next question or finish the quiz
+   * On finish: if student scored ≥80% AND table was hidden (mastered),
+   * auto-advance to the next multiplication table for the next session.
    */
   const nextQuestion = () => {
     if (questionNum >= TOTAL_QUESTIONS) {
+      // Check if student mastered this table: good score + table was hidden
+      const finalScore = score // score is already updated by this point
+      const mastered = !showTable && finalScore >= Math.floor(TOTAL_QUESTIONS * 0.8)
+      if (mastered && currentTable < 20) {
+        const nextTbl = currentTable + 1
+        setCurrentTable(nextTbl)
+        setShowTable(true) // Show table for the new table (fresh start)
+        save(nextTbl, true)
+      }
       setPhase('finished')
       return
     }
@@ -980,7 +991,7 @@ function ScaffoldedTablesApp({ studentName }) {
               Average time: {computeAvgTime()}s per question
             </p>
             <p style={{ opacity: 0.7, fontSize: '0.9rem' }}>
-              Table was {showTable ? 'shown' : 'hidden'} at end
+              Next session: {currentTable}× table {showTable ? '(with reference table)' : '(no table)'}
             </p>
             {/* Results table */}
             <div className="results-table" style={{ marginTop: '1rem' }}>

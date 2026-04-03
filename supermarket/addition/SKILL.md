@@ -1,41 +1,57 @@
 # Addition — Formal Specification
 
-## 1. Purpose
+## 1. Overview
 
-An addition quiz with configurable question count (default 20) where the player selects a difficulty level (1-digit, 2-digit, or 3-digit numbers), then solves randomly generated addition problems. Features an on-screen NumPad, auto-advance after 1.5s, and a running results table shown during gameplay.
+An arithmetic puzzle focusing on addition of positive integers. The player selects a difficulty level (1-digit, 2-digit, or 3-digit), configures the question count (default 20), and solves randomly generated addition problems. Features an on-screen NumPad, auto-advance after 1.5 seconds on correct answers, and a running results table displayed during and after gameplay.
 
-## 2. Constants
+## 2. Component Specification
 
-```javascript
-const DEFAULT_TOTAL = 20  // default number of questions per quiz (shared across quizzes)
-const AUTO_ADVANCE_MS = 1500  // auto-advance delay in milliseconds
-```
+**Component:** `AdditionApp` (located in `/addition/AdditionApp.jsx` or similar)
 
-## 3. Difficulty Levels
+**Props:**
+- `onBack` (function) — Callback invoked when user navigates away
 
-| Level | digits param | Range min | Range max | Example |
-|-------|-------------|-----------|-----------|---------|
-| One digit | 1 | 0 | 9 | 3 + 7 |
-| Two digits | 2 | 10 | 99 | 47 + 83 |
-| Three digits | 3 | 100 | 999 | 456 + 278 |
+**Files:**
+- Component: `AdditionApp.jsx`
+- NumPad component: `shared/NumPad.jsx`
+- Server: `/addition-api/` routes
 
-**Server-side implementation:**
-```javascript
-function digitRange(digits) {
-  if (digits === 1) return { min: 0, max: 9 };
-  if (digits === 2) return { min: 10, max: 99 };
-  return { min: 100, max: 999 };
-}
-```
+## 3. State Variables
 
-Both operands `a` and `b` are generated independently within the same range using `randomInt(range.min, range.max)`.
+| Variable | Type | Initial | Purpose |
+|----------|------|---------|---------|
+| `digits` | number | 1 | Selected difficulty: 1 (ones), 2 (tens), or 3 (hundreds) |
+| `started` | boolean | false | True after quiz start button clicked |
+| `finished` | boolean | false | True after last question answered |
+| `question` | object\|null | null | Current question: `{ id, digits, a, b, prompt, answer }` |
+| `answer` | string | '' | Player's current input (numeric string, may be empty or '-') |
+| `score` | number | 0 | Count of correct answers |
+| `questionNumber` | number | 0 | Current question index (0-based in code, 1-based in display) |
+| `numQuestions` | string | '20' | User input for total question count |
+| `totalQ` | number | 20 | Parsed and validated total question count |
+| `feedback` | string | '' | Feedback message displayed after submission |
+| `isCorrect` | boolean\|null | null | Whether last answer was correct (null before submission) |
+| `loading` | boolean | false | True while fetching next question |
+| `revealed` | boolean | false | True after answer submitted and checked |
+| `results` | array | [] | Array of result objects: `{ question, userAnswer, correctAnswer, correct, time }` |
 
-## 4. API Specification
+**Timer:** Uses shared `useTimer()` hook. Starts when question loads. Stops when answer is submitted.
+
+**AutoAdvance:** Uses `useRef(() => {})` and shared `useAutoAdvance(revealed, advanceRef, isCorrect)` hook.
+
+## 4. API Endpoints
 
 ### 4.1 GET /addition-api/question
 
-**Query parameters:**
-- `digits` (integer, optional): 1, 2, or 3. Default: 1. Invalid values fall back to 1.
+**Purpose:** Generate a random addition question at the specified difficulty level.
+
+**Query Parameters:**
+- `digits` (integer, optional): 1, 2, or 3. Defaults to 1 if missing or invalid.
+
+**Request Example:**
+```
+GET /addition-api/question?digits=2
+```
 
 **Response (200):**
 ```json
@@ -49,12 +65,31 @@ Both operands `a` and `b` are generated independently within the same range usin
 }
 ```
 
+**Response Fields:**
+- `id` (string): Unique question ID (timestamp + random)
+- `digits` (integer): The difficulty level (1, 2, or 3)
+- `a` (integer): First operand in range [min, max] for the difficulty
+- `b` (integer): Second operand in range [min, max] for the difficulty
+- `prompt` (string): Display string (e.g., "47 + 83")
+- `answer` (integer): The correct sum (a + b)
+
 ### 4.2 POST /addition-api/check
 
-**Request body:**
+**Purpose:** Validate the player's answer.
+
+**Request Body:**
 ```json
-{ "a": 47, "b": 83, "answer": 130 }
+{
+  "a": 47,
+  "b": 83,
+  "answer": 130
+}
 ```
+
+**Request Fields:**
+- `a` (integer): First operand from the question
+- `b` (integer): Second operand from the question
+- `answer` (integer or string): Player's submitted answer
 
 **Response (200):**
 ```json
@@ -65,165 +100,240 @@ Both operands `a` and `b` are generated independently within the same range usin
 }
 ```
 
-**Validation:** `Number(answer) === Number(a) + Number(b)` — server recomputes the sum.
+**Response Fields:**
+- `correct` (boolean): True if answer === a + b
+- `correctAnswer` (integer): The correct sum
+- `message` (string): Optional message
 
-## 5. Frontend Component Specification
-
-### 5.1 Component: AdditionApp
-
-**Props:** `onBack` (function)
-
-**State:**
-
-| Variable | Type | Initial | Description |
-|----------|------|---------|-------------|
-| digits | number | 1 | Selected difficulty (1/2/3) |
-| started | boolean | false | Quiz has begun |
-| finished | boolean | false | All 20 questions done |
-| question | object/null | null | Current question from API |
-| answer | string | '' | Player's typed answer |
-| score | number | 0 | Correct answers count |
-| questionNumber | number | 0 | Current question number |
-| numQuestions | string | '20' | Configurable question count input |
-| totalQ | number | 20 | Computed total questions |
-| feedback | string | '' | Feedback with reasoning |
-| loading | boolean | false | Fetching question |
-| revealed | boolean | false | Answer shown |
-| results | array | [] | Result objects for each question |
-
-**Timer:** `useTimer()` — starts on question load, stops on submit.
-
-**advanceRef:** `useRef(() => {})` — updated every render with current advance logic, used by `useAutoAdvance` hook to avoid stale closures.
-
-### 5.2 User Flow
-
-```
-[Show difficulty selector: One digit / Two digits / Three digits]
-[Show "How many questions?" input (default 20)]
-[Show "Start Quiz" button]
-        ↓ (click Start)
-[Lock difficulty selector, compute totalQ from input]
-[Set started=true, questionNumber=1, score=0, results=[]]
-[fetchQuestion(digits)]
-        ↓
-[Display: "Question N/totalQ", question prompt "47 + 83 = ?", input field, NumPad]
-[Timer starts counting]
-        ↓ (type answer via physical keyboard or NumPad, submit)
-[POST /addition-api/check]
-[Stop timer, record result]
-[Show feedback: "Correct! 47 + 83 = 130" or "Incorrect. 47 + 83 = 130"]
-[Auto-advance after 1.5s if correct; click Next if wrong]
-        ↓
-[If questionNumber < totalQ: increment, fetchQuestion]
-[If questionNumber >= totalQ: set finished=true]
-        ↓ (finished)
-[Show: "Quiz complete.", "Final score: 15/20"]
-[Show ResultsTable with all results]
-[Show "Play Again" button → restarts quiz]
-```
-
-### 5.3 Feedback Format
-
-Client-side construction:
+**Validation Logic (Server-side):**
 ```javascript
-const reasoning = `${question.a} + ${question.b} = ${data.correctAnswer}`
-// Correct: "Correct! 47 + 83 = 130"
-// Incorrect: "Incorrect. 47 + 83 = 130"
+const serverSum = Number(a) + Number(b)
+const correct = Number(answer) === serverSum
 ```
 
-### 5.4 Results Record
+## 5. Server Algorithm
 
-After each answer, append to `results`:
+**Difficulty Mapping:**
+
+| Difficulty | `digits` param | Min | Max | Example Range |
+|-----------|-----------------|-----|-----|----------------|
+| One digit | 1 | 0 | 9 | 0–9 |
+| Two digits | 2 | 10 | 99 | 10–99 |
+| Three digits | 3 | 100 | 999 | 100–999 |
+
+**Range Calculation Function:**
 ```javascript
-{
-  question: `${question.a} + ${question.b}`,  // e.g., "47 + 83"
-  userAnswer: answer,                          // e.g., "130"
-  correctAnswer: data.correctAnswer,           // e.g., 130
-  correct: data.correct,                       // true/false
-  time: timeTaken                              // seconds
+function digitRange(digits) {
+  if (digits === 1) return { min: 0, max: 9 }
+  if (digits === 2) return { min: 10, max: 99 }
+  if (digits === 3) return { min: 100, max: 999 }
+  return { min: 0, max: 9 }  // fallback
 }
 ```
 
-### 5.5 UI Layout
+**Question Generation:**
+1. Get difficulty range from `digitRange(digits)`
+2. Generate `a = randomInt(min, max)`
+3. Generate `b = randomInt(min, max)` independently
+4. Compute `answer = a + b`
+5. Format `prompt = "${a} + ${b}"`
+6. Return with unique ID
 
+**Randomization:** Uniform random integers within the specified range, independent generation of both operands.
+
+## 6. Answer Validation
+
+**Accepted Format:** Numeric integer (may be parsed from string)
+
+**Validation:**
+- Server recomputes: `a + b`
+- Compares client-submitted answer via: `Number(answer) === a + b`
+- Coerces both to Number type before comparison
+
+**Tolerance:** Exact match only (no rounding)
+
+**Edge Cases:**
+- Negative user input: Accepted but will not match (sum is always positive)
+- Leading zeros: "0047" treated as 47
+- Non-numeric input: Returns false (fails validation)
+- Empty submission: Returns false
+
+## 7. UI Structure
+
+**Setup Phase:**
 ```
-┌─────────────────────────────────┐
-│ [← Home]                        │
-│            Addition              │
-│  Choose a level and solve        │
-│       addition questions         │
-│                    [8s] [Score]  │
-│  [One digit] [Two digits] [Three digits]  │
-│     How many questions? [20]     │
-│                                  │
-│       Question 7/20              │
-│       47 + 83 = ?                │
-│       ┌──────────────┐           │
-│       │  Type answer  │           │
-│       └──────────────┘           │
-│     [± ] [1] [2] [3]            │
-│     [⌫ ] [4] [5] [6]            │
-│     [   ] [7] [8] [9]           │
-│     [       0       ]            │
-│          [Submit]                │
-│ ┌─ Correct! 47 + 83 = 130 ────┐ │
-│   (auto-advances in 1.5s if correct) │
-│ ┌── Running Results Table ─────┐ │
-│ │ # │ Question  │ Ans │ ✓/✗ │t│ │
-│ └──────────────────────────────┘ │
-└─────────────────────────────────┘
-
-FINISH SCREEN:
-┌─────────────────────────────────┐
-│       Quiz complete.             │
-│    Final score: 15/20            │
-│ ┌── Results Table ─────────────┐ │
-│ │ # │ Question  │ Ans │ ✓/✗ │t│ │
-│ │ 1 │ 47 + 83   │ 130 │  ✓  │4│ │
-│ │ 2 │ 91 + 56   │ 145 │✗(147)│12│ │
-│ └──────────────────────────────┘ │
-│ Total: 180s · Avg: 9.0s         │
-│         [Play Again]             │
-└─────────────────────────────────┘
+┌────────────────────────────────────┐
+│ [← Home]                           │
+│             Addition                │
+│  Choose a level and solve           │
+│      addition questions             │
+│                                    │
+│  [One digit] [Two digits] [Three digits] │
+│                                    │
+│  How many questions?                │
+│  ┌────────────┐                    │
+│  │    20      │                    │
+│  └────────────┘                    │
+│                                    │
+│         [Start Quiz]               │
+└────────────────────────────────────┘
 ```
 
-### 5.6 Keyboard Support
+**Playing Phase:**
+```
+┌────────────────────────────────────┐
+│ [← Home]                           │
+│             Addition                │
+│                           [Timer] [Score] │
+│                                    │
+│        Question 7/20                │
+│         47 + 83 = ?                 │
+│                                    │
+│      ┌──────────────┐              │
+│      │  Type answer │              │
+│      └──────────────┘              │
+│                                    │
+│    [± ] [1] [2] [3]               │
+│    [⌫ ] [4] [5] [6]               │
+│    [   ] [7] [8] [9]              │
+│    [       0       ]               │
+│                                    │
+│       [Submit]  [Clear]            │
+│                                    │
+│ [Correct! 47 + 83 = 130]           │
+│   (auto-advancing in 1.5s...)      │
+│                                    │
+│  ┌─ Results Table ────────────────┐│
+│  │ # │ Q  │ Ans │ ✓/✗│ t   │     ││
+│  │ 1 │ 3+7 │ 10  │ ✓  │ 2.3s│     ││
+│  │ 2 │12+8 │ 20  │ ✓  │ 1.8s│     ││
+│  └─────────────────────────────┘│
+└────────────────────────────────────┘
+```
 
-Enter key listener with dependencies: `[started, finished, question, answer, revealed, score, questionNumber, digits, loading]`. Only active when `started && !finished`.
+**Finished Phase:**
+```
+┌────────────────────────────────────┐
+│        Quiz complete.               │
+│     Final score: 17/20              │
+│                                    │
+│  ┌─ Results Table ────────────────┐│
+│  │ # │ Q  │ Ans │ ✓/✗│ t   │     ││
+│  │ 1 │ 3+7 │ 10  │ ✓  │ 2.3s│     ││
+│  │...│...  │... │ ...│ ...s│     ││
+│  │20 │88+12│ 100 │ ✗(90)│ 5.1s│     ││
+│  └─────────────────────────────┘│
+│                                    │
+│  Total: 63s  ·  Avg: 3.2s          │
+│                                    │
+│          [Play Again]              │
+└────────────────────────────────────┘
+```
 
-### 5.6 NumPad
+**Feedback Messages:**
+- Correct: `"Correct! 47 + 83 = 130"`
+- Incorrect: `"Incorrect. 47 + 83 = 130"`
 
-An on-screen numeric keypad is rendered below the input field via the shared `NumPad` component. It features:
-- Digits 0–9 arranged in a calculator-style grid (3 columns + full-width 0)
-- A ± key that toggles the sign of the current answer
-- A ⌫ key that deletes the last character
-- Physical keyboard input works alongside (input is `type="text"` with regex validation)
+## 8. Keyboard Shortcuts
 
-NumPad key handler:
+| Key | Action | Condition |
+|-----|--------|-----------|
+| `0–9` | Append digit to input | Before answer revealed |
+| `−` or `-` | Toggle sign (append or remove leading minus) | Before answer revealed |
+| `Backspace` or `⌫` | Delete last character | Before answer revealed |
+| `Enter` | Submit answer (if not revealed) OR go to next question (if revealed) | Always when started |
+
+**Implementation:**
+- Physical keyboard: onChange handler for input, keydown listener for Enter
+- NumPad: onClick handlers call `handleNumPad(key)`
+- Input validation: Regex `/^-?\d+$/` allows optional leading minus + digits
+
+## 9. Auto-Advance Behavior
+
+**Trigger:** After correct answer revealed (`revealed === true` AND `isCorrect === true`)
+
+**Timing:** 1.5 seconds (constant `AUTO_ADVANCE_MS = 1500`)
+
+**Action:** Calls internal advance function which increments `questionNumber`, resets answer/feedback/revealed states, and calls `fetchQuestion(digits)`
+
+**Skip:** Pressing Enter or clicking Next before auto-advance completes immediately triggers advance
+
+**Wrong Answers:** Do not auto-advance; must click Next or press Enter
+
+**Implementation:**
+```javascript
+const advanceRef = useRef(() => {})
+advanceRef.current = () => {
+  setQuestionNumber(prev => prev + 1)
+  setAnswer('')
+  setFeedback('')
+  setRevealed(false)
+  fetchQuestion(digits)
+}
+useAutoAdvance(revealed, advanceRef, isCorrect)
+```
+
+## 10. NumPad Component
+
+**Layout:**
+```
+[±] [1] [2] [3]
+[⌫] [4] [5] [6]
+[ ] [7] [8] [9]
+[       0      ]
+```
+
+**Behavior:**
+- `±`: If answer is empty or '-', set to '-' (or clear if already '-'). If answer has digits, prepend '-' or remove it.
+- Digits 0–9: Append to current answer
+- `⌫`: Delete last character (slice off one char)
+- Disabled when answer is revealed (`revealed === true`)
+
+**Key Handler:**
 ```javascript
 const handleNumPad = (key) => {
   if (revealed) return
-  if (key === '±') setAnswer(prev => prev.startsWith('-') ? prev.slice(1) : prev ? '-' + prev : '-')
-  else if (key === '⌫') setAnswer(prev => prev.slice(0, -1))
-  else setAnswer(prev => prev + key)
+  if (key === '±') {
+    setAnswer(prev => {
+      if (!prev || prev === '-') return prev === '-' ? '' : '-'
+      return prev.startsWith('-') ? prev.slice(1) : '-' + prev
+    })
+  } else if (key === '⌫') {
+    setAnswer(prev => prev.slice(0, -1))
+  } else {
+    setAnswer(prev => prev + key)
+  }
 }
 ```
 
-Input validation (onChange): `if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v)`
+## 11. CSS Classes & Styling
 
-### 5.7 Auto-Advance
+| Class | Purpose |
+|-------|---------|
+| `.quiz-container` | Main wrapper |
+| `.difficulty-selector` | Radio pill group for 1/2/3 digit selection |
+| `.radio-pill` | Individual difficulty button |
+| `.radio-pill.active` | Selected difficulty |
+| `.question-display` | Question text area |
+| `.input-field` | Text input for answer |
+| `.numpad` | NumPad grid container |
+| `.numpad-key` | Individual NumPad button |
+| `.numpad-key.accent` | Accent buttons (±, ⌫) |
+| `.feedback-box` | Feedback message container |
+| `.feedback-box.correct` | Correct answer styling |
+| `.feedback-box.incorrect` | Incorrect answer styling |
+| `.results-table` | Results display table |
+| `.timer-display` | Timer counter |
+| `.score-display` | Score counter |
 
-Uses the shared `useAutoAdvance(revealed, advanceRef, isCorrect)` hook. After a correct answer is revealed, automatically advances to the next question after 1.5 seconds. On wrong answers, the player must click Next manually. The player can press Enter to skip the wait on correct answers.
+**Fonts:** DM Sans (body/UI), Source Serif 4 (headings)
 
-### 5.8 Running Results Table
+## 12. Implementation Notes
 
-The results table is displayed both during gameplay (`{results.length > 0 && <ResultsTable results={results} />}`) and on the finish screen.
-
-## 6. Implementation Notes
-
-- Difficulty selector is disabled while quiz is in progress (`disabled={started && !finished}`)
-- The `answer` field from the GET response is included but not used client-side for verification — the POST endpoint recomputes it
-- Input uses `type="text"` (not `type="number"`) to support the NumPad and minus sign on all devices
-- Configurable question count defaults to 20 via `DEFAULT_TOTAL`
-- Results array is reset on "Play Again" (`setResults([])`)
-- Uses DM Sans (body/UI) and Source Serif 4 (heading) fonts from Google Fonts
+- **Question count:** Input parsed as integer; if invalid, defaults to 20
+- **Difficulty lock:** Selector disabled once quiz starts (`disabled={started && !finished}`)
+- **Input type:** `type="text"` (not "number") to support NumPad and minus sign on all devices
+- **Answer field:** Included in GET response but not used for validation; server recomputes
+- **Results reset:** Array cleared on "Play Again" click
+- **Question numbering:** Internally 0-based, displayed as 1-based (display: `questionNumber + 1` / `totalQ`)
+- **Config:** `DEFAULT_TOTAL = 20` is shared constant across all quiz apps

@@ -1,27 +1,95 @@
+/**
+ * TENALI - Educational Quiz Platform Server
+ *
+ * A comprehensive Node.js/Express server that powers an educational quiz and math problem-solving platform.
+ *
+ * ARCHITECTURE:
+ * - Framework: Express.js (RESTful API server)
+ * - Static Hosting: Serves React/Vue client built to ../client/dist
+ * - Port: Configurable via PORT env var, defaults to 4000
+ * - Server Address: 0.0.0.0 (accessible from any interface)
+ *
+ * FEATURES:
+ * 1. General Knowledge Quizzes: Multiple choice GK questions with difficulty levels and genres
+ * 2. Math Learning Modules:
+ *    - Basic Arithmetic: Addition, subtraction, multiplication with difficulty scaling
+ *    - Multiplication Tables: 1-10 multiplication drills
+ *    - Quadratic Evaluation: Evaluate quadratic functions (y = ax² + bx + c) at given x values
+ *    - Square Root Approximation: Estimate square roots by bands/difficulty levels
+ *    - Polynomial Multiplication: Expand polynomial expressions (easy to hard)
+ *    - Polynomial Factorization: Factor quadratic expressions into linear factors
+ *    - Prime Factorization: Decompose numbers into prime factors
+ *    - Quadratic Formula: Solve quadratic equations using the quadratic formula
+ *    - Simultaneous Equations: Solve 2×2 or 3×3 linear systems
+ *    - Function Evaluation: Evaluate linear/multilinear functions
+ *    - Line Equations: Derive line equation (y = mx + c) from two points
+ * 3. Vocabulary Builder: Word definitions with difficulty levels (easy/medium/hard)
+ *
+ * API ENDPOINTS:
+ * - /api/health: Server health check
+ * - /gk-api/*: General knowledge quiz endpoints
+ * - /vocab-api/*: Vocabulary builder endpoints
+ * - /addition-api/*: Basic addition problems
+ * - /multiply-api/*: Multiplication table drills
+ * - /quadratic-api/*: Quadratic function evaluation
+ * - /sqrt-api/*: Square root approximation
+ * - /polymul-api/*: Polynomial multiplication
+ * - /polyfactor-api/*: Polynomial factorization
+ * - /primefactor-api/*: Prime factorization
+ * - /qformula-api/*: Quadratic formula solver
+ * - /simul-api/*: Simultaneous linear equations
+ * - /funceval-api/*: General function evaluation
+ * - /lineq-api/*: Line equation derivation
+ * - /basicarith-api/*: Basic arithmetic (+, −, ×)
+ */
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 
+// Initialize Express app and configure middleware
 const app = express();
 const PORT = process.env.PORT || 4000;
 const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
 const questionsDir = path.join(__dirname, '..', 'chitragupta', 'questions');
 
+// CORS: Enable cross-origin requests for client communication
 app.use(cors());
+// JSON parsing: Handle application/json request bodies
 app.use(express.json());
+// Static file serving: Serve built React/Vue client
 app.use(express.static(clientDistPath));
 
+/**
+ * Generate a random integer between min and max (inclusive)
+ * @param {number} min - Minimum value (inclusive)
+ * @param {number} max - Maximum value (inclusive)
+ * @returns {number} Random integer in range [min, max]
+ */
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+/**
+ * Map number of digits to a numeric range for problem generation
+ * Used for creating addition problems with appropriate difficulty
+ * @param {number} digits - Number of digits (1, 2, or 3)
+ * @returns {object} {min, max} range object
+ */
 function digitRange(digits) {
   if (digits === 1) return { min: 0, max: 9 };
   if (digits === 2) return { min: 10, max: 99 };
   return { min: 100, max: 999 };
 }
 
+/**
+ * Map square root approximation step level to a numeric band
+ * Higher steps = larger numbers to approximate square roots for
+ * Used for progressive difficulty in sqrt-api
+ * @param {number} step - Step number (1 to 100+)
+ * @returns {object} {min, max} range of numbers for sqrt estimation
+ */
 function bandForStep(step) {
   if (step <= 10) return { min: 2, max: 50 };
   if (step <= 20) return { min: 51, max: 150 };
@@ -30,6 +98,11 @@ function bandForStep(step) {
   return { min: 701, max: 999 };
 }
 
+/**
+ * Load all GK questions from JSON files in the questions directory
+ * Each file should contain a question object with id, question, options, answerOption, answerText
+ * @returns {Array<object>} Array of question objects
+ */
 function loadQuestions() {
   const files = fs.readdirSync(questionsDir).filter((file) => file.endsWith('.json'));
   return files.map((file) => {
@@ -38,18 +111,50 @@ function loadQuestions() {
   });
 }
 
+// Load all GK questions at server startup
 const questions = loadQuestions();
 
+/**
+ * HEALTH CHECK ENDPOINT
+ * GET /api/health
+ *
+ * Returns server status and total question count
+ * Used by clients to verify server is running and questions are loaded
+ *
+ * Response: { ok: boolean, questions: number }
+ */
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, questions: questions.length });
 });
 
+/**
+ * GENERAL KNOWLEDGE API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * GET /gk-api/question
+ * Fetch a random general knowledge multiple-choice question
+ *
+ * Query Parameters:
+ *   - exclude (optional): Comma-separated question IDs to skip (e.g., "1,3,5")
+ *                         Allows quiz clients to avoid repeating questions
+ *
+ * Response:
+ * {
+ *   id: string,              // Unique question identifier
+ *   question: string,        // Question text
+ *   options: string[],       // Array of answer options
+ *   genre: string            // Category (e.g., 'history', 'science', 'mixed')
+ * }
+ */
 app.get('/gk-api/question', (req, res) => {
   const exclude = req.query.exclude ? req.query.exclude.split(',').map(Number) : [];
   if (!questions.length) {
     return res.status(500).json({ error: 'No questions found' });
   }
-  // Filter out already-seen questions; if all exhausted, allow any
+  // Pool: Start with all questions, then filter to unseen ones if available
+  // This prevents repeating the same question until all are exhausted
   let pool = questions;
   const unseen = pool.filter((q) => !exclude.includes(q.id));
   if (unseen.length > 0) pool = unseen;
@@ -62,12 +167,31 @@ app.get('/gk-api/question', (req, res) => {
   });
 });
 
+/**
+ * POST /gk-api/check
+ * Verify if the user's answer to a GK question is correct
+ *
+ * Request Body:
+ * {
+ *   id: number,             // Question ID to check
+ *   answerOption: string    // User's selected answer (A, B, C, or D)
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,       // Whether the answer matches the correct option
+ *   correctAnswer: string,  // Correct answer option (A, B, C, or D)
+ *   correctAnswerText: string, // Full text of the correct answer
+ *   message: string         // Feedback emoji message
+ * }
+ */
 app.post('/gk-api/check', (req, res) => {
   const { id, answerOption } = req.body || {};
   const q = questions.find((item) => Number(item.id) === Number(id));
   if (!q) {
     return res.status(404).json({ error: 'Question not found' });
   }
+  // Compare user's answer with correct answer (case-insensitive)
   const correct = String(answerOption || '').toUpperCase() === String(q.answerOption || '').toUpperCase();
   res.json({
     correct,
@@ -77,8 +201,32 @@ app.post('/gk-api/check', (req, res) => {
   });
 });
 
+/**
+ * BASIC ARITHMETIC API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * GET /addition-api/question
+ * Generate a random addition problem with configurable digit count
+ *
+ * Query Parameters:
+ *   - digits (optional): Number of digits per operand (1, 2, or 3; default: 1)
+ *                        1 = single digit (0-9), 2 = two digits (10-99), etc.
+ *
+ * Response:
+ * {
+ *   id: string,             // Unique problem ID (timestamp-based)
+ *   digits: number,         // Actual digit count used (sanitized)
+ *   a: number,              // First operand
+ *   b: number,              // Second operand
+ *   prompt: string,         // Display text (e.g., "42 + 37")
+ *   answer: number          // Correct sum
+ * }
+ */
 app.get('/addition-api/question', (req, res) => {
   const digits = Number(req.query.digits || 1);
+  // Sanitize digits to valid options; default to 1 if invalid
   const safeDigits = [1, 2, 3].includes(digits) ? digits : 1;
   const range = digitRange(safeDigits);
   const a = randomInt(range.min, range.max);
@@ -86,6 +234,24 @@ app.get('/addition-api/question', (req, res) => {
   res.json({ id: `${safeDigits}-${Date.now()}-${Math.random()}`, digits: safeDigits, a, b, prompt: `${a} + ${b}`, answer: a + b });
 });
 
+/**
+ * POST /addition-api/check
+ * Verify if the user's answer to an addition problem is correct
+ *
+ * Request Body:
+ * {
+ *   a: number,              // First operand
+ *   b: number,              // Second operand
+ *   answer: number          // User's submitted answer
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   correctAnswer: number,  // The correct sum
+ *   message: string         // Feedback message
+ * }
+ */
 app.post('/addition-api/check', (req, res) => {
   const { a, b, answer } = req.body || {};
   const correctAnswer = Number(a) + Number(b);
@@ -93,21 +259,57 @@ app.post('/addition-api/check', (req, res) => {
   res.json({ correct, correctAnswer, message: correct ? 'Correct' : 'Incorrect' });
 });
 
+/**
+ * QUADRATIC EVALUATION API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
 
+/**
+ * Generate a random integer from -9 to 9 (excluding 0)
+ * Used internally for quadratic coefficient generation
+ * @returns {number} Signed integer in range [-9, 9]
+ */
 function randomSignedDigit() {
   return randomInt(-9, 9);
 }
 
+/**
+ * Map quadratic difficulty level to coefficient range
+ * Higher difficulty = larger coefficients in the polynomial
+ * @param {string} difficulty - 'easy', 'medium', or 'hard'
+ * @returns {object} {min, max} coefficient range
+ */
 function quadraticRange(difficulty) {
   if (difficulty === 'easy') return { min: -3, max: 3 };
   if (difficulty === 'medium') return { min: -6, max: 6 };
   return { min: -9, max: 9 };
 }
 
+/**
+ * Generate a random integer within a given range
+ * (Wrapper for consistency in quadratic module)
+ * @param {number} min
+ * @param {number} max
+ * @returns {number}
+ */
 function randomInRange(min, max) {
   return randomInt(min, max);
 }
 
+/**
+ * Format a polynomial term with proper mathematical notation
+ * Handles signs, coefficients, and variable exponents
+ *
+ * Examples:
+ *   formatSignedTerm(-5, 'x²', true) → "-5x²"
+ *   formatSignedTerm(3, 'x') → "+ 3x"
+ *   formatSignedTerm(0, '') → "+ 0" or "0" if first
+ *
+ * @param {number} value - Coefficient value
+ * @param {string} variablePart - Variable part (e.g., 'x', 'x²', '')
+ * @param {boolean} isFirst - True if this is the first term (affects sign)
+ * @returns {string} Formatted term
+ */
 function formatSignedTerm(value, variablePart, isFirst = false) {
   if (value === 0) {
     return isFirst ? `0${variablePart}` : `+ 0${variablePart}`;
@@ -121,14 +323,45 @@ function formatSignedTerm(value, variablePart, isFirst = false) {
   return `${sign} ${absValue}${variablePart}`;
 }
 
+/**
+ * Build a human-readable prompt for quadratic evaluation
+ * Formats the equation y = ax² + bx + c with proper mathematical notation
+ *
+ * @param {number} a - Coefficient of x²
+ * @param {number} b - Coefficient of x
+ * @param {number} c - Constant term
+ * @param {number} x - The x value to evaluate at
+ * @returns {string} Prompt text (e.g., "If x = 2, find y for y = 2x² - 3x + 5")
+ */
 function buildQuadraticPrompt(a, b, c, x) {
   const expression = `${formatSignedTerm(a, 'x²', true)} ${formatSignedTerm(b, 'x')} ${formatSignedTerm(c, '')}`;
   return `If x = ${x}, find y for y = ${expression}`;
 }
 
+/**
+ * GET /quadratic-api/question
+ * Generate a quadratic function evaluation problem
+ * Task: Evaluate y = ax² + bx + c at a given x value
+ *
+ * Query Parameters:
+ *   - difficulty (optional): 'easy', 'medium', or 'hard' (default: 'hard')
+ *                            Controls coefficient ranges
+ *
+ * Response:
+ * {
+ *   id: string,             // Unique problem ID
+ *   a: number,              // x² coefficient
+ *   b: number,              // x coefficient
+ *   c: number,              // Constant term
+ *   x: number,              // Value of x to evaluate at
+ *   prompt: string,         // Display text (formatted equation)
+ *   answer: number          // Correct y value (a*x² + b*x + c)
+ * }
+ */
 app.get('/quadratic-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'hard';
   const range = quadraticRange(difficulty);
+  // Ensure a ≠ 0 (otherwise it's not truly quadratic)
   let a = 0;
   while (a === 0) a = randomInRange(range.min, range.max);
   const b = randomInRange(range.min, range.max);
@@ -147,6 +380,26 @@ app.get('/quadratic-api/question', (req, res) => {
   });
 });
 
+/**
+ * POST /quadratic-api/check
+ * Verify if user correctly evaluated the quadratic function
+ *
+ * Request Body:
+ * {
+ *   a: number,              // x² coefficient
+ *   b: number,              // x coefficient
+ *   c: number,              // Constant term
+ *   x: number,              // x value to evaluate at
+ *   answer: number          // User's calculated y value
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   correctAnswer: number,
+ *   message: string
+ * }
+ */
 app.post('/quadratic-api/check', (req, res) => {
   const { a, b, c, x, answer } = req.body || {};
   const correctAnswer = Number(a) * Number(x) * Number(x) + Number(b) * Number(x) + Number(c);
@@ -154,6 +407,37 @@ app.post('/quadratic-api/check', (req, res) => {
   res.json({ correct, correctAnswer, message: correct ? 'Correct' : 'Incorrect' });
 });
 
+/**
+ * SQUARE ROOT APPROXIMATION API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * GET /sqrt-api/question
+ * Generate a square root approximation problem
+ * Task: Estimate the integer square root (floor or ceiling) of a number
+ *
+ * Difficulty progression: Higher step numbers = larger radicands
+ * Steps 1-10: √2 to √50
+ * Steps 11-20: √51 to √150
+ * Steps 21-35: √151 to √350
+ * Steps 36-60: √351 to √700
+ * Steps 61+: √701 to √999
+ *
+ * Query Parameters:
+ *   - step (optional): Difficulty level (1-100+; default: 1)
+ *
+ * Response:
+ * {
+ *   id: string,             // Unique problem ID
+ *   q: number,              // The number under the radical
+ *   step: number,           // Difficulty level
+ *   prompt: string,         // Display text (e.g., "√42")
+ *   floorAnswer: number,    // Floor of the square root
+ *   ceilAnswer: number,     // Ceiling of the square root
+ *   sqrtRounded: string     // Exact sqrt rounded to 2 decimals (for reference)
+ * }
+ */
 app.get('/sqrt-api/question', (req, res) => {
   const step = Math.max(1, Number(req.query.step || 1));
   const band = bandForStep(step);
@@ -173,12 +457,33 @@ app.get('/sqrt-api/question', (req, res) => {
   });
 });
 
+/**
+ * POST /sqrt-api/check
+ * Verify if user's square root approximation is correct
+ * Accepts either floor or ceiling as valid (since exact sqrt is non-integer)
+ *
+ * Request Body:
+ * {
+ *   q: number,              // The number that was under the radical
+ *   answer: number          // User's estimated integer square root
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,       // True if answer ∈ {floor(√q), ceil(√q)}
+ *   floorAnswer: number,
+ *   ceilAnswer: number,
+ *   sqrtRounded: string,    // Exact value for learning
+ *   message: string
+ * }
+ */
 app.post('/sqrt-api/check', (req, res) => {
   const { q, answer } = req.body || {};
   const sqrt = Math.sqrt(Number(q));
   const floorAnswer = Math.floor(sqrt);
   const ceilAnswer = Math.ceil(sqrt);
   const numericAnswer = Number(answer);
+  // Accept either floor or ceiling as correct
   const correct = numericAnswer === floorAnswer || numericAnswer === ceilAnswer;
 
   res.json({
@@ -190,9 +495,21 @@ app.post('/sqrt-api/check', (req, res) => {
   });
 });
 
-/* ── Vocab Builder ─────────────────────────────────── */
+/**
+ * VOCABULARY BUILDER API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+// Directory containing vocabulary question JSON files
 const vocabDir = path.join(__dirname, '..', 'vocab', 'questions');
 
+/**
+ * Load all vocabulary questions from JSON files
+ * Each file should contain question objects with id, difficulty, question, options, answerOption, answerText
+ * Returns empty array if directory doesn't exist (graceful fallback)
+ *
+ * @returns {Array<object>} Array of vocabulary question objects
+ */
 function loadVocab() {
   try {
     const files = fs.readdirSync(vocabDir).filter((f) => f.endsWith('.json'));
@@ -202,8 +519,25 @@ function loadVocab() {
   }
 }
 
+// Load all vocabulary questions at server startup
 const vocabQuestions = loadVocab();
 
+/**
+ * GET /vocab-api/question
+ * Fetch a random vocabulary question at a specified difficulty level
+ *
+ * Query Parameters:
+ *   - difficulty (optional): 'easy', 'medium', or 'hard' (default: 'easy')
+ *   - exclude (optional): Comma-separated question IDs to skip (prevents repeats)
+ *
+ * Response:
+ * {
+ *   id: number,             // Unique question identifier
+ *   question: string,       // Word definition or context question
+ *   options: string[],      // Array of answer choices
+ *   difficulty: string      // Difficulty level ('easy', 'medium', or 'hard')
+ * }
+ */
 app.get('/vocab-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const exclude = req.query.exclude ? req.query.exclude.split(',').map(Number) : [];
@@ -211,7 +545,7 @@ app.get('/vocab-api/question', (req, res) => {
   if (!pool.length) {
     return res.status(404).json({ error: `No vocab questions for difficulty: ${difficulty}` });
   }
-  // Filter out already-seen questions; if all exhausted, reset and allow any
+  // Filter to unseen questions first, allowing repeats only when exhausted
   const unseen = pool.filter((q) => !exclude.includes(q.id));
   if (unseen.length > 0) pool = unseen;
   const q = pool[Math.floor(Math.random() * pool.length)];
@@ -223,12 +557,31 @@ app.get('/vocab-api/question', (req, res) => {
   });
 });
 
+/**
+ * POST /vocab-api/check
+ * Verify if user's vocabulary answer is correct
+ *
+ * Request Body:
+ * {
+ *   id: number,             // Question ID
+ *   answerOption: string    // User's selected answer (A, B, C, or D)
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   correctAnswer: string,  // Correct option letter
+ *   correctAnswerText: string, // Full text of the correct answer
+ *   message: string         // Feedback
+ * }
+ */
 app.post('/vocab-api/check', (req, res) => {
   const { id, answerOption } = req.body || {};
   const q = vocabQuestions.find((item) => Number(item.id) === Number(id));
   if (!q) {
     return res.status(404).json({ error: 'Question not found' });
   }
+  // Case-insensitive comparison
   const correct = String(answerOption || '').toUpperCase() === String(q.answerOption || '').toUpperCase();
   res.json({
     correct,
@@ -238,7 +591,27 @@ app.post('/vocab-api/check', (req, res) => {
   });
 });
 
-/* ── Multiplication Tables ──────────────────────────── */
+/**
+ * MULTIPLICATION TABLES API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * GET /multiply-api/question
+ * Generate a multiplication table problem (table × random multiplier)
+ *
+ * Query Parameters:
+ *   - table (optional): Which multiplication table (1-10+; default: 1)
+ *
+ * Response:
+ * {
+ *   id: string,             // Unique problem ID
+ *   table: number,          // Multiplication table number
+ *   multiplier: number,     // Random number from 1-10
+ *   prompt: string,         // Display text (e.g., "7 × 8")
+ *   answer: number          // Correct product
+ * }
+ */
 app.get('/multiply-api/question', (req, res) => {
   const table = Math.max(1, Number(req.query.table || 1));
   const multiplier = randomInt(1, 10);
@@ -253,6 +626,24 @@ app.get('/multiply-api/question', (req, res) => {
   });
 });
 
+/**
+ * POST /multiply-api/check
+ * Verify if user's multiplication answer is correct
+ *
+ * Request Body:
+ * {
+ *   table: number,          // Multiplication table
+ *   multiplier: number,     // Multiplier
+ *   answer: number          // User's product
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   correctAnswer: number,
+ *   message: string
+ * }
+ */
 app.post('/multiply-api/check', (req, res) => {
   const { table, multiplier, answer } = req.body || {};
   const correctAnswer = Number(table) * Number(multiplier);
@@ -260,22 +651,55 @@ app.post('/multiply-api/check', (req, res) => {
   res.json({ correct, correctAnswer, message: correct ? 'Correct' : 'Incorrect' });
 });
 
-/* ── Polynomial Multiplication ─────────────────────── */
+/**
+ * POLYNOMIAL MULTIPLICATION API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Map polynomial multiplication difficulty to coefficient range
+ * @param {string} difficulty - 'easy', 'medium', or 'hard'
+ * @returns {object} {min, max} coefficient range
+ */
 function polyCoeffRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 9 };
   if (difficulty === 'medium') return { min: 1, max: 10 };
   return { min: 1, max: 20 };
 }
+
+/**
+ * Generate random polynomial coefficients
+ * Returns coefficients array where index = power of x
+ * Example: [5, -3, 2] represents 2x² - 3x + 5
+ *
+ * @param {number} degree - Highest power of x in the polynomial
+ * @param {object} range - {min, max} for coefficient values
+ * @returns {Array<number>} Coefficients array, index = power
+ */
 function randomPoly(degree, range) {
   const coeffs = [];
   for (let i = 0; i <= degree; i++) {
     let c = randomInt(range.min, range.max);
+    // 30% chance to make it negative (except for constant term)
     if (Math.random() < 0.3 && i > 0) c = -c;
     coeffs.push(c);
   }
+  // Ensure leading coefficient is non-zero (true polynomial of given degree)
   if (coeffs[degree] === 0) coeffs[degree] = 1;
   return coeffs; // index = power: [constant, x, x², ...]
 }
+
+/**
+ * Multiply two polynomials using distribution
+ * Implements the standard algorithm: (a₀ + a₁x + a₂x²) × (b₀ + b₁x + ...)
+ *
+ * Time complexity: O(n*m) where n, m are the degrees
+ * Example: [1, 2] × [3, 4] = [3, 10, 8] representing (1 + 2x) × (3 + 4x) = 3 + 10x + 8x²
+ *
+ * @param {Array<number>} a - First polynomial coefficients (index = power)
+ * @param {Array<number>} b - Second polynomial coefficients (index = power)
+ * @returns {Array<number>} Product polynomial coefficients
+ */
 function multiplyPolys(a, b) {
   const result = new Array(a.length + b.length - 1).fill(0);
   for (let i = 0; i < a.length; i++) {
@@ -285,16 +709,34 @@ function multiplyPolys(a, b) {
   }
   return result;
 }
+
+/**
+ * Format polynomial coefficients as human-readable mathematical notation
+ * Handles signs, implicit coefficients (1 and -1), and superscript powers
+ *
+ * Examples:
+ *   [3, -2, 1] → "x² − 2x + 3"
+ *   [0, 5] → "5x"
+ *   [1, 1, 1] → "x² + x + 1"
+ *
+ * @param {Array<number>} coeffs - Coefficients array (index = power)
+ * @returns {string} Formatted polynomial expression
+ */
 function formatPoly(coeffs) {
   const parts = [];
+  // Process coefficients from highest to lowest power
   for (let i = coeffs.length - 1; i >= 0; i--) {
     const c = coeffs[i];
+    // Skip zero coefficients (except in special cases where polynomial is just 0)
     if (c === 0 && coeffs.length > 1) continue;
+    // Convert power index to superscript (e.g., 2 → ²)
     const sup = (n) => String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('');
     const varPart = i === 0 ? '' : i === 1 ? 'x' : `x${sup(i)}`;
     if (parts.length === 0) {
+      // First term: include explicit coefficient, or omit if coefficient is 1 for non-constant
       parts.push(c === 1 && i > 0 ? varPart : c === -1 && i > 0 ? `-${varPart}` : `${c}${varPart}`);
     } else {
+      // Subsequent terms: include sign
       const sign = c > 0 ? '+' : '-';
       const abs = Math.abs(c);
       parts.push(`${sign} ${abs === 1 && i > 0 ? varPart : `${abs}${varPart}`}`);
@@ -303,6 +745,30 @@ function formatPoly(coeffs) {
   return parts.join(' ') || '0';
 }
 
+/**
+ * GET /polymul-api/question
+ * Generate a polynomial multiplication problem
+ *
+ * Difficulty levels determine the form of polynomials:
+ *   - Easy: Monomial × Binomial (e.g., "3(2x+5)" or "4x(7x+8)")
+ *   - Medium: Binomial × Binomial (e.g., "(2x+3)(5x-1)")
+ *   - Hard: Trinomial × Trinomial (e.g., "(x²+2x+1)(x²-x+2)")
+ *
+ * Query Parameters:
+ *   - difficulty (optional): 'easy', 'medium', or 'hard' (default: 'easy')
+ *
+ * Response:
+ * {
+ *   id: string,
+ *   p1: Array<number>,      // First polynomial (coefficients, index = power)
+ *   p2: Array<number>,      // Second polynomial
+ *   product: Array<number>, // Correct product
+ *   p1Display: string,      // Formatted p1 for display
+ *   p2Display: string,      // Formatted p2 for display
+ *   productDisplay: string, // Formatted product
+ *   resultDegree: number    // Highest power in the product
+ * }
+ */
 app.get('/polymul-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const range = polyCoeffRange(difficulty);
@@ -350,20 +816,72 @@ app.get('/polymul-api/question', (req, res) => {
   });
 });
 
+/**
+ * POST /polymul-api/check
+ * Verify if user correctly multiplied the polynomials
+ *
+ * Request Body:
+ * {
+ *   p1: Array<number>,      // First polynomial coefficients
+ *   p2: Array<number>,      // Second polynomial coefficients
+ *   userCoeffs: Array<number> // User's answer (product coefficients)
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   correctCoeffs: Array<number>, // Correct product
+ *   correctDisplay: string,  // Formatted correct answer
+ *   message: string
+ * }
+ */
 app.post('/polymul-api/check', (req, res) => {
   const { p1, p2, userCoeffs } = req.body || {};
   const product = multiplyPolys(p1, p2);
+  // Check both length and values to ensure correct answer
   const correct = product.length === userCoeffs.length && product.every((c, i) => Number(userCoeffs[i]) === c);
   res.json({ correct, correctCoeffs: product, correctDisplay: formatPoly(product), message: correct ? 'Correct' : 'Incorrect' });
 });
 
-/* ── Polynomial Factorization ─────────────────────── */
+/**
+ * POLYNOMIAL FACTORIZATION API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Map polynomial factorization difficulty to coefficient range
+ * @param {string} difficulty - 'easy', 'medium', or 'hard'
+ * @returns {object} {min, max} factor coefficient range
+ */
 function factorCoeffRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 10 };
   if (difficulty === 'medium') return { min: 1, max: 20 };
   return { min: 1, max: 30 };
 }
 
+/**
+ * GET /polyfactor-api/question
+ * Generate a polynomial factorization problem (quadratic only)
+ *
+ * Strategy: Generate two linear factors (px + q)(rx + s) and expand to ax² + bx + c
+ * Then ask user to factor back to the original linear factors
+ * This guarantees a factorable quadratic with integer-coefficient factors
+ *
+ * Query Parameters:
+ *   - difficulty (optional): 'easy', 'medium', or 'hard' (default: 'easy')
+ *
+ * Response:
+ * {
+ *   id: string,
+ *   a: number,              // x² coefficient
+ *   b: number,              // x coefficient
+ *   c: number,              // Constant term
+ *   factors: {
+ *     p, q, r, s           // Coefficients of (px + q)(rx + s)
+ *   },
+ *   display: string         // Formatted quadratic for display
+ * }
+ */
 app.get('/polyfactor-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const range = factorCoeffRange(difficulty);
@@ -375,6 +893,7 @@ app.get('/polyfactor-api/question', (req, res) => {
   s = randomInt(-range.max, range.max);
   if (q === 0) q = 1;
   if (s === 0) s = 1;
+  // Expand (px + q)(rx + s) to get ax² + bx + c
   const a = p * r;
   const b = p * s + q * r;
   const c = q * s;
@@ -386,6 +905,25 @@ app.get('/polyfactor-api/question', (req, res) => {
   });
 });
 
+/**
+ * POST /polyfactor-api/check
+ * Verify if user correctly factored the quadratic
+ * Checks if (userP*x + userQ)(userR*x + userS) expands to ax² + bx + c
+ *
+ * Request Body:
+ * {
+ *   a: number,              // x² coefficient of quadratic
+ *   b: number,              // x coefficient
+ *   c: number,              // Constant term
+ *   userP, userQ, userR, userS // Coefficients user entered for (Px+Q)(Rx+S)
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   message: string
+ * }
+ */
 app.post('/polyfactor-api/check', (req, res) => {
   const { a, b, c, userP, userQ, userR, userS } = req.body || {};
   // Check: (userP*x + userQ)(userR*x + userS) expands to ax² + bx + c
@@ -396,28 +934,69 @@ app.post('/polyfactor-api/check', (req, res) => {
   res.json({ correct, message: correct ? 'Correct' : 'Incorrect' });
 });
 
-/* ── Number Factorization (Prime) ─────────────────── */
+/**
+ * PRIME FACTORIZATION API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Map prime factorization difficulty to number range
+ * @param {string} difficulty - 'easy', 'medium', or 'hard'
+ * @returns {object} {min, max} range for numbers to factor
+ */
 function primeRange(difficulty) {
   if (difficulty === 'easy') return { min: 2, max: 100 };
   if (difficulty === 'medium') return { min: 2, max: 300 };
   return { min: 2, max: 1000 };
 }
+
+/**
+ * Find all prime factors of a number using trial division
+ * Returns factors in ascending order (with repetition)
+ *
+ * Algorithm: Divide by 2, 3, 5, ... up to √n
+ * Time complexity: O(√n)
+ *
+ * Examples:
+ *   primeFactors(12) = [2, 2, 3]
+ *   primeFactors(17) = [17]
+ *   primeFactors(100) = [2, 2, 5, 5]
+ *
+ * @param {number} n - Number to factor (n > 1)
+ * @returns {Array<number>} Prime factors in ascending order
+ */
 function primeFactors(n) {
   const factors = [];
   let d = 2;
+  // Trial division: check all potential divisors up to √n
   while (d * d <= n) {
     while (n % d === 0) { factors.push(d); n /= d; }
     d++;
   }
+  // If n > 1 at this point, n itself is prime
   if (n > 1) factors.push(n);
   return factors;
 }
 
+/**
+ * GET /primefactor-api/question
+ * Generate a prime factorization problem
+ *
+ * Query Parameters:
+ *   - difficulty (optional): 'easy', 'medium', or 'hard' (default: 'easy')
+ *
+ * Response:
+ * {
+ *   id: string,
+ *   number: number,         // Number to factor
+ *   factors: Array<number>  // Correct prime factors (in ascending order, with repetition)
+ * }
+ */
 app.get('/primefactor-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const range = primeRange(difficulty);
   let n = randomInt(range.min, range.max);
-  // Never give a prime number — ensure at least 2 prime factors
+  // Never give a prime number — ensure at least 2 prime factors (counting multiplicity)
   while (primeFactors(n).length < 2) n = randomInt(range.min, range.max);
   res.json({
     id: `prime-${Date.now()}-${Math.random()}`,
@@ -426,6 +1005,24 @@ app.get('/primefactor-api/question', (req, res) => {
   });
 });
 
+/**
+ * POST /primefactor-api/check
+ * Verify if user found all prime factors of a number
+ * Compares sorted arrays of factors (order-independent)
+ *
+ * Request Body:
+ * {
+ *   number: number,         // Number that was factored
+ *   userFactors: Array<number> // User's list of prime factors
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   correctFactors: Array<number>, // The correct prime factors
+ *   message: string
+ * }
+ */
 app.post('/primefactor-api/check', (req, res) => {
   const { number, userFactors } = req.body || {};
   const correct = primeFactors(Number(number));
@@ -434,13 +1031,49 @@ app.post('/primefactor-api/check', (req, res) => {
   res.json({ correct: isCorrect, correctFactors: correct, message: isCorrect ? 'Correct' : 'Incorrect' });
 });
 
-/* ── Quadratic Formula ────────────────────────────── */
+/**
+ * QUADRATIC FORMULA API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Map quadratic formula difficulty to coefficient range
+ * @param {string} difficulty - 'easy', 'medium', or 'hard'
+ * @returns {object} {min, max} coefficient range
+ */
 function qfRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 10 };
   if (difficulty === 'medium') return { min: 1, max: 20 };
   return { min: 1, max: 30 };
 }
 
+/**
+ * GET /qformula-api/question
+ * Generate a quadratic formula problem: solve ax² + bx + c = 0
+ *
+ * Strategy by difficulty:
+ *   - Easy: Guarantee integer roots (build from roots, then expand)
+ *   - Medium: Guarantee real roots (discriminant ≥ 0)
+ *   - Hard: Allow any roots (may be complex/irrational)
+ *
+ * Returns calculated roots using the quadratic formula
+ * Discriminant determines root type: real distinct / real equal / complex
+ *
+ * Query Parameters:
+ *   - difficulty (optional): 'easy', 'medium', or 'hard' (default: 'easy')
+ *
+ * Response:
+ * {
+ *   id: string,
+ *   a, b, c: number,        // Quadratic coefficients
+ *   disc: number,           // Discriminant (b² - 4ac)
+ *   roots: {
+ *     type: string,         // 'real_distinct', 'real_equal', or 'complex'
+ *     r1, r2: number,       // For real roots (r2 omitted if equal)
+ *     realPart, imagPart: number  // For complex roots
+ *   }
+ * }
+ */
 app.get('/qformula-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const range = qfRange(difficulty);
@@ -468,13 +1101,16 @@ app.get('/qformula-api/question', (req, res) => {
   disc = b * b - 4 * a * c;
   const roots = {};
   if (disc > 0) {
+    // Two distinct real roots
     roots.type = 'real_distinct';
     roots.r1 = parseFloat(((-b + Math.sqrt(disc)) / (2 * a)).toFixed(2));
     roots.r2 = parseFloat(((-b - Math.sqrt(disc)) / (2 * a)).toFixed(2));
   } else if (disc === 0) {
+    // One repeated real root
     roots.type = 'real_equal';
     roots.r1 = parseFloat((-b / (2 * a)).toFixed(2));
   } else {
+    // Complex conjugate roots: (-b ± i√|disc|) / (2a)
     roots.type = 'complex';
     roots.realPart = parseFloat((-b / (2 * a)).toFixed(2));
     roots.imagPart = parseFloat((Math.sqrt(-disc) / (2 * a)).toFixed(2));
@@ -482,6 +1118,25 @@ app.get('/qformula-api/question', (req, res) => {
   res.json({ id: `qf-${Date.now()}-${Math.random()}`, a, b, c, disc, roots });
 });
 
+/**
+ * POST /qformula-api/check
+ * Verify if user correctly solved the quadratic equation
+ * Allows small floating-point tolerances (±0.05) for answers
+ *
+ * Request Body:
+ * {
+ *   a, b, c: number,        // Quadratic coefficients
+ *   userR1, userR2: number, // User's roots (or real/imaginary parts for complex)
+ *   userType: string        // Root type (for reference, not always used)
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   roots: object,          // Calculated roots (for learning)
+ *   message: string
+ * }
+ */
 app.post('/qformula-api/check', (req, res) => {
   const { a, b, c, userR1, userR2, userType } = req.body || {};
   const A = Number(a), B = Number(b), C = Number(c);
@@ -489,18 +1144,22 @@ app.post('/qformula-api/check', (req, res) => {
   let correct = false;
   const roots = {};
   if (disc > 0) {
+    // Check two distinct real roots (allows either order)
     roots.type = 'real_distinct';
     roots.r1 = parseFloat(((-B + Math.sqrt(disc)) / (2 * A)).toFixed(2));
     roots.r2 = parseFloat(((-B - Math.sqrt(disc)) / (2 * A)).toFixed(2));
     const u1 = parseFloat(Number(userR1).toFixed(2));
     const u2 = parseFloat(Number(userR2).toFixed(2));
+    // Accept either order with tolerance of 0.05
     correct = (Math.abs(u1 - roots.r1) < 0.05 && Math.abs(u2 - roots.r2) < 0.05) ||
               (Math.abs(u1 - roots.r2) < 0.05 && Math.abs(u2 - roots.r1) < 0.05);
   } else if (disc === 0) {
+    // Check single real root
     roots.type = 'real_equal';
     roots.r1 = parseFloat((-B / (2 * A)).toFixed(2));
     correct = Math.abs(parseFloat(Number(userR1).toFixed(2)) - roots.r1) < 0.05;
   } else {
+    // Check complex roots: real part and imaginary part
     roots.type = 'complex';
     roots.realPart = parseFloat((-B / (2 * A)).toFixed(2));
     roots.imagPart = parseFloat((Math.sqrt(-disc) / (2 * A)).toFixed(2));
@@ -509,12 +1168,48 @@ app.post('/qformula-api/check', (req, res) => {
   res.json({ correct, roots, message: correct ? 'Correct' : 'Incorrect' });
 });
 
-/* ── Simultaneous Equations (2×2 easy, 3×3 hard) ──── */
+/**
+ * SIMULTANEOUS EQUATIONS API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Map simultaneous equations difficulty to coefficient range
+ * @param {string} difficulty - 'easy' for 2×2, 'hard' for 3×3
+ * @returns {object} {min, max} coefficient range
+ */
 function simulRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 10 };
   return { min: 1, max: 15 };
 }
 
+/**
+ * GET /simul-api/question
+ * Generate a system of linear equations (2×2 or 3×3)
+ *
+ * Strategy: Generate integer solution, then create equations that have it
+ * Ensures a unique solution with non-zero determinant
+ *
+ * 2×2 System:
+ *   a₁x + b₁y = d₁
+ *   a₂x + b₂y = d₂
+ *
+ * 3×3 System:
+ *   a₁x + b₁y + c₁z = d₁
+ *   a₂x + b₂y + c₂z = d₂
+ *   a₃x + b₃y + c₃z = d₃
+ *
+ * Query Parameters:
+ *   - difficulty (optional): 'easy' (2×2) or 'hard' (3×3; default: 'easy')
+ *
+ * Response:
+ * {
+ *   id: string,
+ *   size: number,           // 2 or 3 (system size)
+ *   eqs: Array<object>,     // Equation coefficients and RHS
+ *   solution: object        // The correct solution {x, y} or {x, y, z}
+ * }
+ */
 app.get('/simul-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const range = simulRange(difficulty);
@@ -526,7 +1221,9 @@ app.get('/simul-api/question', (req, res) => {
     const y = randomInt(-range.max, range.max);
     let a1 = randomInt(1, range.max), b1 = randomInt(1, range.max);
     let a2 = randomInt(1, range.max), b2 = randomInt(1, range.max);
+    // Ensure non-singular matrix (a1*b2 ≠ a2*b1)
     while (a1 * b2 === a2 * b1) { a2 = randomInt(1, range.max); b2 = randomInt(1, range.max); }
+    // Randomly make some coefficients negative
     if (Math.random() < 0.3) a1 = -a1;
     if (Math.random() < 0.3) b1 = -b1;
     if (Math.random() < 0.3) a2 = -a2;
@@ -546,6 +1243,7 @@ app.get('/simul-api/question', (req, res) => {
     const x = randomInt(-8, 8), y = randomInt(-8, 8), z = randomInt(-8, 8);
     let eqs;
     let attempts = 0;
+    // Generate 3×3 system with non-zero determinant (may require multiple attempts)
     do {
       eqs = [];
       for (let i = 0; i < 3; i++) {
@@ -557,6 +1255,7 @@ app.get('/simul-api/question', (req, res) => {
         if (Math.random() < 0.3) c = -c;
         eqs.push({ a, b, c, d: a * x + b * y + c * z });
       }
+      // Calculate 3×3 determinant using expansion
       const det = eqs[0].a * (eqs[1].b * eqs[2].c - eqs[1].c * eqs[2].b)
                 - eqs[0].b * (eqs[1].a * eqs[2].c - eqs[1].c * eqs[2].a)
                 + eqs[0].c * (eqs[1].a * eqs[2].b - eqs[1].b * eqs[2].a);
@@ -573,26 +1272,77 @@ app.get('/simul-api/question', (req, res) => {
   }
 });
 
+/**
+ * POST /simul-api/check
+ * Verify if user correctly solved the system of linear equations
+ * Allows small floating-point tolerances (±0.1)
+ *
+ * Request Body:
+ * {
+ *   eqs: Array<object>,     // Equations with coefficients
+ *   size: number,           // System size (2 or 3)
+ *   userX, userY, userZ: number, // User's solution values
+ *   solution: object        // Correct solution (for comparison)
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   solution: object,       // Correct solution
+ *   message: string
+ * }
+ */
 app.post('/simul-api/check', (req, res) => {
   const { eqs, size, userX, userY, userZ } = req.body || {};
   const ux = Number(userX), uy = Number(userY), uz = Number(userZ || 0);
   let correct;
   if (Number(size) === 2) {
+    // Check 2×2: verify equations are satisfied with tolerance
     correct = eqs.every(e => Math.abs(e.a * ux + e.b * uy - e.d) < 0.1);
   } else {
+    // Check 3×3: verify equations are satisfied with tolerance
     correct = eqs.every(e => Math.abs(e.a * ux + e.b * uy + e.c * uz - e.d) < 0.1);
   }
   const solution = req.body.solution || {};
   res.json({ correct, solution, message: correct ? 'Correct' : 'Incorrect' });
 });
 
+/**
+ * Map function evaluation difficulty to coefficient/value range
+ * @param {string} difficulty - 'easy', 'medium', or 'hard'
+ * @returns {object} {min, max} coefficient range
+ */
 function linearRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 5 };
   if (difficulty === 'medium') return { min: 1, max: 10 };
   return { min: 1, max: 15 };
 }
 
-/* ── Function Evaluation ──────────────────────────── */
+/**
+ * FUNCTION EVALUATION API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * GET /funceval-api/question
+ * Generate a function evaluation problem
+ *
+ * Difficulty levels:
+ *   - Easy: Single-variable linear f(x) = ax + b
+ *   - Medium: Two-variable linear f(x,y) = ax + by + c
+ *   - Hard: Three-variable linear f(x,y,z) = ax + by + cz + d
+ *
+ * Query Parameters:
+ *   - difficulty (optional): 'easy', 'medium', or 'hard' (default: 'easy')
+ *
+ * Response:
+ * {
+ *   id: string,
+ *   formula: string,        // Display text of the function
+ *   vars: object,           // Variable values to substitute
+ *   answer: number          // Correct function output (rounded to 2 decimals)
+ * }
+ */
 app.get('/funceval-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const range = linearRange(difficulty);
@@ -619,13 +1369,56 @@ app.get('/funceval-api/question', (req, res) => {
   res.json({ id: `func-${Date.now()}-${Math.random()}`, formula, vars, answer });
 });
 
+/**
+ * POST /funceval-api/check
+ * Verify if user correctly evaluated the function
+ * Allows floating-point tolerance (±0.05)
+ *
+ * Request Body:
+ * {
+ *   answer: number,         // Correct function output
+ *   userAnswer: number      // User's calculated output
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   correctAnswer: number,
+ *   message: string
+ * }
+ */
 app.post('/funceval-api/check', (req, res) => {
   const { answer, userAnswer } = req.body || {};
   const correct = Math.abs(Number(userAnswer) - Number(answer)) < 0.05;
   res.json({ correct, correctAnswer: answer, message: correct ? 'Correct' : 'Incorrect' });
 });
 
-/* ── Line Equation (m and c from two points) ──────── */
+/**
+ * LINE EQUATION API
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * GET /lineq-api/question
+ * Generate a line equation problem: find m and c for y = mx + c given two points
+ *
+ * Task: Given (x₁, y₁) and (x₂, y₂), find slope m = (y₂-y₁)/(x₂-x₁) and y-intercept c
+ *
+ * Difficulty:
+ *   - Easy: Pre-calculated m and c with small integer values
+ *   - Medium: Random points with calculated m and c
+ *
+ * Query Parameters:
+ *   - difficulty (optional): 'easy' or 'medium' (default: 'easy')
+ *
+ * Response:
+ * {
+ *   id: string,
+ *   x1, y1, x2, y2: number, // Two points on the line
+ *   m: number,              // Correct slope
+ *   c: number               // Correct y-intercept
+ * }
+ */
 app.get('/lineq-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const range = linearRange(difficulty);
@@ -637,9 +1430,11 @@ app.get('/lineq-api/question', (req, res) => {
     x1 = randomInt(-5, 5);
     x2 = randomInt(-5, 5);
     while (x2 === x1) x2 = randomInt(-5, 5);
+    // Calculate y values using the line equation
     y1 = m * x1 + c;
     y2 = m * x2 + c;
   } else {
+    // Random points: calculate m and c from them
     x1 = randomInt(-range.max, range.max);
     y1 = randomInt(-range.max, range.max);
     x2 = randomInt(-range.max, range.max);
@@ -654,6 +1449,25 @@ app.get('/lineq-api/question', (req, res) => {
   });
 });
 
+/**
+ * POST /lineq-api/check
+ * Verify if user correctly found the line equation parameters
+ * Allows floating-point tolerance (±0.05)
+ *
+ * Request Body:
+ * {
+ *   x1, y1, x2, y2: number, // Two points
+ *   userM, userC: number    // User's slope and y-intercept
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   m: number,              // Correct slope
+ *   c: number,              // Correct y-intercept
+ *   message: string
+ * }
+ */
 app.post('/lineq-api/check', (req, res) => {
   const { x1, y1, x2, y2, userM, userC } = req.body || {};
   const actualM = parseFloat(((Number(y2) - Number(y1)) / (Number(x2) - Number(x1))).toFixed(2));
@@ -662,13 +1476,39 @@ app.post('/lineq-api/check', (req, res) => {
   res.json({ correct, m: actualM, c: actualC, message: correct ? 'Correct' : 'Incorrect' });
 });
 
-/* ── Basic Arithmetic (+, −, ×) ──────────────────── */
+/**
+ * BASIC ARITHMETIC API (+, −, ×)
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Map basic arithmetic difficulty to operand range
+ * @param {string} difficulty - 'easy', 'medium', or 'hard'
+ * @returns {object} {min, max} operand range
+ */
 function arithRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 9 };
   if (difficulty === 'medium') return { min: 10, max: 99 };
   return { min: 100, max: 999 };
 }
 
+/**
+ * GET /basicarith-api/question
+ * Generate a basic arithmetic problem with random operation and operands
+ * Operations: Addition (+), Subtraction (−), Multiplication (×)
+ *
+ * Query Parameters:
+ *   - difficulty (optional): 'easy', 'medium', or 'hard' (default: 'easy')
+ *
+ * Response:
+ * {
+ *   id: string,
+ *   a, b: number,           // Two operands
+ *   op: string,             // Operator (+, −, or ×)
+ *   prompt: string,         // Display text with proper formatting
+ *   answer: number          // Correct result
+ * }
+ */
 app.get('/basicarith-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const range = arithRange(difficulty);
@@ -700,6 +1540,24 @@ app.get('/basicarith-api/question', (req, res) => {
   });
 });
 
+/**
+ * POST /basicarith-api/check
+ * Verify if user correctly solved the arithmetic problem
+ *
+ * Request Body:
+ * {
+ *   a, b: number,           // Operands
+ *   op: string,             // Operator (+, −, or ×)
+ *   answer: number          // User's result
+ * }
+ *
+ * Response:
+ * {
+ *   correct: boolean,
+ *   correctAnswer: number,
+ *   message: string
+ * }
+ */
 app.post('/basicarith-api/check', (req, res) => {
   const { a, b, op, answer } = req.body || {};
   let correctAnswer;
@@ -710,10 +1568,22 @@ app.post('/basicarith-api/check', (req, res) => {
   res.json({ correct, correctAnswer, message: correct ? 'Correct' : 'Incorrect' });
 });
 
+/**
+ * CATCH-ALL ROUTE
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Serves the React/Vue SPA index.html for all unmatched routes
+ * Enables client-side routing to work properly
+ */
 app.get(/.*/, (_req, res) => {
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
+/**
+ * START SERVER
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Listen on all interfaces (0.0.0.0) at the configured port
+ * 0.0.0.0 makes the server accessible from any network interface/IP address
+ */
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Tenali app running on http://0.0.0.0:${PORT}`);
 });

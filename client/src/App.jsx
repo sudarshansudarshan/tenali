@@ -3637,6 +3637,7 @@ function DotProdApp({ onBack }) {
   const [results, setResults] = useState([])
   const timer = useTimer()
   const advanceFnRef = useRef(null)
+  const submittingRef = useRef(false) // guard against double-submit
 
   const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
   const curAdaptLevel = adaptiveLevel(adaptScore)
@@ -3652,6 +3653,7 @@ function DotProdApp({ onBack }) {
       setFeedback('')
       setIsCorrect(null)
       setRevealed(false)
+      submittingRef.current = false
       // Initialize grid for all answer types
       if (data.type === 'dot2d' || data.type === 'dot3d') {
         // 1×1 grid for scalar dot product answer
@@ -3704,7 +3706,8 @@ function DotProdApp({ onBack }) {
   }
 
   const handleSubmit = async () => {
-    if (!question || revealed || !isGridComplete()) return
+    if (!question || revealed || !isGridComplete() || submittingRef.current) return
+    submittingRef.current = true
     // Build userAnswer string from grid
     let userAnswer
     if (question.type === 'dot2d' || question.type === 'dot3d') {

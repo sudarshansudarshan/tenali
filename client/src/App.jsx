@@ -3737,32 +3737,19 @@ function DotProdApp({ onBack }) {
 
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
 
-  // Grid cell change handler with auto-tab to next cell
-  const handleGridChange = (row, col, val, editableCells) => {
+  // Grid cell change handler — NO auto-tab; user must press Tab or click
+  const handleGridChange = (row, col, val) => {
     if (revealed) return
     if (val !== '' && val !== '-' && !/^-?\d+$/.test(val)) return
     const newGrid = gridAnswer.map(r => [...r])
     newGrid[row][col] = val
     setGridAnswer(newGrid)
-    // Auto-tab to next editable cell when a value is entered
-    if (val !== '' && val !== '-' && editableCells) {
-      const curIdx = editableCells.findIndex(([r, c]) => r === row && c === col)
-      if (curIdx >= 0 && curIdx < editableCells.length - 1) {
-        const [nr, nc] = editableCells[curIdx + 1]
-        setTimeout(() => gridRefs.current[nr]?.[nc]?.focus(), 0)
-      }
-    }
   }
 
   // ── Editable matrix grid input component ──────────────────────────
   const MatrixInput = ({ rows, cols, editableCells, label }) => {
     const allEditable = !editableCells
     const editSet = editableCells ? new Set(editableCells.map(([r, c]) => `${r},${c}`)) : null
-    const cellList = editableCells || []
-    // For auto-tab ordering: row-major order of editable cells
-    const orderedEditable = allEditable
-      ? Array.from({ length: rows }, (_, i) => Array.from({ length: cols }, (_, j) => [i, j])).flat()
-      : cellList
 
     return (
       <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', margin: '0 6px' }}>
@@ -3789,7 +3776,7 @@ function DotProdApp({ onBack }) {
                             ref={el => { if (!gridRefs.current[i]) gridRefs.current[i] = []; gridRefs.current[i][j] = el }}
                             type="text"
                             value={val}
-                            onChange={e => handleGridChange(i, j, e.target.value, orderedEditable)}
+                            onChange={e => handleGridChange(i, j, e.target.value)}
                             onKeyDown={handleKeyDown}
                             disabled={revealed}
                             style={{
@@ -3825,14 +3812,14 @@ function DotProdApp({ onBack }) {
     const { type } = question
 
     if (type === 'dot2d' || type === 'dot3d') {
-      const dim = question.vecA.length
+      // A displayed as 1×N row vector, B as N×1 column vector
       return (
         <div style={{ textAlign: 'center', margin: '18px 0' }}>
           <div style={{ fontSize: '0.95rem', color: 'var(--clr-dim)', marginBottom: 10 }}>Find the dot product</div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <MatrixBox matrix={question.vecA.map(v => [v])} label="A" />
+            <MatrixBox matrix={[question.vecA]} label={`1×${question.vecA.length}`} />
             <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)' }}>·</span>
-            <MatrixBox matrix={question.vecB.map(v => [v])} label="B" />
+            <MatrixBox matrix={question.vecB.map(v => [v])} label={`${question.vecB.length}×1`} />
             <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)', margin: '0 4px' }}>=</span>
             <MatrixInput rows={1} cols={1} label="A·B" />
           </div>

@@ -715,10 +715,11 @@ function ScaffoldedTablesApp({ studentName }) {
   const ERRORS_TO_RESTORE = 3         // Errors in window to trigger table restoration
 
   // ── Phase State ──────────────────────────────────────────────────────
-  // 'setup' → 'playing' → 'finished'
-  const [phase, setPhase] = useState('setup')
+  // 'playing' → 'finished' (no setup phase — auto-starts immediately)
+  const [phase, setPhase] = useState('playing')
 
-  // ── Persisted State: which table to practice, restored from localStorage ──
+  // ── Persisted State: restored from localStorage ──
+  // Remembers which table AND how many reference tables were visible last session
   const [currentTable, setCurrentTable] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey))
@@ -726,7 +727,6 @@ function ScaffoldedTablesApp({ studentName }) {
     } catch {}
     return 2
   })
-  const [startTable, setStartTable] = useState(currentTable)
 
   // ── Quiz Runtime State ───────────────────────────────────────────────
   const [question, setQuestion] = useState(null)       // Current {table, multiplier, answer}
@@ -741,7 +741,14 @@ function ScaffoldedTablesApp({ studentName }) {
 
   // ── Scaffolding State ────────────────────────────────────────────────
   // Number of visible reference tables: 3 (all), 2, 1, or 0 (none)
-  const [visibleTables, setVisibleTables] = useState(3)
+  // Restored from localStorage — if student was doing well last time, tables stay hidden
+  const [visibleTables, setVisibleTables] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey))
+      if (saved && typeof saved.visibleTables === 'number') return saved.visibleTables
+    } catch {}
+    return 3 // Default: all 3 tables shown for new students
+  })
   // Consecutive fast+correct answers (resets on slow or wrong)
   const [fastStreak, setFastStreak] = useState(0)
   // Rolling window of recent answers for error tracking
@@ -775,23 +782,20 @@ function ScaffoldedTablesApp({ studentName }) {
   }
 
   /**
-   * beginPractice(): Start a new 30-question session
-   * Resets all quiz state, generates first question
+   * startSession(): Start/restart a 30-question session
+   * Resets quiz state but preserves visibleTables from localStorage
+   * (if student was doing well, tables stay hidden)
    */
-  const beginPractice = () => {
-    const tbl = startTable
-    setCurrentTable(tbl)
+  const startSession = () => {
     setPhase('playing')
     setQuestionNum(0)
     setScore(0)
     setResults([])
     setRecentWindow([])
-    setVisibleTables(3)       // Start with all 3 tables visible
     setFastStreak(0)
-    setStatusMsg('3 reference tables shown — let\'s begin!')
-    save(tbl, 3)
+    setStatusMsg(visibleTables > 0 ? `${visibleTables} reference table${visibleTables > 1 ? 's' : ''} shown — let's go!` : 'No tables — you\'ve got this!')
 
-    const q = generateQuestion(tbl)
+    const q = generateQuestion(currentTable)
     setQuestion(q)
     setAnswer('')
     setFeedback('')
@@ -801,6 +805,22 @@ function ScaffoldedTablesApp({ studentName }) {
     setQuestionNum(1)
     setTimeout(() => inputRef.current?.focus(), 50)
   }
+
+  // Auto-start on first mount: generate first question immediately
+  useEffect(() => {
+    if (phase === 'playing' && !question) {
+      const q = generateQuestion(currentTable)
+      setQuestion(q)
+      setAnswer('')
+      setFeedback('')
+      setIsCorrect(null)
+      setRevealed(false)
+      setStartTime(Date.now())
+      setQuestionNum(1)
+      setStatusMsg(visibleTables > 0 ? `${visibleTables} reference table${visibleTables > 1 ? 's' : ''} shown — let's go!` : 'No tables — you\'ve got this!')
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }
+  }, [])
 
   /**
    * nextQuestion(): Advance to the next question or finish the quiz
@@ -975,33 +995,6 @@ function ScaffoldedTablesApp({ studentName }) {
     return (totalTime / results.length).toFixed(1)
   }
 
-  // ══════════ RENDER: SETUP PHASE ══════════
-  if (phase === 'setup') {
-    return (
-      <div className="app-shell">
-        <div className="card">
-          <h1>{studentName}'s Tables</h1>
-          <div className="welcome-box">
-            <p className="welcome-text">Choose a table to practice ({TOTAL_QUESTIONS} questions)</p>
-            <p style={{ opacity: 0.7, fontSize: '0.9rem', margin: '0.5rem 0' }}>
-              You'll start with 3 reference tables. They'll disappear as you get faster!
-            </p>
-            <div className="checkbox-group" style={{ marginBottom: '24px' }}>
-              {Array.from({ length: 19 }, (_, i) => i + 2).map(n => (
-                <label key={n} className={`checkbox-pill${startTable === n ? ' active' : ''}`}>
-                  <input type="radio" name="startTable" checked={startTable === n}
-                    onChange={() => setStartTable(n)} />
-                  {n}×
-                </label>
-              ))}
-            </div>
-            <button onClick={beginPractice}>Start Practice</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   // ══════════ RENDER: FINISHED PHASE ══════════
   if (phase === 'finished') {
     return (
@@ -1044,7 +1037,7 @@ function ScaffoldedTablesApp({ studentName }) {
                 </tbody>
               </table>
             </div>
-            <button onClick={() => setPhase('setup')} style={{ marginTop: '1rem' }}>Play Again</button>
+            <button onClick={startSession} style={{ marginTop: '1rem' }}>Play Again</button>
           </div>
         </div>
       </div>
@@ -1057,9 +1050,6 @@ function ScaffoldedTablesApp({ studentName }) {
   return (
     <div className="app-shell">
       <div className="card">
-        <div className="header-row">
-          <button className="back-button" onClick={() => setPhase('setup')}>← Change Table</button>
-        </div>
         <h1>{studentName}'s Tables</h1>
         <div className="top-mini-row">
           <span className="score-pill">Score {score}</span>

@@ -80,7 +80,8 @@ function randomInt(min, max) {
 function digitRange(digits) {
   if (digits === 1) return { min: 0, max: 9 };
   if (digits === 2) return { min: 10, max: 99 };
-  return { min: 100, max: 999 };
+  if (digits === 3) return { min: 100, max: 999 };
+  return { min: 1000, max: 9999 };
 }
 
 /**
@@ -227,7 +228,7 @@ app.post('/gk-api/check', (req, res) => {
 app.get('/addition-api/question', (req, res) => {
   const digits = Number(req.query.digits || 1);
   // Sanitize digits to valid options; default to 1 if invalid
-  const safeDigits = [1, 2, 3].includes(digits) ? digits : 1;
+  const safeDigits = [1, 2, 3, 4].includes(digits) ? digits : 1;
   const range = digitRange(safeDigits);
   const a = randomInt(range.min, range.max);
   const b = randomInt(range.min, range.max);
@@ -282,7 +283,9 @@ function randomSignedDigit() {
 function quadraticRange(difficulty) {
   if (difficulty === 'easy') return { min: -3, max: 3 };
   if (difficulty === 'medium') return { min: -6, max: 6 };
-  return { min: -9, max: 9 };
+  if (difficulty === 'hard') return { min: -9, max: 9 };
+  if (difficulty === 'extrahard') return { min: -15, max: 15 };
+  return { min: -3, max: 3 };
 }
 
 /**
@@ -439,7 +442,20 @@ app.post('/quadratic-api/check', (req, res) => {
  * }
  */
 app.get('/sqrt-api/question', (req, res) => {
-  const step = Math.max(1, Number(req.query.step || 1));
+  // Support both 'step' (legacy) and 'difficulty' parameters
+  // If difficulty is provided, map it to a step range
+  let step;
+  if (req.query.difficulty) {
+    const difficulty = req.query.difficulty;
+    if (difficulty === 'easy') step = randomInt(1, 5);
+    else if (difficulty === 'medium') step = randomInt(6, 10);
+    else if (difficulty === 'hard') step = randomInt(11, 20);
+    else if (difficulty === 'extrahard') step = randomInt(21, 50);
+    else step = randomInt(1, 5); // Default to easy
+  } else {
+    step = Math.max(1, Number(req.query.step || 1));
+  }
+
   const band = bandForStep(step);
   const q = randomInt(band.min, band.max);
   const sqrt = Math.sqrt(q);
@@ -539,7 +555,10 @@ const vocabQuestions = loadVocab();
  * }
  */
 app.get('/vocab-api/question', (req, res) => {
-  const difficulty = req.query.difficulty || 'easy';
+  let difficulty = req.query.difficulty || 'easy';
+  // Support both 'extrahard' and 'extra-hard' formats
+  if (difficulty === 'extrahard') difficulty = 'extra-hard';
+
   const exclude = req.query.exclude ? req.query.exclude.split(',').map(Number) : [];
   let pool = vocabQuestions.filter((q) => q.difficulty === difficulty);
   if (!pool.length) {
@@ -664,7 +683,9 @@ app.post('/multiply-api/check', (req, res) => {
 function polyCoeffRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 9 };
   if (difficulty === 'medium') return { min: 1, max: 10 };
-  return { min: 1, max: 20 };
+  if (difficulty === 'hard') return { min: 1, max: 20 };
+  if (difficulty === 'extrahard') return { min: 1, max: 30 };
+  return { min: 1, max: 9 };
 }
 
 /**
@@ -799,10 +820,22 @@ app.get('/polymul-api/question', (req, res) => {
     // Medium: two degree-1 polynomials (ax+b)(cx+d)
     p1 = randomPoly(1, range);
     p2 = randomPoly(1, range);
-  } else {
+  } else if (difficulty === 'hard') {
     // Hard: two degree-2 polynomials
     p1 = randomPoly(2, range);
     p2 = randomPoly(2, range);
+  } else if (difficulty === 'extrahard') {
+    // Extrahard: two degree-3 polynomials
+    p1 = randomPoly(3, range);
+    p2 = randomPoly(3, range);
+  } else {
+    // Default to easy
+    const a = randomInt(2, 9);
+    const b = randomInt(1, 9);
+    let c = randomInt(1, 9);
+    if (Math.random() < 0.3) c = -c;
+    p1 = [a];
+    p2 = [c, b];
   }
 
   const product = multiplyPolys(p1, p2);
@@ -856,7 +889,9 @@ app.post('/polymul-api/check', (req, res) => {
 function factorCoeffRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 10 };
   if (difficulty === 'medium') return { min: 1, max: 20 };
-  return { min: 1, max: 30 };
+  if (difficulty === 'hard') return { min: 1, max: 30 };
+  if (difficulty === 'extrahard') return { min: 1, max: 50 };
+  return { min: 1, max: 10 };
 }
 
 /**
@@ -947,7 +982,9 @@ app.post('/polyfactor-api/check', (req, res) => {
 function primeRange(difficulty) {
   if (difficulty === 'easy') return { min: 2, max: 100 };
   if (difficulty === 'medium') return { min: 2, max: 300 };
-  return { min: 2, max: 1000 };
+  if (difficulty === 'hard') return { min: 2, max: 1000 };
+  if (difficulty === 'extrahard') return { min: 2, max: 5000 };
+  return { min: 2, max: 100 };
 }
 
 /**
@@ -1044,7 +1081,9 @@ app.post('/primefactor-api/check', (req, res) => {
 function qfRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 10 };
   if (difficulty === 'medium') return { min: 1, max: 20 };
-  return { min: 1, max: 30 };
+  if (difficulty === 'hard') return { min: 1, max: 30 };
+  if (difficulty === 'extrahard') return { min: 1, max: 50 };
+  return { min: 1, max: 10 };
 }
 
 /**
@@ -1180,7 +1219,10 @@ app.post('/qformula-api/check', (req, res) => {
  */
 function simulRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 10 };
-  return { min: 1, max: 15 };
+  if (difficulty === 'medium') return { min: 1, max: 12 };
+  if (difficulty === 'hard') return { min: 1, max: 15 };
+  if (difficulty === 'extrahard') return { min: 1, max: 20 };
+  return { min: 1, max: 10 };
 }
 
 /**
@@ -1213,7 +1255,7 @@ function simulRange(difficulty) {
 app.get('/simul-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const range = simulRange(difficulty);
-  const is2x2 = difficulty === 'easy';
+  const is2x2 = difficulty === 'easy' || difficulty === 'medium';
 
   if (is2x2) {
     // 2×2: generate integer solutions, then build equations
@@ -1238,7 +1280,7 @@ app.get('/simul-api/question', (req, res) => {
       eqs,
       solution: { x, y },
     });
-  } else {
+  } else if (difficulty === 'hard' || difficulty === 'extrahard') {
     // 3×3: generate integer solutions, then build equations
     const x = randomInt(-8, 8), y = randomInt(-8, 8), z = randomInt(-8, 8);
     let eqs;
@@ -1268,6 +1310,28 @@ app.get('/simul-api/question', (req, res) => {
       size: 3,
       eqs,
       solution: { x, y, z },
+    });
+  } else {
+    // Default to easy (2×2)
+    const range2 = simulRange('easy');
+    const x = randomInt(-range2.max, range2.max);
+    const y = randomInt(-range2.max, range2.max);
+    let a1 = randomInt(1, range2.max), b1 = randomInt(1, range2.max);
+    let a2 = randomInt(1, range2.max), b2 = randomInt(1, range2.max);
+    while (a1 * b2 === a2 * b1) { a2 = randomInt(1, range2.max); b2 = randomInt(1, range2.max); }
+    if (Math.random() < 0.3) a1 = -a1;
+    if (Math.random() < 0.3) b1 = -b1;
+    if (Math.random() < 0.3) a2 = -a2;
+    if (Math.random() < 0.3) b2 = -b2;
+    const eqs = [
+      { a: a1, b: b1, d: a1 * x + b1 * y },
+      { a: a2, b: b2, d: a2 * x + b2 * y },
+    ];
+    res.json({
+      id: `simul-${Date.now()}-${Math.random()}`,
+      size: 2,
+      eqs,
+      solution: { x, y },
     });
   }
 });
@@ -1315,7 +1379,9 @@ app.post('/simul-api/check', (req, res) => {
 function linearRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 5 };
   if (difficulty === 'medium') return { min: 1, max: 10 };
-  return { min: 1, max: 15 };
+  if (difficulty === 'hard') return { min: 1, max: 15 };
+  if (difficulty === 'extrahard') return { min: 1, max: 25 };
+  return { min: 1, max: 5 };
 }
 
 /**
@@ -1359,12 +1425,19 @@ app.get('/funceval-api/question', (req, res) => {
     formula = `f(x,y) = ${a}x ${b >= 0 ? '+' : '−'} ${Math.abs(b)}y ${c >= 0 ? '+' : '−'} ${Math.abs(c)}`;
     vars = { x: xVal, y: yVal };
     answer = parseFloat((a * xVal + b * yVal + c).toFixed(2));
-  } else {
+  } else if (difficulty === 'hard' || difficulty === 'extrahard') {
     const a = randomInt(1, range.max), b = randomInt(1, range.max), cc = randomInt(1, range.max), d = randomInt(-range.max, range.max);
     const xVal = randomInt(-10, 10), yVal = randomInt(-10, 10), zVal = randomInt(-10, 10);
     formula = `f(x,y,z) = ${a}x ${b >= 0 ? '+' : '−'} ${Math.abs(b)}y ${cc >= 0 ? '+' : '−'} ${Math.abs(cc)}z ${d >= 0 ? '+' : '−'} ${Math.abs(d)}`;
     vars = { x: xVal, y: yVal, z: zVal };
     answer = parseFloat((a * xVal + b * yVal + cc * zVal + d).toFixed(2));
+  } else {
+    // Default to easy
+    const a = randomInt(1, 5), b = randomInt(-5, 5);
+    const xVal = randomInt(-5, 5);
+    formula = `f(x) = ${a}x ${b >= 0 ? '+' : '−'} ${Math.abs(b)}`;
+    vars = { x: xVal };
+    answer = parseFloat((a * xVal + b).toFixed(2));
   }
   res.json({ id: `func-${Date.now()}-${Math.random()}`, formula, vars, answer });
 });
@@ -1433,7 +1506,7 @@ app.get('/lineq-api/question', (req, res) => {
     // Calculate y values using the line equation
     y1 = m * x1 + c;
     y2 = m * x2 + c;
-  } else {
+  } else if (difficulty === 'medium' || difficulty === 'hard' || difficulty === 'extrahard') {
     // Random points: calculate m and c from them
     x1 = randomInt(-range.max, range.max);
     y1 = randomInt(-range.max, range.max);
@@ -1442,6 +1515,15 @@ app.get('/lineq-api/question', (req, res) => {
     y2 = randomInt(-range.max, range.max);
     m = parseFloat(((y2 - y1) / (x2 - x1)).toFixed(2));
     c = parseFloat((y1 - m * x1).toFixed(2));
+  } else {
+    // Default to easy
+    m = randomInt(-5, 5);
+    c = randomInt(-5, 5);
+    x1 = randomInt(-5, 5);
+    x2 = randomInt(-5, 5);
+    while (x2 === x1) x2 = randomInt(-5, 5);
+    y1 = m * x1 + c;
+    y2 = m * x2 + c;
   }
   res.json({
     id: `lineq-${Date.now()}-${Math.random()}`,
@@ -1489,7 +1571,9 @@ app.post('/lineq-api/check', (req, res) => {
 function arithRange(difficulty) {
   if (difficulty === 'easy') return { min: 1, max: 9 };
   if (difficulty === 'medium') return { min: 10, max: 99 };
-  return { min: 100, max: 999 };
+  if (difficulty === 'hard') return { min: 100, max: 999 };
+  if (difficulty === 'extrahard') return { min: 1000, max: 9999 };
+  return { min: 1, max: 9 };
 }
 
 /**

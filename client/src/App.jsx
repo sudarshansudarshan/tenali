@@ -1928,14 +1928,28 @@ function GKApp({ onBack }) {
   const [results, setResults] = useState([])
   // Array of previously seen question IDs (to avoid repeats)
   const [seenIds, setSeenIds] = useState([])
+  // Number of questions to answer (as string for input field)
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  // Total questions to answer
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  // Quiz started flag
+  const [started, setStarted] = useState(false)
+  // Quiz finished flag
+  const [finished, setFinished] = useState(false)
   // Timer for tracking response time per question
   const timer = useTimer()
 
   /**
    * loadQuestion(excludeIds?): Fetch next GK question from API
    * Excludes previously seen questions to avoid repetition
+   * Stops if total questions reached
    */
   const loadQuestion = async (excludeIds) => {
+    if (questionNumber >= totalQ) {
+      setFinished(true)
+      timer.reset()
+      return
+    }
     setLoading(true)
     setSelected('')
     setFeedback('')
@@ -1955,10 +1969,27 @@ function GKApp({ onBack }) {
     timer.start()  // Start timer for this question
   }
 
-  // Load first question on component mount
-  useEffect(() => {
+  /**
+   * startQuiz(): Initialize GK quiz with question count
+   */
+  const startQuiz = () => {
+    const count = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
+    setTotalQ(count)
+    setStarted(true)
+    setFinished(false)
+    setScore(0)
+    setQuestionNumber(0)
+    setResults([])
+    setSeenIds([])
     loadQuestion([])
-  }, [])
+  }
+
+  // Load first question only if started
+  useEffect(() => {
+    if (started && !finished && questionNumber === 0) {
+      loadQuestion([])
+    }
+  }, [started])
 
   /**
    * submitGK(option): Submit selected answer and check correctness with API
@@ -2034,30 +2065,43 @@ function GKApp({ onBack }) {
   }, [revealed, loading, question])
 
   return (
-    <QuizLayout title="General Knowledge" subtitle="Random question picker" onBack={onBack}>
-      <div className="top-mini-row">
-        {!loading && question && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="question-box">{loading || !question ? 'Loading question…' : question.question}</div>
-      {question && (
-        <div className="options-list">
-          {question.options.map((option, idx) => {
-            const letter = ['A', 'B', 'C', 'D'][idx]
-            return (
-              <label key={letter} className={`option-card ${selected === letter ? 'selected' : ''}`}>
-                <input type="radio" name="gk" checked={selected === letter} onChange={() => !revealed && setSelected(letter)} disabled={revealed} />
-                <span><strong>{letter})</strong> {option}</span>
-              </label>
-            )
-          })}
+    <QuizLayout title="General Knowledge" subtitle="Random question picker" onBack={onBack} timer={started && !finished ? timer : null}>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Test your general knowledge with random questions!</p>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
         </div>
-      )}
-      {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
-      <div className="button-row">
-        <button onClick={handleSubmitOrNext} disabled={loading || (!revealed && !selected)}>{revealed ? 'Next Question' : 'Submit'}</button>
-      </div>
-      {results.length > 0 && <ResultsTable results={results} />}
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div className="question-box">{loading || !question ? 'Loading question…' : question.question}</div>
+        {question && (
+          <div className="options-list">
+            {question.options.map((option, idx) => {
+              const letter = ['A', 'B', 'C', 'D'][idx]
+              return (
+                <label key={letter} className={`option-card ${selected === letter ? 'selected' : ''}`}>
+                  <input type="radio" name="gk" checked={selected === letter} onChange={() => !revealed && setSelected(letter)} disabled={revealed} />
+                  <span><strong>{letter})</strong> {option}</span>
+                </label>
+              )
+            })}
+          </div>
+        )}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          <button onClick={handleSubmitOrNext} disabled={loading || (!revealed && !selected)}>{revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next Question') : 'Submit'}</button>
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
     </QuizLayout>
   )
 }
@@ -2071,8 +2115,13 @@ function GKApp({ onBack }) {
  * @param {Function} props.onBack - Callback to return to home menu
  */
 function AdditionApp({ onBack }) {
-  // Difficulty level: 1 (1-digit), 2 (2-digit), 3 (3-digit)
-  const [digits, setDigits] = useState(1)
+  // Difficulty level: 'easy' (1-digit), 'medium' (2-digit), 'hard' (3-digit), 'extrahard' (4-digit)
+  const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // User-entered number of questions to attempt
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz state: has quiz started?
@@ -2101,18 +2150,22 @@ function AdditionApp({ onBack }) {
   const [results, setResults] = useState([])
   // Timer for response timing
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
+  const digitMap = { easy: 1, medium: 2, hard: 3, extrahard: 4 }
 
   /**
-   * fetchQuestion(selectedDigits?): Fetch next addition question from API
+   * fetchQuestion(selectedDifficulty?): Fetch next addition question from API
    * Generates random a + b = ? with specified digit count
    */
-  const fetchQuestion = async (selectedDigits = digits) => {
+  const fetchQuestion = async (selectedDifficulty = difficulty) => {
     setLoading(true)
     setFeedback('')
     setAnswer('')
     setRevealed(false)
     setIsCorrect(null)
-    const res = await fetch(`${API}/addition-api/question?digits=${selectedDigits}`)
+    const res = await fetch(`${API}/addition-api/question?digits=${digitMap[effectiveDiff()]}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -2131,7 +2184,9 @@ function AdditionApp({ onBack }) {
     setScore(0)
     setQuestionNumber(1)
     setResults([])
-    await fetchQuestion(digits)
+    setAdaptScore(0)
+    adaptScoreRef.current = 0
+    await fetchQuestion(difficulty)
   }
 
   useEffect(() => {
@@ -2142,7 +2197,7 @@ function AdditionApp({ onBack }) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [started, finished, question, answer, revealed, score, questionNumber, digits, loading, totalQ])
+  }, [started, finished, question, answer, revealed, score, questionNumber, difficulty, loading, totalQ])
 
   const handleSubmitOrNext = async () => {
     if (!question) return
@@ -2170,6 +2225,9 @@ function AdditionApp({ onBack }) {
         correct: data.correct,
         time: timeTaken,
       }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
       setRevealed(true)
       return
     }
@@ -2182,29 +2240,36 @@ function AdditionApp({ onBack }) {
     }
 
     setQuestionNumber((n) => n + 1)
-    await fetchQuestion(digits)
+    await fetchQuestion(difficulty)
   }
 
-  const advanceRef = useRef(() => {})
-  advanceRef.current = () => handleSubmitOrNext()
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmitOrNext() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  const diffLabels = { easy: 'Easy — 1 digit', medium: 'Medium — 2 digits', hard: 'Hard — 3 digits', extrahard: 'Extra Hard — 4 digits' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
 
   return (
-    <QuizLayout title="Addition" subtitle="Choose a level and solve addition questions" onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="radio-group">
-        {[1, 2, 3].map((value) => (
-          <label key={value} className={`radio-pill ${digits === value ? 'active' : ''}`}>
-            <input type="radio" checked={digits === value} onChange={() => setDigits(value)} disabled={started && !finished} />
-            {value === 1 ? 'One digit' : value === 2 ? 'Two digits' : 'Three digits'}
-          </label>
-        ))}
-      </div>
+    <QuizLayout title="Addition" subtitle="Choose a level and solve addition questions" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
-        <p className="welcome-text">The quiz is ready to begin.</p>
+        <p className="welcome-text">Practice addition!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="addition-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="addition-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} placeholder={String(DEFAULT_TOTAL)} />
@@ -2212,7 +2277,11 @@ function AdditionApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
@@ -2223,8 +2292,9 @@ function AdditionApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete.</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
-        <button onClick={startQuiz}>Play Again</button>
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
     </QuizLayout>
   )
@@ -2240,8 +2310,13 @@ function AdditionApp({ onBack }) {
  * @param {Function} props.onBack - Callback to return to home menu
  */
 function BasicArithApp({ onBack }) {
-  // Difficulty level: 'easy', 'medium', 'hard'
+  // Difficulty level: 'easy', 'medium', 'hard', 'extrahard'
   const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // User-entered number of questions
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz started?
@@ -2270,6 +2345,9 @@ function BasicArithApp({ onBack }) {
   const [results, setResults] = useState([])
   // Timer
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
   /**
    * fetchQuestion(): Fetch next arithmetic question
@@ -2278,7 +2356,7 @@ function BasicArithApp({ onBack }) {
   const fetchQuestion = async () => {
     setLoading(true)
     setFeedback(''); setAnswer(''); setRevealed(false); setIsCorrect(null)
-    const res = await fetch(`${API}/basicarith-api/question?difficulty=${difficulty}`)
+    const res = await fetch(`${API}/basicarith-api/question?difficulty=${effectiveDiff()}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -2292,6 +2370,7 @@ function BasicArithApp({ onBack }) {
     const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
     setTotalQ(count)
     setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    setAdaptScore(0); adaptScoreRef.current = 0
     await fetchQuestion()
   }
 
@@ -2368,6 +2447,9 @@ function BasicArithApp({ onBack }) {
         correct: data.correct,
         time: timeTaken,
       }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
       setRevealed(true)
       return
     }
@@ -2377,26 +2459,33 @@ function BasicArithApp({ onBack }) {
     await fetchQuestion()
   }
 
-  const advanceRef = useRef(() => {})
-  advanceRef.current = () => handleSubmitOrNext()
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmitOrNext() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  const diffLabels = { easy: 'Easy — 1 digit', medium: 'Medium — 2 digits', hard: 'Hard — 3 digits', extrahard: 'Extra Hard — 4 digits' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
 
   return (
-    <QuizLayout title="Basic Arithmetic" subtitle="Add, subtract, and multiply positive & negative numbers" onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="radio-group">
-        {['easy', 'medium', 'hard'].map(d => (
-          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
-            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
-            {d === 'easy' ? '1 digit' : d === 'medium' ? '2 digits' : '3 digits'}
-          </label>
-        ))}
-      </div>
+    <QuizLayout title="Basic Arithmetic" subtitle="Add, subtract, and multiply positive & negative numbers" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
-        <p className="welcome-text">Solve +, −, and × problems with positive and negative numbers.</p>
+        <p className="welcome-text">Practice basic arithmetic!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="basicarith-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="basicarith-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -2404,7 +2493,11 @@ function BasicArithApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} />
@@ -2415,6 +2508,7 @@ function BasicArithApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete.</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -2433,8 +2527,13 @@ function BasicArithApp({ onBack }) {
  * @param {Function} props.onBack - Callback to return to home menu
  */
 function QuadraticApp({ onBack }) {
-  // Difficulty level: 'easy', 'medium', or 'hard' (controls coefficient range)
+  // Difficulty level: 'easy', 'medium', 'hard', 'extrahard'
   const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // Number of questions to complete in this quiz session
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz started flag
@@ -2463,10 +2562,13 @@ function QuadraticApp({ onBack }) {
   const [results, setResults] = useState([])
   // Timer instance for tracking time spent per question
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
   /**
    * fetchQuestion(selectedDifficulty?): Fetch next quadratic substitution question from backend
-   * Endpoint: /quadratic-api/question?difficulty={easy|medium|hard}
+   * Endpoint: /quadratic-api/question?difficulty={easy|medium|hard|extrahard}
    * Returns: {a, b, c, x} with the actual answer pre-calculated server-side
    * Resets form state and starts timer for this question
    */
@@ -2477,7 +2579,7 @@ function QuadraticApp({ onBack }) {
     setRevealed(false)
     setIsCorrect(null)
     // Fetch new question with specified difficulty
-    const res = await fetch(`${API}/quadratic-api/question?difficulty=${selectedDifficulty}`)
+    const res = await fetch(`${API}/quadratic-api/question?difficulty=${effectiveDiff()}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -2492,6 +2594,8 @@ function QuadraticApp({ onBack }) {
     setScore(0)
     setQuestionNumber(1)
     setResults([])
+    setAdaptScore(0)
+    adaptScoreRef.current = 0
     await fetchQuestion(difficulty)
   }
 
@@ -2553,6 +2657,9 @@ function QuadraticApp({ onBack }) {
         correct: data.correct,
         time: timeTaken,
       }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
       setRevealed(true)
       return
     }
@@ -2569,26 +2676,33 @@ function QuadraticApp({ onBack }) {
     await fetchQuestion()
   }
 
-  const advanceRef = useRef(() => {})
-  advanceRef.current = () => handleSubmitOrNext()
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmitOrNext() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  const diffLabels = { easy: 'Easy — Small coefficients', medium: 'Medium — Larger values', hard: 'Hard — Big coefficients', extrahard: 'Extra Hard — Very large' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
 
   return (
-    <QuizLayout title="Quadratic" subtitle="Given x, find y = ax² + bx + c" onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="radio-group">
-        {['easy', 'medium', 'hard'].map((level) => (
-          <label key={level} className={`radio-pill ${difficulty === level ? 'active' : ''}`}>
-            <input type="radio" checked={difficulty === level} onChange={() => setDifficulty(level)} disabled={started && !finished} />
-            {level.charAt(0).toUpperCase() + level.slice(1)}
-          </label>
-        ))}
-      </div>
+    <QuizLayout title="Quadratic" subtitle="Given x, find y = ax² + bx + c" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
-        <p className="welcome-text">Quadratic substitution practice.</p>
+        <p className="welcome-text">Practice quadratic substitution!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="quadratic-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="quadratic-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} placeholder={String(DEFAULT_TOTAL)} />
@@ -2596,7 +2710,11 @@ function QuadraticApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         <div className="question-box">
           {loading || !question ? 'Loading question…' : (
             <>
@@ -2614,8 +2732,9 @@ function QuadraticApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete.</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
-        <button onClick={startQuiz}>Play Again</button>
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
     </QuizLayout>
   )
@@ -2890,8 +3009,13 @@ function MultiplyApp({ onBack }) {
  * @param {Function} props.onBack - Callback to return to home menu
  */
 function VocabApp({ onBack }) {
-  // Difficulty level: 'easy' | 'medium' | 'hard' | 'extra-hard' | 'hardest'
+  // Difficulty level: 'easy' | 'medium' | 'hard' | 'extrahard'
   const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // Number of questions to answer in this session
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz started flag
@@ -2922,10 +3046,17 @@ function VocabApp({ onBack }) {
   const [seenIds, setSeenIds] = useState([])
   // Timer instance for tracking time spent per question
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => {
+    const eff = isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
+    // Map our standard 4 levels to vocab API format (it uses 'extra-hard' with hyphen)
+    return eff === 'extrahard' ? 'extra-hard' : eff
+  }
 
   /**
    * loadQuestion(excludeIds?): Fetch next vocabulary question from backend
-   * Endpoint: /vocab-api/question?difficulty={easy|medium|hard|extra-hard|hardest}&exclude={id1,id2,...}
+   * Endpoint: /vocab-api/question?difficulty={easy|medium|hard|extra-hard}&exclude={id1,id2,...}
    * Features:
    *   - Passes previously seen IDs to prevent question repetition
    *   - Returns: {id, question: word, options: [def1, def2, def3, def4]}
@@ -2941,7 +3072,7 @@ function VocabApp({ onBack }) {
     const ids = excludeIds || seenIds
     // Build exclude parameter to prevent question repeats
     const excludeParam = ids.length ? `&exclude=${ids.join(',')}` : ''
-    const res = await fetch(`${API}/vocab-api/question?difficulty=${difficulty}${excludeParam}`)
+    const res = await fetch(`${API}/vocab-api/question?difficulty=${effectiveDiff()}${excludeParam}`)
     const data = await res.json()
     setQuestion(data)
     // Add this question's ID to seen list
@@ -2966,6 +3097,8 @@ function VocabApp({ onBack }) {
     setQuestionNumber(1)
     setResults([])
     setSeenIds([])
+    setAdaptScore(0)
+    adaptScoreRef.current = 0
     await loadQuestion([])
   }
 
@@ -3007,6 +3140,9 @@ function VocabApp({ onBack }) {
       correct: data.correct,
       time: timeTaken,
     }])
+    if (isAdaptive) {
+      setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+    }
     setRevealed(true)
   }
 
@@ -3025,13 +3161,15 @@ function VocabApp({ onBack }) {
     await loadQuestion()
   }
 
-  /**
-   * Auto-advance after correct answer (uses useAutoAdvance hook)
-   * Refs are used to capture latest function state for the hook
-   */
-  const advanceRef = useRef(() => {})
-  advanceRef.current = () => handleSubmitOrNext()
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmitOrNext() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  const diffLabels = { easy: 'Easy', medium: 'Medium', hard: 'Hard', extrahard: 'Extra Hard' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
 
   /**
    * Keyboard shortcuts for VocabApp:
@@ -3068,24 +3206,23 @@ function VocabApp({ onBack }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [started, finished, revealed, loading, question])
 
-  const difficultyLabels = { easy: 'Easy', medium: 'Medium', hard: 'Hard', 'extra-hard': 'Extra Hard', hardest: 'Hardest' }
-
   return (
-    <QuizLayout title="Vocab Builder" subtitle="Pick the correct definition for the word" onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="radio-group">
-        {Object.entries(difficultyLabels).map(([key, label]) => (
-          <label key={key} className={`radio-pill ${difficulty === key ? 'active' : ''}`}>
-            <input type="radio" checked={difficulty === key} onChange={() => setDifficulty(key)} disabled={started && !finished} />
-            {label}
-          </label>
-        ))}
-      </div>
+    <QuizLayout title="Vocab Builder" subtitle="Pick the correct definition for the word" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
-        <p className="welcome-text">Test your vocabulary across 5 difficulty levels.</p>
+        <p className="welcome-text">Build your vocabulary!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="vocab-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="vocab-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} placeholder={String(DEFAULT_TOTAL)} />
@@ -3093,7 +3230,11 @@ function VocabApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         <div className="question-box vocab-word">{loading || !question ? 'Loading question…' : question.question}</div>
         {question && (
           <div className="options-list">
@@ -3117,6 +3258,7 @@ function VocabApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -4840,8 +4982,13 @@ function SurdsApp({ onBack }) {
 
 function FractionAddApp({ onBack }) {
   // ── State variables ──────────────────────────────────────────────────
-  // Difficulty: 'easy' | 'medium' | 'hard'
+  // Difficulty: 'easy' | 'medium' | 'hard' | 'extrahard'
   const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // Number of questions (user-configurable, stored as string for input)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz phase flags
@@ -4870,6 +5017,8 @@ function FractionAddApp({ onBack }) {
   // ── Refs for auto-advance ────────────────────────────────────────────
   const advanceFnRef = useRef(null)
 
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
+
   /**
    * loadQuestion(): Fetch a new fraction-add question from the API.
    * Updates question state and resets answer fields.
@@ -4877,7 +5026,7 @@ function FractionAddApp({ onBack }) {
   const loadQuestion = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`${API}/fractionadd-api/question?difficulty=${difficulty}`)
+      const r = await fetch(`${API}/fractionadd-api/question?difficulty=${effectiveDiff()}`)
       const data = await r.json()
       setQuestion(data)
       setAnswer('')
@@ -4901,6 +5050,8 @@ function FractionAddApp({ onBack }) {
     setScore(0)
     setQuestionNumber(1)
     setResults([])
+    setAdaptScore(0)
+    adaptScoreRef.current = 0
     setStarted(true)
     setFinished(false)
   }
@@ -5008,6 +5159,9 @@ function FractionAddApp({ onBack }) {
         correct: data.correct,
         time: timeTaken
       }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
     } catch (e) {
       console.error('Failed to check fraction answer:', e)
     }
@@ -5047,6 +5201,9 @@ function FractionAddApp({ onBack }) {
     </span>
   )
 
+  const diffLabels = { easy: 'Easy — Same denominator', medium: 'Medium — Related denominators', hard: 'Hard — Different denominators', extrahard: 'Extra Hard — Mixed & improper' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <QuizLayout title="Fractions (Add)" subtitle="Add fractions and simplify" onBack={onBack} timer={started && !finished ? timer : null}>
@@ -5054,13 +5211,18 @@ function FractionAddApp({ onBack }) {
       {!started && !finished && <div className="welcome-box">
         <p className="welcome-text">Practice adding fractions!</p>
         <div className="checkbox-group" style={{ marginBottom: '12px' }}>
-          {['easy', 'medium', 'hard'].map(d => (
-            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
-              <input type="radio" name="frac-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
-              {d === 'easy' ? 'Easy' : d === 'medium' ? 'Medium' : 'Hard'}
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="frac-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
             </label>
           ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="frac-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
         </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -5070,7 +5232,11 @@ function FractionAddApp({ onBack }) {
 
       {/* ── Playing Phase ── */}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && (
           <div className="fraction-problem">
             {/* Render the problem: n1/d1 + n2/d2 or mixed numbers */}
@@ -5122,6 +5288,7 @@ function FractionAddApp({ onBack }) {
         <div className="welcome-box">
           <p className="welcome-text">Quiz complete!</p>
           <p className="final-score">Final score: {score}/{totalQ}</p>
+          {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
           <ResultsTable results={results} />
           <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
         </div>
@@ -5420,8 +5587,15 @@ function TwinHuntApp({ onBack }) {
  * @param {Function} props.onBack - Callback to return to home menu
  */
 function SqrtApp({ onBack }) {
+  // Difficulty level: 'easy' (1-5), 'medium' (6-10), 'hard' (11-20), 'extrahard' (21-50)
+  const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // User-entered question limit (empty string = unlimited)
-  const [numQuestions, setNumQuestions] = useState('')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz started flag
   const [started, setStarted] = useState(false)
   // Quiz finished flag
@@ -5434,8 +5608,8 @@ function SqrtApp({ onBack }) {
   const [score, setScore] = useState(0)
   // Current question number (1-indexed)
   const [questionNumber, setQuestionNumber] = useState(0)
-  // Total questions (0 = unlimited)
-  const [totalQ, setTotalQ] = useState(0)
+  // Total questions
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
   // Feedback string with floor/ceiling values
   const [feedback, setFeedback] = useState('')
   // Is the last answer correct? (null before submission, true/false after)
@@ -5448,10 +5622,13 @@ function SqrtApp({ onBack }) {
   const [results, setResults] = useState([])
   // Timer instance for tracking time per question
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
   /**
    * fetchQuestion(step): Fetch next square root question
-   * Endpoint: /sqrt-api/question?step={questionNumber}
+   * Endpoint: /sqrt-api/question?difficulty={easy|medium|hard|extrahard}
    * Returns: {q: radicand, prompt: "√n"}
    * Backend calculates sqrtRounded, floorAnswer, ceilAnswer for validation
    */
@@ -5461,8 +5638,8 @@ function SqrtApp({ onBack }) {
     setFeedback('')
     setRevealed(false)
     setIsCorrect(null)
-    // Fetch question for this step/question number
-    const res = await fetch(`${API}/sqrt-api/question?step=${step}`)
+    // Fetch question for this difficulty
+    const res = await fetch(`${API}/sqrt-api/question?difficulty=${effectiveDiff()}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -5471,22 +5648,20 @@ function SqrtApp({ onBack }) {
 
   /**
    * startQuiz(): Initialize square root quiz
-   * Sets totalQ=0 for unlimited mode (if user leaves input empty)
-   * Fetches first question with step=1
+   * Fetches first question
    */
   const startQuiz = async () => {
-    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : 0
+    const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
     setTotalQ(count)
     setStarted(true)
     setFinished(false)
     setScore(0)
     setQuestionNumber(1)
     setResults([])
+    setAdaptScore(0)
+    adaptScoreRef.current = 0
     await fetchQuestion(1)
   }
-
-  // unlimited mode: totalQ === 0 means no limit
-  const unlimited = totalQ === 0
 
   /**
    * Keyboard handler for SqrtApp: Enter key to submit/next
@@ -5539,57 +5714,80 @@ function SqrtApp({ onBack }) {
         correct: data.correct,
         time: timeTaken,
       }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
       setRevealed(true)
       return
     }
 
-    // Quiz progression: check if limited mode and all questions answered
-    if (!unlimited && questionNumber >= totalQ) {
+    // Quiz progression: check if all questions answered
+    if (questionNumber >= totalQ) {
       setFinished(true)
       setQuestion(null)
       timer.reset()
       return
     }
 
-    // Load next question (unlimited mode continues indefinitely)
+    // Load next question
     const next = questionNumber + 1
     setQuestionNumber(next)
     await fetchQuestion(next)
   }
 
-  const advanceRef = useRef(() => {})
-  advanceRef.current = () => handleSubmitOrNext()
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmitOrNext() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  const diffLabels = { easy: 'Easy — up to 100', medium: 'Medium — up to 1000', hard: 'Hard — up to 10000', extrahard: 'Extra Hard — up to 100000' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
 
   return (
-    <QuizLayout title="Square Root" subtitle="Floor or ceiling is accepted" onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
+    <QuizLayout title="Square Root" subtitle="Floor or ceiling is accepted" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
-        <p className="welcome-text">The square-root drill.</p>
+        <p className="welcome-text">Practice square roots!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="sqrt-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="sqrt-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
-          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} placeholder="Unlimited" />
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={(e) => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} placeholder={String(DEFAULT_TOTAL)} />
         </div>
-        <div className="button-row"><button onClick={startQuiz}>Start Drill</button></div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}{!unlimited ? `/${totalQ}` : ''}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
-        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (!unlimited && questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
+        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
+        {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete.</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
-        <button onClick={() => { setStarted(false); setFinished(false); setNumQuestions('') }}>Play Again</button>
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
-      {!finished && results.length > 0 && <ResultsTable results={results} />}
     </QuizLayout>
   )
 }
@@ -5608,8 +5806,13 @@ function SqrtApp({ onBack }) {
  * @param {Function} props.onBack - Callback to return to home menu
  */
 function PolyMulApp({ onBack }) {
-  // Difficulty level: 'easy' | 'medium' | 'hard'
+  // Difficulty level: 'easy' | 'medium' | 'hard' | 'extrahard'
   const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // Number of questions to answer
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz started flag
@@ -5638,10 +5841,13 @@ function PolyMulApp({ onBack }) {
   const [results, setResults] = useState([])
   // Timer instance for tracking time per question
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
   /**
    * loadQuestion(): Fetch next polynomial multiplication question
-   * Endpoint: /polymul-api/question?difficulty={easy|medium|hard}
+   * Endpoint: /polymul-api/question?difficulty={easy|medium|hard|extrahard}
    * Returns: {p1, p2, p1Display, p2Display, productDisplay, resultDegree, correctCoeffs}
    * Initializes userCoeffs array with empty strings (one per degree)
    */
@@ -5650,7 +5856,7 @@ function PolyMulApp({ onBack }) {
     setFeedback('')
     setIsCorrect(null)
     setRevealed(false)
-    const res = await fetch(`${API}/polymul-api/question?difficulty=${difficulty}`)
+    const res = await fetch(`${API}/polymul-api/question?difficulty=${effectiveDiff()}`)
     const data = await res.json()
     setQuestion(data)
     // Initialize empty coefficient array for this polynomial's degree
@@ -5667,6 +5873,8 @@ function PolyMulApp({ onBack }) {
     setTotalQ(count)
     setStarted(true)
     setFinished(false)
+    setAdaptScore(0)
+    adaptScoreRef.current = 0
     setScore(0)
     setQuestionNumber(1)
     setResults([])
@@ -5699,20 +5907,30 @@ function PolyMulApp({ onBack }) {
       correct: data.correct,
       time: timeTaken,
     }])
+    if (isAdaptive) {
+      setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+    }
     setRevealed(true)
   }
 
   /**
    * Auto-advance to next question after correct answer (uses useAutoAdvance hook)
    */
-  const advanceRef = useRef(() => {})
-  advanceRef.current = async () => {
+  const advance = async () => {
     if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
+  advanceFnRef.current = advance
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
 
   /**
    * sup(n): Convert digit to superscript character
@@ -5726,22 +5944,26 @@ function PolyMulApp({ onBack }) {
    */
   const formatCoeffLabel = (i) => i === 0 ? 'constant' : i === 1 ? 'x' : `x${sup(i)}`
 
+  const diffLabels = { easy: 'Easy — Small terms', medium: 'Medium — Moderate', hard: 'Hard — Large terms', extrahard: 'Extra Hard — Higher degree' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
   return (
-    <QuizLayout title="Poly Multiply" subtitle="Multiply two polynomials and enter the coefficients" onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="radio-group">
-        {['easy', 'medium', 'hard'].map(d => (
-          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
-            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
-            {d.charAt(0).toUpperCase() + d.slice(1)}
-          </label>
-        ))}
-      </div>
+    <QuizLayout title="Poly Multiply" subtitle="Multiply two polynomials and enter the coefficients" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
-        <p className="welcome-text">Multiply two polynomials and fill in the resulting coefficients.</p>
+        <p className="welcome-text">Practice polynomial multiplication!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="polymul-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="polymul-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -5749,7 +5971,11 @@ function PolyMulApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && <>
           <div className="question-box">
             <span className="poly-expr">({question.p1Display})</span> × <span className="poly-expr">({question.p2Display})</span>
@@ -5767,7 +5993,7 @@ function PolyMulApp({ onBack }) {
         </>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
-          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && userCoeffs.some(c => c === ''))}>
+          <button onClick={revealed ? advance : handleSubmit} disabled={loading || (!revealed && userCoeffs.some(c => c === ''))}>
             {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
           </button>
         </div>
@@ -5776,6 +6002,7 @@ function PolyMulApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -5798,8 +6025,13 @@ function PolyMulApp({ onBack }) {
  */
 function PolyFactorApp({ onBack }) {
   // ─────── Quiz State Management ──────────────────────────────────
-  // Difficulty level: 'easy' | 'medium' | 'hard'
+  // Difficulty level: 'easy' | 'medium' | 'hard' | 'extrahard'
   const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // Number of questions to answer (as string for input field)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz started flag (controls welcome screen vs quiz content)
@@ -5834,10 +6066,13 @@ function PolyFactorApp({ onBack }) {
   const [results, setResults] = useState([])
   // Timer instance for tracking elapsed time per question
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
   /**
    * loadQuestion(): Fetch next polynomial factorization question
-   * Endpoint: /polyfactor-api/question?difficulty={easy|medium|hard}
+   * Endpoint: /polyfactor-api/question?difficulty={easy|medium|hard|extrahard}
    * Returns: {a, b, c, display, factors: {p, q, r, s}, ...}
    * Resets all factor fields to empty and initializes timer
    */
@@ -5846,8 +6081,8 @@ function PolyFactorApp({ onBack }) {
     // Reset all four factor coefficient fields and feedback
     setUserP(''); setUserQ(''); setUserR(''); setUserS('')
     setFeedback(''); setIsCorrect(null); setRevealed(false)
-    // Fetch polynomial question from backend based on difficulty
-    const res = await fetch(`${API}/polyfactor-api/question?difficulty=${difficulty}`)
+    // Fetch polynomial question from backend based on effective difficulty
+    const res = await fetch(`${API}/polyfactor-api/question?difficulty=${effectiveDiff()}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -5864,6 +6099,7 @@ function PolyFactorApp({ onBack }) {
     setTotalQ(count)
     // Reset quiz state: mark as started, not finished, score to 0, question 1
     setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    setAdaptScore(0); adaptScoreRef.current = 0
     await loadQuestion()
   }
 
@@ -5902,22 +6138,31 @@ function PolyFactorApp({ onBack }) {
       correct: data.correct,
       time: timeTaken,
     }])
+    if (isAdaptive) {
+      setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+    }
     setRevealed(true)
   }
 
   /**
-   * advanceRef: Mutable ref to advance function for useAutoAdvance hook
+   * advance: Function for useAutoAdvance hook
    * Advances to next question or finishes quiz if all questions completed
-   * Loaded asynchronously before auto-advance triggers
    */
-  const advanceRef = useRef(() => {})
-  advanceRef.current = async () => {
+  const advance = async () => {
     if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
+  advanceFnRef.current = advance
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
 
   /**
    * valInput(setter): Create input change handler for factor coefficient fields
@@ -5927,22 +6172,26 @@ function PolyFactorApp({ onBack }) {
    */
   const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setter(v) }
 
+  const diffLabels = { easy: 'Easy — Simple factors', medium: 'Medium — Mixed signs', hard: 'Hard — Leading coefficient', extrahard: 'Extra Hard — Large coefficients' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
   return (
-    <QuizLayout title="Poly Factor" subtitle="Factor the quadratic into (px + q)(rx + s)" onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="radio-group">
-        {['easy', 'medium', 'hard'].map(d => (
-          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
-            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
-            {d.charAt(0).toUpperCase() + d.slice(1)}
-          </label>
-        ))}
-      </div>
+    <QuizLayout title="Poly Factor" subtitle="Factor the quadratic into (px + q)(rx + s)" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
         <p className="welcome-text">Factor ax² + bx + c into (px + q)(rx + s).</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="polyfactor-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="polyfactor-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -5950,7 +6199,11 @@ function PolyFactorApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && <>
           <div className="question-box">{question.display} = 0</div>
           <div className="factor-inputs">
@@ -5976,6 +6229,7 @@ function PolyFactorApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -6000,6 +6254,11 @@ function PrimeFactorApp({ onBack }) {
   // ─────── Quiz State Management ──────────────────────────────────
   // Difficulty level: 'easy' | 'medium' | 'hard' (affects size of numbers)
   const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // Number of questions to answer (as string for input field)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz started flag (controls welcome screen vs quiz content)
@@ -6030,6 +6289,9 @@ function PrimeFactorApp({ onBack }) {
   const [results, setResults] = useState([])
   // Timer instance for tracking elapsed time per question
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
   /**
    * loadQuestion(): Fetch next prime factorization question
@@ -6043,8 +6305,8 @@ function PrimeFactorApp({ onBack }) {
     setFeedback(''); setIsCorrect(null); setRevealed(false)
     // Reset factor input fields
     setEnteredFactors([]); setCurrentInput('')
-    // Fetch prime factorization question from backend based on difficulty
-    const res = await fetch(`${API}/primefactor-api/question?difficulty=${difficulty}`)
+    // Fetch prime factorization question from backend based on effective difficulty
+    const res = await fetch(`${API}/primefactor-api/question?difficulty=${effectiveDiff()}`)
     const data = await res.json()
     setQuestion(data)
     // Start with full number; it gets divided as factors are found
@@ -6061,6 +6323,7 @@ function PrimeFactorApp({ onBack }) {
     setTotalQ(count)
     // Reset quiz state: mark as started, not finished, score to 0, question 1
     setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    setAdaptScore(0); adaptScoreRef.current = 0
     await loadQuestion()
   }
 
@@ -6105,6 +6368,9 @@ function PrimeFactorApp({ onBack }) {
         correct,
         time: timeTaken,
       }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
       setRevealed(true)
     }
   }
@@ -6126,22 +6392,24 @@ function PrimeFactorApp({ onBack }) {
       correct: false,
       time: timeTaken,
     }])
+    if (isAdaptive) {
+      setAdaptScore(prev => { const next = Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+    }
     setRevealed(true)
   }
 
   /**
-   * advanceRef: Mutable ref to advance function for useAutoAdvance hook
+   * advanceFnRef: Mutable ref to advance function for useAutoAdvance hook
    * Advances to next question or finishes quiz if all questions completed
    * Loaded asynchronously before auto-advance triggers
    */
-  const advanceRef = useRef(() => {})
-  advanceRef.current = async () => {
+  advanceFnRef.current = async () => {
     if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
   /**
    * buildChain(): Construct display string showing factorization progress
@@ -6158,22 +6426,26 @@ function PrimeFactorApp({ onBack }) {
     return parts.join(' ')
   }
 
+  const diffLabels = { easy: 'Easy — Small numbers', medium: 'Medium — 2-3 digit', hard: 'Hard — Larger composites', extrahard: 'Extra Hard — Big composites' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
   return (
-    <QuizLayout title="Prime Factors" subtitle="Break the number into its prime factors" onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="radio-group">
-        {['easy', 'medium', 'hard'].map(d => (
-          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
-            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
-            {d.charAt(0).toUpperCase() + d.slice(1)}
-          </label>
-        ))}
-      </div>
+    <QuizLayout title="Prime Factors" subtitle="Break the number into its prime factors" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
         <p className="welcome-text">Enter prime factors one at a time. Watch the remaining number shrink!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="primefactor-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="primefactor-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -6181,7 +6453,11 @@ function PrimeFactorApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && <>
           <div className="question-box prime-chain">{buildChain()}</div>
           {!revealed && remaining > 1 && <div className="prime-input-row">
@@ -6195,13 +6471,14 @@ function PrimeFactorApp({ onBack }) {
         </>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         {revealed && <div className="button-row">
-          <button onClick={() => advanceRef.current()}>{questionNumber >= totalQ ? 'Finish' : 'Next'}</button>
+          <button onClick={() => advanceFnRef.current()}>{questionNumber >= totalQ ? 'Finish' : 'Next'}</button>
         </div>}
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -6226,6 +6503,11 @@ function QFormulaApp({ onBack }) {
   // ─────── Quiz State Management ──────────────────────────────────
   // Difficulty level: 'easy' | 'medium' | 'hard'
   const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // Number of questions to answer (as string for input field)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz started flag (controls welcome screen vs quiz content)
@@ -6256,6 +6538,9 @@ function QFormulaApp({ onBack }) {
   const [results, setResults] = useState([])
   // Timer instance for tracking elapsed time per question
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
   /**
    * loadQuestion(): Fetch next quadratic formula question
@@ -6271,8 +6556,8 @@ function QFormulaApp({ onBack }) {
     // Reset root input fields
     setUserR1(''); setUserR2('')
     setFeedback(''); setIsCorrect(null); setRevealed(false)
-    // Fetch quadratic formula question from backend based on difficulty
-    const res = await fetch(`${API}/qformula-api/question?difficulty=${difficulty}`)
+    // Fetch quadratic formula question from backend based on effective difficulty
+    const res = await fetch(`${API}/qformula-api/question?difficulty=${effectiveDiff()}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -6288,6 +6573,7 @@ function QFormulaApp({ onBack }) {
     setTotalQ(count)
     // Reset quiz state: mark as started, not finished, score to 0, question 1
     setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    setAdaptScore(0); adaptScoreRef.current = 0
     await loadQuestion()
   }
 
@@ -6328,22 +6614,24 @@ function QFormulaApp({ onBack }) {
       correct: data.correct,
       time: timeTaken,
     }])
+    if (isAdaptive) {
+      setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+    }
     setRevealed(true)
   }
 
   /**
-   * advanceRef: Mutable ref to advance function for useAutoAdvance hook
+   * advanceFnRef: Mutable ref to advance function for useAutoAdvance hook
    * Advances to next question or finishes quiz if all questions completed
    * Loaded asynchronously before auto-advance triggers
    */
-  const advanceRef = useRef(() => {})
-  advanceRef.current = async () => {
+  advanceFnRef.current = async () => {
     if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
   /**
    * valInput(setter): Create input change handler for root value fields
@@ -6353,22 +6641,26 @@ function QFormulaApp({ onBack }) {
    */
   const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setter(v) }
 
+  const diffLabels = { easy: 'Easy — Integer roots', medium: 'Medium — Rational roots', hard: 'Hard — Complex roots', extrahard: 'Extra Hard — Large coefficients' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
   return (
-    <QuizLayout title="Quadratic Formula" subtitle="Find the roots of ax² + bx + c = 0" onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="radio-group">
-        {['easy', 'medium', 'hard'].map(d => (
-          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
-            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
-            {d.charAt(0).toUpperCase() + d.slice(1)}
-          </label>
-        ))}
-      </div>
+    <QuizLayout title="Quadratic Formula" subtitle="Find the roots of ax² + bx + c = 0" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
-        <p className="welcome-text">{difficulty === 'easy' ? 'Integer roots only.' : difficulty === 'medium' ? 'Real roots (integer or decimal).' : 'May include complex roots.'}</p>
+        <p className="welcome-text">Use the quadratic formula to find roots of ax² + bx + c = 0</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="qformula-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="qformula-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -6376,7 +6668,11 @@ function QFormulaApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && <>
           <div className="question-box">{question.a}x² {question.b >= 0 ? '+' : '−'} {Math.abs(question.b)}x {question.c >= 0 ? '+' : '−'} {Math.abs(question.c)} = 0</div>
           <div className="roots-inputs">
@@ -6398,7 +6694,7 @@ function QFormulaApp({ onBack }) {
         </>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
-          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && !userR1)}>
+          <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && !userR1)}>
             {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
           </button>
         </div>
@@ -6407,6 +6703,7 @@ function QFormulaApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -6430,6 +6727,11 @@ function SimulApp({ onBack }) {
   // ─────── Quiz State Management ──────────────────────────────────
   // Difficulty level: 'easy' (2×2) | 'hard' (3×3)
   const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // Number of questions to answer (as string for input field)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz started flag (controls welcome screen vs quiz content)
@@ -6462,6 +6764,9 @@ function SimulApp({ onBack }) {
   const [results, setResults] = useState([])
   // Timer instance for tracking elapsed time per question
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
   // ─────── Derived State ──────────────────────────────────
   // Whether current question is 3×3 (determines if z field is required)
@@ -6480,8 +6785,8 @@ function SimulApp({ onBack }) {
     // Reset solution input fields
     setUserX(''); setUserY(''); setUserZ('')
     setFeedback(''); setIsCorrect(null); setRevealed(false)
-    // Fetch simultaneous equations question from backend based on difficulty
-    const res = await fetch(`${API}/simul-api/question?difficulty=${difficulty}`)
+    // Fetch simultaneous equations question from backend based on effective difficulty
+    const res = await fetch(`${API}/simul-api/question?difficulty=${effectiveDiff()}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -6497,6 +6802,7 @@ function SimulApp({ onBack }) {
     setTotalQ(count)
     // Reset quiz state: mark as started, not finished, score to 0, question 1
     setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    setAdaptScore(0); adaptScoreRef.current = 0
     await loadQuestion()
   }
 
@@ -6533,22 +6839,24 @@ function SimulApp({ onBack }) {
       setFeedback(data.correct ? `Correct! (x, y) = (${s.x}, ${s.y})` : `Incorrect. (x, y) = (${s.x}, ${s.y})`)
       setResults(prev => [...prev, { question: '2×2 system', userAnswer: `(${userX}, ${userY})`, correctAnswer: `(${s.x}, ${s.y})`, correct: data.correct, time: timeTaken }])
     }
+    if (isAdaptive) {
+      setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+    }
     setRevealed(true)
   }
 
   /**
-   * advanceRef: Mutable ref to advance function for useAutoAdvance hook
+   * advanceFnRef: Mutable ref to advance function for useAutoAdvance hook
    * Advances to next question or finishes quiz if all questions completed
    * Loaded asynchronously before auto-advance triggers
    */
-  const advanceRef = useRef(() => {})
-  advanceRef.current = async () => {
+  advanceFnRef.current = async () => {
     if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
   /**
    * valInput(setter): Create input change handler for solution value fields
@@ -6570,27 +6878,26 @@ function SimulApp({ onBack }) {
    */
   const fmtEq3 = (eq) => `${eq.a}x ${eq.b >= 0 ? '+' : '−'} ${Math.abs(eq.b)}y ${eq.c >= 0 ? '+' : '−'} ${Math.abs(eq.c)}z = ${eq.d}`
 
-  const subtitle = difficulty === 'easy' ? 'Solve the 2×2 system' : 'Solve the 3×3 system'
-  const welcomeText = difficulty === 'easy'
-    ? 'Solve for x and y in two simultaneous equations.'
-    : 'Solve for x, y, and z in three simultaneous equations.'
+  const diffLabels = { easy: 'Easy — 2×2 small', medium: 'Medium — 2×2 larger', hard: 'Hard — 3×3', extrahard: 'Extra Hard — 3×3 large' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
 
   return (
-    <QuizLayout title="Simultaneous Eq." subtitle={subtitle} onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="radio-group">
-        {['easy', 'hard'].map(d => (
-          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
-            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
-            {d === 'easy' ? 'Easy (2×2)' : 'Hard (3×3)'}
-          </label>
-        ))}
-      </div>
+    <QuizLayout title="Simultaneous Eq." subtitle={`Solve ${isAdaptive ? 'adaptive' : (effectiveDiff() === 'easy' ? '2×2' : '3×3')} systems`} onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
-        <p className="welcome-text">{welcomeText}</p>
+        <p className="welcome-text">Solve systems of linear equations</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="simul-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="simul-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -6598,7 +6905,11 @@ function SimulApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && <>
           <div className="question-box equation-system">
             {question.eqs.map((eq, i) => <div key={i}>{is3x3 ? fmtEq3(eq) : fmtEq2(eq)}</div>)}
@@ -6614,7 +6925,7 @@ function SimulApp({ onBack }) {
         </>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
-          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && (!userX || !userY || (is3x3 && !userZ)))}>
+          <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && (!userX || !userY || (is3x3 && !userZ)))}>
             {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
           </button>
         </div>
@@ -6623,6 +6934,7 @@ function SimulApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -6646,6 +6958,11 @@ function FuncEvalApp({ onBack }) {
   // ─────── Quiz State Management ──────────────────────────────────
   // Difficulty level: 'easy' | 'medium' | 'hard' (number of variables)
   const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // Number of questions to answer (as string for input field)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz started flag (controls welcome screen vs quiz content)
@@ -6674,6 +6991,9 @@ function FuncEvalApp({ onBack }) {
   const [results, setResults] = useState([])
   // Timer instance for tracking elapsed time per question
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
   /**
    * loadQuestion(): Fetch next function evaluation question
@@ -6684,8 +7004,8 @@ function FuncEvalApp({ onBack }) {
     setLoading(true)
     setAnswer('')
     setFeedback(''); setIsCorrect(null); setRevealed(false)
-    // Fetch function evaluation question from backend based on difficulty
-    const res = await fetch(`${API}/funceval-api/question?difficulty=${difficulty}`)
+    // Fetch function evaluation question from backend based on effective difficulty
+    const res = await fetch(`${API}/funceval-api/question?difficulty=${effectiveDiff()}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -6701,6 +7021,7 @@ function FuncEvalApp({ onBack }) {
     setTotalQ(count)
     // Reset quiz state: mark as started, not finished, score to 0, question 1
     setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    setAdaptScore(0); adaptScoreRef.current = 0
     await loadQuestion()
   }
 
@@ -6732,42 +7053,48 @@ function FuncEvalApp({ onBack }) {
       correct: data.correct,
       time: timeTaken,
     }])
+    if (isAdaptive) {
+      setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+    }
     setRevealed(true)
   }
 
   /**
-   * advanceRef: Mutable ref to advance function for useAutoAdvance hook
+   * advanceFnRef: Mutable ref to advance function for useAutoAdvance hook
    * Advances to next question or finishes quiz if all questions completed
    * Loaded asynchronously before auto-advance triggers
    */
-  const advanceRef = useRef(() => {})
-  advanceRef.current = async () => {
+  advanceFnRef.current = async () => {
     if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
   // Format variable string for display in question (e.g., "x = 2, y = 3")
   const varStr = question ? Object.entries(question.vars).map(([k, v]) => `${k} = ${v}`).join(', ') : ''
 
+  const diffLabels = { easy: 'Easy — f(x)', medium: 'Medium — f(x,y)', hard: 'Hard — f(x,y,z)', extrahard: 'Extra Hard — Nested' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
   return (
-    <QuizLayout title="Functions" subtitle="Evaluate the function at the given values" onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="radio-group">
-        {[{k:'easy',l:'1 variable'},{k:'medium',l:'2 variables'},{k:'hard',l:'3 variables'}].map(({k,l}) => (
-          <label key={k} className={`radio-pill ${difficulty === k ? 'active' : ''}`}>
-            <input type="radio" checked={difficulty === k} onChange={() => setDifficulty(k)} disabled={started && !finished} />
-            {l}
-          </label>
-        ))}
-      </div>
+    <QuizLayout title="Functions" subtitle="Evaluate the function at the given values" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
-        <p className="welcome-text">Evaluate linear functions of 1, 2, or 3 variables.</p>
+        <p className="welcome-text">Evaluate linear functions</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="funceval-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="funceval-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -6775,7 +7102,11 @@ function FuncEvalApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && <>
           <div className="question-box">
             <div>{question.formula}</div>
@@ -6791,7 +7122,7 @@ function FuncEvalApp({ onBack }) {
         </>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
-          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && !answer)}>
+          <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && !answer)}>
             {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
           </button>
         </div>
@@ -6800,6 +7131,7 @@ function FuncEvalApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -6823,6 +7155,11 @@ function LineEqApp({ onBack }) {
   // ─────── Quiz State Management ──────────────────────────────────
   // Difficulty level: 'easy' | 'medium' | 'hard' (affects slope/intercept values)
   const [difficulty, setDifficulty] = useState('easy')
+  // Adaptive mode enabled?
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  // Adaptive score (0-3)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   // Number of questions to answer (as string for input field)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Quiz started flag (controls welcome screen vs quiz content)
@@ -6853,6 +7190,9 @@ function LineEqApp({ onBack }) {
   const [results, setResults] = useState([])
   // Timer instance for tracking elapsed time per question
   const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
   /**
    * loadQuestion(): Fetch next line equation question
@@ -6864,8 +7204,8 @@ function LineEqApp({ onBack }) {
     // Reset slope and intercept input fields
     setUserM(''); setUserC('')
     setFeedback(''); setIsCorrect(null); setRevealed(false)
-    // Fetch line equation question from backend based on difficulty
-    const res = await fetch(`${API}/lineq-api/question?difficulty=${difficulty}`)
+    // Fetch line equation question from backend based on effective difficulty
+    const res = await fetch(`${API}/lineq-api/question?difficulty=${effectiveDiff()}`)
     const data = await res.json()
     setQuestion(data)
     setLoading(false)
@@ -6881,6 +7221,7 @@ function LineEqApp({ onBack }) {
     setTotalQ(count)
     // Reset quiz state: mark as started, not finished, score to 0, question 1
     setStarted(true); setFinished(false); setScore(0); setQuestionNumber(1); setResults([])
+    setAdaptScore(0); adaptScoreRef.current = 0
     await loadQuestion()
   }
 
@@ -6911,22 +7252,24 @@ function LineEqApp({ onBack }) {
       correct: data.correct,
       time: timeTaken,
     }])
+    if (isAdaptive) {
+      setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+    }
     setRevealed(true)
   }
 
   /**
-   * advanceRef: Mutable ref to advance function for useAutoAdvance hook
+   * advanceFnRef: Mutable ref to advance function for useAutoAdvance hook
    * Advances to next question or finishes quiz if all questions completed
    * Loaded asynchronously before auto-advance triggers
    */
-  const advanceRef = useRef(() => {})
-  advanceRef.current = async () => {
+  advanceFnRef.current = async () => {
     if (questionNumber >= totalQ) { setFinished(true); timer.reset(); return }
     setQuestionNumber(n => n + 1)
     await loadQuestion()
   }
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
-  useAutoAdvance(revealed, advanceRef, isCorrect)
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
   /**
    * valInput(setter): Create input change handler for m and c fields
@@ -6936,22 +7279,26 @@ function LineEqApp({ onBack }) {
    */
   const valInput = (setter) => (e) => { const v = e.target.value; if (v === '' || v === '-' || v === '.' || /^-?\d*\.?\d*$/.test(v)) setter(v) }
 
+  const diffLabels = { easy: 'Easy — Positive slope', medium: 'Medium — Any slope', hard: 'Hard — Fractional slope', extrahard: 'Extra Hard — Large coordinates' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
   return (
-    <QuizLayout title="Line Equation" subtitle="Find m and c in y = mx + c from two points" onBack={onBack}>
-      <div className="top-mini-row">
-        {started && !finished && !revealed && <div className="timer-pill">{timer.elapsed}s</div>}
-        <div className="score-pill">Score: {score}</div>
-      </div>
-      <div className="radio-group">
-        {['easy', 'medium', 'hard'].map(d => (
-          <label key={d} className={`radio-pill ${difficulty === d ? 'active' : ''}`}>
-            <input type="radio" checked={difficulty === d} onChange={() => setDifficulty(d)} disabled={started && !finished} />
-            {d.charAt(0).toUpperCase() + d.slice(1)}
-          </label>
-        ))}
-      </div>
+    <QuizLayout title="Line Equation" subtitle="Find m and c in y = mx + c from two points" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
         <p className="welcome-text">Given two points, find the slope m and intercept c.</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="lineq-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {diffLabels[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="lineq-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -6959,7 +7306,11 @@ function LineEqApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && <>
           <div className="question-box">
             <div>Point A: ({question.x1}, {question.y1})</div>
@@ -6975,7 +7326,7 @@ function LineEqApp({ onBack }) {
         </>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
-          <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && (!userM || !userC))}>
+          <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && (!userM || !userC))}>
             {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
           </button>
         </div>
@@ -6984,6 +7335,7 @@ function LineEqApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -8621,11 +8973,12 @@ function ExtendedEuclidApp() {
  * @param {Function} props.onBack - Callback when back button is clicked
  * @param {React.ReactNode} props.children - Quiz content to display
  */
-function QuizLayout({ title, subtitle, onBack, children }) {
+function QuizLayout({ title, subtitle, onBack, children, timer }) {
   return (
     <>
       <div className="header-row">
         <button className="back-button" onClick={onBack}>← Home</button>
+        {timer && <div className="timer-pill">{timer.elapsed}s</div>}
       </div>
       <h1>{title}</h1>
       <p className="subtitle">{subtitle}</p>

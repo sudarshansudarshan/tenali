@@ -3613,27 +3613,21 @@ app.get('/dotprod-api/question', (req, res) => {
     res.json({ id, difficulty, type: 'dot2d', prompt, answer: dot, display: String(dot) });
   }
   else if (difficulty === 'medium') {
-    // Randomly choose between 3D dot product or sum of two 2D dot products
+    // Randomly choose between 2D and 3D dot product
     if (Math.random() < 0.5) {
+      // 2D dot product (same as easy but included for variety)
+      const a = [pos1d(), pos1d()];
+      const b = [pos1d(), pos1d()];
+      const dot = a[0]*b[0] + a[1]*b[1];
+      const prompt = `Find the dot product: ${fmtVec(a)} · ${fmtVec(b)}`;
+      res.json({ id, difficulty, type: 'dot2d', prompt, answer: dot, display: String(dot) });
+    } else {
       // 3D dot product
       const a = [pos1d(), pos1d(), pos1d()];
       const b = [pos1d(), pos1d(), pos1d()];
       const dot = a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
       const prompt = `Find the dot product: ${fmtVec(a)} · ${fmtVec(b)}`;
       res.json({ id, difficulty, type: 'dot3d', prompt, answer: dot, display: String(dot) });
-    } else {
-      // Sum of dot products of 3 pairs of 2D vectors
-      const pairs = [];
-      let total = 0;
-      for (let i = 0; i < 3; i++) {
-        const a = [pos1d(), pos1d()];
-        const b = [pos1d(), pos1d()];
-        total += a[0]*b[0] + a[1]*b[1];
-        pairs.push({ a, b });
-      }
-      const parts = pairs.map(p => `${fmtVec(p.a)} · ${fmtVec(p.b)}`).join(' + ');
-      const prompt = `Find the sum: ${parts}`;
-      res.json({ id, difficulty, type: 'dotsum', prompt, answer: total, display: String(total) });
     }
   }
   else if (difficulty === 'hard') {

@@ -73,6 +73,12 @@ export default defineConfig({
       '/surds-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       // Indices quiz API
       '/indices-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      // Sequences & Series quiz API
+      '/sequences-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      // Ratio & Proportion quiz API
+      '/ratio-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      // Percentages quiz API
+      '/percent-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
     },
   },
 })

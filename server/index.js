@@ -2314,6 +2314,373 @@ app.post('/indices-api/check', express.json(), (req, res) => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SEQUENCES & SERIES API
+// ═══════════════════════════════════════════════════════════════════════════
+
+function seqRand(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
+function seqPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+/**
+ * GET /sequences-api/question?difficulty=easy|medium|hard|extrahard
+ *
+ * Easy:      Arithmetic sequences — find the nth term
+ * Medium:    Arithmetic series — find the sum of first n terms
+ * Hard:      Geometric sequences — find the nth term
+ * ExtraHard: Geometric series — find the sum of first n terms
+ */
+app.get('/sequences-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Arithmetic: a, a+d, a+2d, ... Find the nth term
+    const a = seqRand(-10, 20);
+    const d = seqRand(-8, 8);
+    if (d === 0) d = seqPick([1, -1, 2, -2, 3, 5]);
+    const n = seqRand(5, 20);
+    const terms = [a, a + d, a + 2 * d, a + 3 * d];
+    const answer = a + (n - 1) * d;
+    const prompt = `${terms.join(', ')}, ... Find the ${n}th term`;
+    res.json({ id, difficulty, type: 'arith_nth', a, d, n, terms, answer, prompt });
+  }
+  else if (difficulty === 'medium') {
+    // Arithmetic: sum of first n terms S_n = n/2 × (2a + (n-1)d)
+    const a = seqRand(1, 15);
+    const d = seqRand(1, 8);
+    const n = seqRand(5, 20);
+    const terms = [a, a + d, a + 2 * d, a + 3 * d];
+    const answer = Math.round(n / 2 * (2 * a + (n - 1) * d));  // always integer since n*(2a+(n-1)d) is always even
+    const prompt = `${terms.join(', ')}, ... Find the sum of first ${n} terms`;
+    res.json({ id, difficulty, type: 'arith_sum', a, d, n, terms, answer, prompt });
+  }
+  else if (difficulty === 'hard') {
+    // Geometric: a, ar, ar², ... Find the nth term
+    const a = seqPick([1, 2, 3, 4, 5, -1, -2, -3]);
+    const r = seqPick([2, 3, -2, -3, 1/2, 1/3, -1/2]);
+    const n = seqRand(3, 8);
+    const terms = [a, a * r, a * r * r, a * r * r * r];
+    const answer = a * Math.pow(r, n - 1);
+    // Format terms nicely (handle fractions)
+    const fmtNum = (x) => Number.isInteger(x) ? String(x) : x.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+    const prompt = `${terms.map(fmtNum).join(', ')}, ... Find the ${n}th term`;
+    // Store answer as fraction if needed
+    let ansNum, ansDen;
+    if (Number.isInteger(answer)) {
+      ansNum = answer; ansDen = 1;
+    } else {
+      // Convert to fraction: a * r^(n-1) where r might be 1/2 or 1/3
+      // Use rational arithmetic
+      const rFrac = r === 1/2 ? { n: 1, d: 2 } : r === 1/3 ? { n: 1, d: 3 } : r === -1/2 ? { n: -1, d: 2 } : { n: r, d: 1 };
+      let num = a * Math.pow(rFrac.n, n - 1);
+      let den = Math.pow(rFrac.d, n - 1);
+      const g = gcd(Math.abs(num), Math.abs(den));
+      ansNum = num / g; ansDen = den / g;
+      if (ansDen < 0) { ansNum = -ansNum; ansDen = -ansDen; }
+    }
+    res.json({ id, difficulty, type: 'geom_nth', a, r, n, terms: terms.map(fmtNum), ansNum, ansDen, prompt });
+  }
+  else {
+    // Geometric sum: S_n = a(r^n - 1)/(r - 1) for r ≠ 1
+    const a = seqPick([1, 2, 3, 4, 5]);
+    const r = seqPick([2, 3, -2, 1/2]);
+    const n = seqRand(3, 7);
+    const terms = [a, a * r, a * r * r];
+    const fmtNum = (x) => Number.isInteger(x) ? String(x) : x.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+
+    // Compute sum using rational arithmetic
+    let ansNum, ansDen;
+    if (Number.isInteger(r)) {
+      const sn = a * (Math.pow(r, n) - 1) / (r - 1);
+      ansNum = Math.round(sn); ansDen = 1;
+    } else {
+      // r = 1/2: S_n = a(1 - (1/2)^n) / (1 - 1/2) = a * 2 * (1 - 1/2^n) = 2a * (2^n - 1)/2^n
+      const rFrac = r === 1/2 ? { n: 1, d: 2 } : { n: r, d: 1 };
+      const rn_num = Math.pow(rFrac.n, n);
+      const rn_den = Math.pow(rFrac.d, n);
+      // S = a * (1 - rn_num/rn_den) / (1 - rFrac.n/rFrac.d)
+      // = a * (rn_den - rn_num) / rn_den  /  (rFrac.d - rFrac.n) / rFrac.d
+      // = a * (rn_den - rn_num) * rFrac.d / (rn_den * (rFrac.d - rFrac.n))
+      let num = a * (rn_den - rn_num) * rFrac.d;
+      let den = rn_den * (rFrac.d - rFrac.n);
+      const g = gcd(Math.abs(num), Math.abs(den));
+      ansNum = num / g; ansDen = den / g;
+      if (ansDen < 0) { ansNum = -ansNum; ansDen = -ansDen; }
+    }
+
+    const prompt = `${terms.map(fmtNum).join(', ')}, ... Find the sum of first ${n} terms`;
+    res.json({ id, difficulty, type: 'geom_sum', a, r, n, terms: terms.map(fmtNum), ansNum, ansDen, prompt });
+  }
+});
+
+/**
+ * POST /sequences-api/check
+ */
+app.post('/sequences-api/check', express.json(), (req, res) => {
+  const { type, answer: rawAns } = req.body;
+  const userStr = (rawAns || '').replace(/\s+/g, '').replace(/−/g, '-');
+  let correct = false;
+  let display = '';
+
+  if (type === 'arith_nth' || type === 'arith_sum') {
+    const expected = req.body.answer;
+    const userNum = parseFloat(userStr);
+    correct = !isNaN(userNum) && Math.abs(userNum - expected) < 0.001;
+    display = String(expected);
+  }
+  else {
+    // Geometric: answer may be fraction
+    const { ansNum, ansDen } = req.body;
+    const s = simplifyFraction(ansNum, ansDen);
+
+    // Parse user answer as fraction or integer
+    let uNum, uDen;
+    const fracMatch = userStr.match(/^(-?\d+)\/(-?\d+)$/);
+    if (fracMatch) {
+      uNum = parseInt(fracMatch[1]); uDen = parseInt(fracMatch[2]);
+    } else {
+      const num = parseFloat(userStr);
+      if (!isNaN(num) && Number.isInteger(num)) { uNum = num; uDen = 1; }
+      else if (!isNaN(num)) {
+        // Allow decimal: compare values
+        const expected = s.num / s.den;
+        correct = Math.abs(num - expected) < 0.01;
+        display = s.den === 1 ? `${s.num}` : `${s.num}/${s.den}`;
+        return res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+      }
+    }
+
+    if (uNum !== undefined && uDen !== undefined && uDen !== 0) {
+      const us = simplifyFraction(uNum, uDen);
+      correct = us.num === s.num && us.den === s.den;
+    }
+    display = s.den === 1 ? `${s.num}` : `${s.num}/${s.den}`;
+  }
+
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RATIO & PROPORTION API
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /ratio-api/question?difficulty=easy|medium|hard|extrahard
+ *
+ * Easy:      Simplify a ratio (e.g. 12:8 = 3:2)
+ * Medium:    Divide an amount in a ratio (e.g. divide 120 in ratio 3:2)
+ * Hard:      Direct proportion (e.g. if 5 items cost 20, how much do 8 cost?)
+ * ExtraHard: Inverse proportion (e.g. 4 workers take 6 days, how long for 3 workers?)
+ */
+app.get('/ratio-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Simplify a:b
+    const g = seqRand(2, 8);
+    const a = seqRand(1, 10) * g;
+    const b = seqRand(1, 10) * g;
+    // Ensure they're not already simplified
+    const gc = gcd(a, b);
+    const prompt = `Simplify the ratio ${a} : ${b}`;
+    res.json({ id, difficulty, type: 'simplify', a, b, ansA: a / gc, ansB: b / gc, prompt });
+  }
+  else if (difficulty === 'medium') {
+    // Divide amount in ratio a:b (two parts) or a:b:c (three parts)
+    const parts = seqPick([2, 2, 2, 3]); // mostly 2-part
+    if (parts === 2) {
+      const ra = seqRand(1, 7);
+      const rb = seqRand(1, 7);
+      const total = (ra + rb) * seqRand(2, 15);
+      const prompt = `Divide ${total} in the ratio ${ra} : ${rb}`;
+      const unit = total / (ra + rb);
+      res.json({ id, difficulty, type: 'divide2', ra, rb, total, ans1: ra * unit, ans2: rb * unit, prompt });
+    } else {
+      const ra = seqRand(1, 5);
+      const rb = seqRand(1, 5);
+      const rc = seqRand(1, 5);
+      const total = (ra + rb + rc) * seqRand(2, 10);
+      const prompt = `Divide ${total} in the ratio ${ra} : ${rb} : ${rc}`;
+      const unit = total / (ra + rb + rc);
+      res.json({ id, difficulty, type: 'divide3', ra, rb, rc, total, ans1: ra * unit, ans2: rb * unit, ans3: rc * unit, prompt });
+    }
+  }
+  else if (difficulty === 'hard') {
+    // Direct proportion: if a costs/weighs x, find cost/weight for b
+    const unitVal = seqRand(2, 15);
+    const qtyA = seqRand(2, 10);
+    const valA = unitVal * qtyA;
+    const qtyB = seqRand(2, 15);
+    const valB = unitVal * qtyB;
+    const contexts = [
+      { q: `If ${qtyA} items cost $${valA}, how much do ${qtyB} items cost?`, unit: '$' },
+      { q: `If ${qtyA} kg weighs ${valA} lbs, how much do ${qtyB} kg weigh?`, unit: ' lbs' },
+      { q: `A car uses ${valA} litres for ${qtyA} km. How many litres for ${qtyB} km?`, unit: ' litres' },
+    ];
+    const ctx = seqPick(contexts);
+    res.json({ id, difficulty, type: 'direct', qtyA, valA, qtyB, answer: valB, prompt: ctx.q });
+  }
+  else {
+    // Inverse proportion: if a workers take x days, how long for b workers?
+    const workersA = seqRand(2, 10);
+    const daysA = seqRand(2, 15);
+    const totalWork = workersA * daysA;
+    // Pick workersB that divides totalWork evenly
+    const divisors = [];
+    for (let i = 2; i <= 20; i++) { if (totalWork % i === 0 && i !== workersA) divisors.push(i); }
+    if (divisors.length === 0) divisors.push(workersA + 1);
+    const workersB = seqPick(divisors);
+    const daysB = totalWork / workersB;
+    const prompt = `${workersA} workers take ${daysA} days to finish a job. How many days for ${workersB} workers?`;
+    // ansNum/ansDen to handle non-integer results
+    const g2 = gcd(totalWork, workersB);
+    res.json({ id, difficulty, type: 'inverse', workersA, daysA, workersB, ansNum: totalWork / g2, ansDen: workersB / g2, prompt });
+  }
+});
+
+/**
+ * POST /ratio-api/check
+ */
+app.post('/ratio-api/check', express.json(), (req, res) => {
+  const { type } = req.body;
+  const userStr = (req.body.answer || '').replace(/\s+/g, '').replace(/−/g, '-');
+  let correct = false;
+  let display = '';
+
+  if (type === 'simplify') {
+    // Expect "a:b"
+    const { ansA, ansB } = req.body;
+    const m = userStr.match(/^(\d+):(\d+)$/);
+    if (m) {
+      correct = parseInt(m[1]) === ansA && parseInt(m[2]) === ansB;
+    }
+    display = `${ansA}:${ansB}`;
+  }
+  else if (type === 'divide2') {
+    // Expect "a, b" or "a and b"
+    const { ans1, ans2 } = req.body;
+    const m = userStr.match(/^(-?\d+)[,\s&]+(-?\d+)$/);
+    if (m) { correct = parseInt(m[1]) === ans1 && parseInt(m[2]) === ans2; }
+    // Also accept just the larger part
+    display = `${ans1}, ${ans2}`;
+  }
+  else if (type === 'divide3') {
+    const { ans1, ans2, ans3 } = req.body;
+    const m = userStr.match(/^(-?\d+)[,\s&]+(-?\d+)[,\s&]+(-?\d+)$/);
+    if (m) { correct = parseInt(m[1]) === ans1 && parseInt(m[2]) === ans2 && parseInt(m[3]) === ans3; }
+    display = `${ans1}, ${ans2}, ${ans3}`;
+  }
+  else if (type === 'direct') {
+    const expected = req.body.answer;
+    const userNum = parseFloat(userStr);
+    correct = !isNaN(userNum) && Math.abs(userNum - expected) < 0.01;
+    display = String(expected);
+  }
+  else if (type === 'inverse') {
+    const { ansNum, ansDen } = req.body;
+    const s = simplifyFraction(ansNum, ansDen);
+    // Parse fraction or integer
+    let uNum, uDen;
+    const fracMatch = userStr.match(/^(-?\d+)\/(-?\d+)$/);
+    if (fracMatch) { uNum = parseInt(fracMatch[1]); uDen = parseInt(fracMatch[2]); }
+    else { const n = parseFloat(userStr); if (!isNaN(n) && Number.isInteger(n)) { uNum = n; uDen = 1; } }
+    if (uNum !== undefined && uDen !== undefined && uDen !== 0) {
+      const us = simplifyFraction(uNum, uDen);
+      correct = us.num === s.num && us.den === s.den;
+    }
+    display = s.den === 1 ? `${s.num}` : `${s.num}/${s.den}`;
+  }
+
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PERCENTAGES API
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /percent-api/question?difficulty=easy|medium|hard|extrahard
+ *
+ * Easy:      Find X% of a number (e.g. 20% of 150)
+ * Medium:    Percentage increase/decrease (e.g. increase 80 by 15%)
+ * Hard:      Reverse percentage (e.g. after 20% increase, price is 60. What was original?)
+ * ExtraHard: Compound interest / repeated percentage change
+ */
+app.get('/percent-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Find X% of N
+    const pct = seqPick([5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 80, 90]);
+    const base = seqPick([50, 80, 100, 120, 150, 200, 250, 300, 400, 500, 600, 800, 1000]);
+    const answer = pct * base / 100;
+    const prompt = `What is ${pct}% of ${base}?`;
+    res.json({ id, difficulty, type: 'find_pct', pct, base, answer, prompt });
+  }
+  else if (difficulty === 'medium') {
+    // Increase or decrease by X%
+    const op = seqPick(['increase', 'decrease']);
+    const pct = seqPick([5, 10, 15, 20, 25, 30, 40, 50]);
+    const base = seqPick([40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 400, 500]);
+    const change = pct * base / 100;
+    const answer = op === 'increase' ? base + change : base - change;
+    const prompt = `${op === 'increase' ? 'Increase' : 'Decrease'} ${base} by ${pct}%`;
+    res.json({ id, difficulty, type: 'inc_dec', op, pct, base, answer, prompt });
+  }
+  else if (difficulty === 'hard') {
+    // Reverse percentage: "After a P% increase, the value is V. What was the original?"
+    const op = seqPick(['increase', 'decrease']);
+    const pct = seqPick([10, 15, 20, 25, 30, 40, 50]);
+    const original = seqPick([40, 50, 60, 80, 100, 120, 150, 200, 250, 300]);
+    const finalVal = op === 'increase'
+      ? original * (1 + pct / 100)
+      : original * (1 - pct / 100);
+    const prompt = `After a ${pct}% ${op}, the price is $${finalVal}. What was the original price?`;
+    res.json({ id, difficulty, type: 'reverse', op, pct, finalVal, answer: original, prompt });
+  }
+  else {
+    // Compound: A = P(1 ± r/100)^n — find the final amount
+    const P = seqPick([100, 200, 500, 1000, 2000, 5000]);
+    const rate = seqPick([5, 10, 15, 20]);
+    const years = seqPick([2, 3, 4]);
+    const op = seqPick(['increase', 'decrease']);
+    const multiplier = op === 'increase' ? (1 + rate / 100) : (1 - rate / 100);
+    const answer = Math.round(P * Math.pow(multiplier, years) * 100) / 100;
+    const prompt = op === 'increase'
+      ? `$${P} invested at ${rate}% compound interest per year for ${years} years. Find the final amount.`
+      : `A population of ${P} decreases by ${rate}% per year for ${years} years. What is the final population?`;
+    res.json({ id, difficulty, type: 'compound', P, rate, years, op, answer, prompt });
+  }
+});
+
+/**
+ * POST /percent-api/check
+ */
+app.post('/percent-api/check', express.json(), (req, res) => {
+  const { type, answer: expected } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/[$,]/g, '').replace(/−/g, '-');
+  const userNum = parseFloat(userStr);
+  let correct = false;
+
+  if (!isNaN(userNum)) {
+    if (type === 'compound') {
+      // Allow rounding to 2 decimal places
+      correct = Math.abs(userNum - expected) < 0.5;
+    } else {
+      correct = Math.abs(userNum - expected) < 0.01;
+    }
+  }
+
+  let display = Number.isInteger(expected) ? String(expected) : expected.toFixed(2);
+  if (type === 'reverse' || type === 'find_pct' || type === 'inc_dec') {
+    display = String(expected);
+  }
+
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
 /**
  * CATCH-ALL ROUTE
  * ═══════════════════════════════════════════════════════════════════════════

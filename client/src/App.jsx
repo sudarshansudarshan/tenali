@@ -1714,6 +1714,9 @@ function App() {
     fractionadd: FractionAddApp,   // Fraction addition
     surds: SurdsApp,               // Surds (simplify, add, multiply, rationalise)
     indices: IndicesApp,           // Indices (laws of exponents)
+    sequences: SequencesApp,       // Sequences & Series
+    ratio: RatioApp,               // Ratio & Proportion
+    percent: PercentApp,           // Percentages
     custom: CustomApp,             // Custom lesson builder
   }
 
@@ -1767,6 +1770,9 @@ function Home({ onSelect }) {
     { key: 'fractionadd', name: 'Fractions (Add)', subtitle: 'Add fractions and simplify', color: 'blue' },
     { key: 'surds', name: 'Surds', subtitle: 'Simplify, add, multiply, rationalise', color: 'green' },
     { key: 'indices', name: 'Indices', subtitle: 'Laws of exponents', color: 'purple' },
+    { key: 'sequences', name: 'Sequences', subtitle: 'Arithmetic & geometric sequences', color: 'blue' },
+    { key: 'ratio', name: 'Ratio', subtitle: 'Ratio & proportion', color: 'green' },
+    { key: 'percent', name: 'Percentages', subtitle: 'Find, increase, reverse, compound', color: 'purple' },
     { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'green' },
   ]
 
@@ -3076,6 +3082,350 @@ function VocabApp({ onBack }) {
  * @param {Object} props
  * @param {Function} props.onBack - Callback to return to home menu
  */
+/* ── Sequences & Series App ─────────────────────────── */
+function SequencesApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [score, setScore] = useState(0)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(`${API}/sequences-api/question?difficulty=${difficulty}`)
+      const data = await r.json()
+      setQuestion(data)
+      setAnswer('')
+      setFeedback('')
+      setIsCorrect(null)
+      setRevealed(false)
+      timer.start()
+    } catch (e) { console.error('Failed to load sequences question:', e) }
+    setLoading(false)
+  }
+
+  const startQuiz = () => {
+    const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
+    setTotalQ(t)
+    setScore(0)
+    setQuestionNumber(1)
+    setResults([])
+    setStarted(true)
+    setFinished(false)
+  }
+
+  useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
+
+  const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+  advanceFnRef.current = advance
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  const handleSubmit = async () => {
+    if (!question || revealed || !answer.trim()) return
+    const timeTaken = timer.stop()
+    const payload = { ...question, answer: answer.trim() }
+    try {
+      const r = await fetch(`${API}/sequences-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const data = await r.json()
+      setIsCorrect(data.correct)
+      setRevealed(true)
+      if (data.correct) setScore(s => s + 1)
+      setFeedback(data.correct ? `Correct! Answer: ${data.display}` : `Incorrect. Answer: ${data.display}`)
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+    } catch (e) { console.error('Failed to check sequences answer:', e) }
+  }
+
+  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
+  const diffLabels = { easy: 'Easy — Arith. nth term', medium: 'Medium — Arith. sum', hard: 'Hard — Geom. nth term', extrahard: 'Extra Hard — Geom. sum' }
+
+  return (
+    <QuizLayout title="Sequences & Series" subtitle="Arithmetic & geometric" onBack={onBack} timer={started && !finished ? timer : null}>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Practice sequences and series!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="seq-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+              {diffLabels[d]}
+            </label>
+          ))}
+        </div>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && <div style={{ textAlign: 'center' }}>
+          <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
+          <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="e.g. 42 or 3/4" onKeyDown={handleKeyDown} autoFocus />
+        </div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Ratio & Proportion App ────────────────────────── */
+function RatioApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [score, setScore] = useState(0)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(`${API}/ratio-api/question?difficulty=${difficulty}`)
+      const data = await r.json()
+      setQuestion(data)
+      setAnswer('')
+      setFeedback('')
+      setIsCorrect(null)
+      setRevealed(false)
+      timer.start()
+    } catch (e) { console.error('Failed to load ratio question:', e) }
+    setLoading(false)
+  }
+
+  const startQuiz = () => {
+    const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
+    setTotalQ(t)
+    setScore(0)
+    setQuestionNumber(1)
+    setResults([])
+    setStarted(true)
+    setFinished(false)
+  }
+
+  useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
+  const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+  advanceFnRef.current = advance
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  const handleSubmit = async () => {
+    if (!question || revealed || !answer.trim()) return
+    const timeTaken = timer.stop()
+    const payload = { ...question, answer: answer.trim() }
+    try {
+      const r = await fetch(`${API}/ratio-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const data = await r.json()
+      setIsCorrect(data.correct)
+      setRevealed(true)
+      if (data.correct) setScore(s => s + 1)
+      setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+    } catch (e) { console.error('Failed to check ratio answer:', e) }
+  }
+
+  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
+  const diffLabels = { easy: 'Easy — Simplify', medium: 'Medium — Divide', hard: 'Hard — Direct', extrahard: 'Extra Hard — Inverse' }
+  const placeholders = { easy: 'e.g. 3:2', medium: 'e.g. 72, 48', hard: 'e.g. 32', extrahard: 'e.g. 8 or 8/3' }
+
+  return (
+    <QuizLayout title="Ratio & Proportion" subtitle="Simplify, divide, direct & inverse" onBack={onBack} timer={started && !finished ? timer : null}>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Practice ratio and proportion!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="ratio-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+              {diffLabels[d]}
+            </label>
+          ))}
+        </div>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && <div style={{ textAlign: 'center' }}>
+          <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
+          <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={placeholders[difficulty] || 'Type your answer'} onKeyDown={handleKeyDown} autoFocus />
+        </div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Percentages App ────────────────────────────────── */
+function PercentApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [score, setScore] = useState(0)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(`${API}/percent-api/question?difficulty=${difficulty}`)
+      const data = await r.json()
+      setQuestion(data)
+      setAnswer('')
+      setFeedback('')
+      setIsCorrect(null)
+      setRevealed(false)
+      timer.start()
+    } catch (e) { console.error('Failed to load percent question:', e) }
+    setLoading(false)
+  }
+
+  const startQuiz = () => {
+    const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
+    setTotalQ(t)
+    setScore(0)
+    setQuestionNumber(1)
+    setResults([])
+    setStarted(true)
+    setFinished(false)
+  }
+
+  useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
+  const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+  advanceFnRef.current = advance
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  const handleSubmit = async () => {
+    if (!question || revealed || !answer.trim()) return
+    const timeTaken = timer.stop()
+    const payload = { ...question, userAnswer: answer.trim().replace(/[$,]/g, '') }
+    try {
+      const r = await fetch(`${API}/percent-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const data = await r.json()
+      setIsCorrect(data.correct)
+      setRevealed(true)
+      if (data.correct) setScore(s => s + 1)
+      setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+    } catch (e) { console.error('Failed to check percent answer:', e) }
+  }
+
+  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
+  const diffLabels = { easy: 'Easy — Find %', medium: 'Medium — Increase/Decrease', hard: 'Hard — Reverse %', extrahard: 'Extra Hard — Compound' }
+
+  return (
+    <QuizLayout title="Percentages" subtitle="Find, increase, reverse, compound" onBack={onBack} timer={started && !finished ? timer : null}>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Practice percentages!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="pct-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+              {diffLabels[d]}
+            </label>
+          ))}
+        </div>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && <div style={{ textAlign: 'center' }}>
+          <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
+          <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={handleKeyDown} autoFocus />
+        </div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
+
 /* ── Indices App ─────────────────────────────────────── */
 /**
  * IndicesApp Component
@@ -5637,6 +5987,9 @@ const CUSTOM_PUZZLES = [
   { key: 'fractionadd', name: 'Fractions (Add)' },
   { key: 'surds', name: 'Surds' },
   { key: 'indices', name: 'Indices' },
+  { key: 'sequences', name: 'Sequences' },
+  { key: 'ratio', name: 'Ratio' },
+  { key: 'percent', name: 'Percentages' },
 ]
 
 /**
@@ -5673,6 +6026,12 @@ function fetchQuestionForType(type, difficulty) {
     surds: `${API}/surds-api/question?difficulty=${difficulty}`,
     // Indices puzzle
     indices: `${API}/indices-api/question?difficulty=${difficulty}`,
+    // Sequences & Series
+    sequences: `${API}/sequences-api/question?difficulty=${difficulty}`,
+    // Ratio & Proportion
+    ratio: `${API}/ratio-api/question?difficulty=${difficulty}`,
+    // Percentages
+    percent: `${API}/percent-api/question?difficulty=${difficulty}`,
   }
   return fetch(urls[type]).then(r => r.json())
 }
@@ -5709,6 +6068,9 @@ function getPromptForType(type, q) {
       return ''
     }
     case 'indices': return q.prompt ? `${q.prompt} = ?` : ''
+    case 'sequences': return q.prompt || ''
+    case 'ratio': return q.prompt || ''
+    case 'percent': return q.prompt || ''
     default: return ''
   }
 }
@@ -6072,6 +6434,36 @@ function CustomApp({ onBack }) {
         setFeedback(data.correct ? `Correct! = ${data.display}` : `Incorrect. = ${data.display}`)
         break
       }
+      // ─────── Sequences & Series ──────────────────────────────────
+      case 'sequences': {
+        if (answer === '') return
+        const seqPayload = { ...question, answer: answer.trim() }
+        res = await fetch(`${API}/sequences-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(seqPayload) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = data.display; userDisplay = answer.trim()
+        setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
+        break
+      }
+      // ─────── Ratio & Proportion ──────────────────────────────────
+      case 'ratio': {
+        if (answer === '') return
+        const ratPayload = { ...question, answer: answer.trim() }
+        res = await fetch(`${API}/ratio-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ratPayload) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = data.display; userDisplay = answer.trim()
+        setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
+        break
+      }
+      // ─────── Percentages ──────────────────────────────────
+      case 'percent': {
+        if (answer === '') return
+        const pctPayload = { ...question, userAnswer: answer.trim().replace(/[$,]/g, '') }
+        res = await fetch(`${API}/percent-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pctPayload) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = data.display; userDisplay = answer.trim()
+        setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
+        break
+      }
       // ─────── Multiple Choice Puzzles (GK, Vocab) ──────────────────────────────────
       case 'gk': case 'vocab': {
         if (!optionToUse) return
@@ -6195,6 +6587,12 @@ function CustomApp({ onBack }) {
         return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="e.g. 6√2 (type sqrt for √)" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
       case 'indices':
         return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={question?.type === 'simplify' ? 'Enter the exponent, e.g. 7' : 'e.g. 8 or 1/4'} onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
+      case 'sequences':
+        return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="e.g. 42 or 3/4" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
+      case 'ratio':
+        return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={question?.type === 'simplify' ? 'e.g. 3:2' : question?.type?.startsWith('divide') ? 'e.g. 72, 48' : 'Type your answer'} onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
+      case 'percent':
+        return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
       case 'gk': case 'vocab':
         if (!question.options) return null
         return <div className="options-grid">

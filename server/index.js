@@ -4602,6 +4602,388 @@ app.post('/complex-api/check', express.json(), (req, res) => {
   res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
 });
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ANGLES API  /angles-api
+ * Angles on a line, at a point, vertically opposite, parallel lines
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/angles-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Angles on a straight line: a + b = 180
+    const a = randInt(25, 155);
+    answer = 180 - a;
+    display = answer + '°';
+    prompt = `Two angles on a straight line are ${a}° and x°. Find x.`;
+  } else if (diff === 'medium') {
+    // Angles at a point: a + b + c + x = 360
+    const a = randInt(40, 120);
+    const b = randInt(40, 120);
+    const c = randInt(40, 120);
+    answer = 360 - a - b - c;
+    if (answer < 10) { answer += 60; } // ensure positive and reasonable
+    const cAdj = 360 - a - b - answer;
+    display = answer + '°';
+    prompt = `Four angles meet at a point: ${a}°, ${b}°, ${cAdj}°, and x°. Find x.`;
+  } else if (diff === 'hard') {
+    // Vertically opposite + angles on a line
+    const a = randInt(30, 150);
+    const vertOpp = a; // vertically opposite
+    const adj = 180 - a; // adjacent on line
+    const pick = randInt(0, 1);
+    if (pick === 0) {
+      prompt = `Two straight lines cross. One angle is ${a}°. Find the vertically opposite angle.`;
+      answer = vertOpp;
+    } else {
+      prompt = `Two straight lines cross. One angle is ${a}°. Find the adjacent angle.`;
+      answer = adj;
+    }
+    display = answer + '°';
+  } else {
+    // Parallel lines: alternate / corresponding / co-interior
+    const angle = randInt(30, 150);
+    const type = randInt(0, 2);
+    if (type === 0) {
+      prompt = `Two parallel lines are cut by a transversal. One alternate angle is ${angle}°. Find the other alternate angle.`;
+      answer = angle;
+    } else if (type === 1) {
+      prompt = `Two parallel lines are cut by a transversal. One corresponding angle is ${angle}°. Find the other corresponding angle.`;
+      answer = angle;
+    } else {
+      prompt = `Two parallel lines are cut by a transversal. One co-interior angle is ${angle}°. Find the other co-interior angle.`;
+      answer = 180 - angle;
+    }
+    display = answer + '°';
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/angles-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/[°\s]/g, ''));
+  const correct = !isNaN(ua) && Math.abs(ua - req.body.answer) < 0.5;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * TRIANGLES API  /triangles-api
+ * Angle sum, exterior angle theorem, isosceles/equilateral properties
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/triangles-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Angle sum: a + b + x = 180
+    const a = randInt(20, 80);
+    const b = randInt(20, 140 - a);
+    answer = 180 - a - b;
+    display = answer + '°';
+    prompt = `A triangle has angles ${a}° and ${b}°. Find the third angle.`;
+  } else if (diff === 'medium') {
+    // Isosceles triangle: two equal angles
+    const base = randInt(20, 130);
+    const equal = (180 - base) / 2;
+    if (equal === Math.floor(equal)) {
+      answer = equal;
+      display = answer + '°';
+      prompt = `An isosceles triangle has a base angle of ${base}°. The two base angles are equal. Find each of the other two angles.`;
+      // Actually: give one non-base angle and ask for base
+    }
+    // Simpler: give apex, find base angles
+    const apex = randInt(20, 140);
+    if ((180 - apex) % 2 !== 0) {
+      answer = (180 - (apex + 1)) / 2;
+      const apexUse = apex + 1;
+      display = answer + '°';
+      prompt = `An isosceles triangle has an apex angle of ${apexUse}°. Find each base angle.`;
+    } else {
+      answer = (180 - apex) / 2;
+      display = answer + '°';
+      prompt = `An isosceles triangle has an apex angle of ${apex}°. Find each base angle.`;
+    }
+  } else if (diff === 'hard') {
+    // Exterior angle theorem: exterior = sum of two remote interior
+    const a = randInt(25, 75);
+    const b = randInt(25, 75);
+    answer = a + b;
+    display = answer + '°';
+    prompt = `Two interior angles of a triangle are ${a}° and ${b}°. Find the exterior angle at the third vertex.`;
+  } else {
+    // Multi-step: equilateral inside a shape, or angle in isosceles with algebra
+    // Equilateral triangle: all angles 60°; attached to another triangle
+    const extraAngle = randInt(20, 70);
+    // Triangle ABD where ABD shares side with equilateral ABC
+    // Angle ABD = extraAngle, angle ABC = 60° (equilateral), so angle DBC = 60 + extraAngle or |60 - extraAngle|
+    answer = 180 - 60 - extraAngle;
+    display = answer + '°';
+    prompt = `In triangle ABD, angle A = 60° (equilateral triangle ABC shares side AB). If angle ABD = ${60 + extraAngle}°, find angle ADB.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/triangles-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/[°\s]/g, ''));
+  const correct = !isNaN(ua) && Math.abs(ua - req.body.answer) < 0.5;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * CONGRUENCE API  /congruence-api
+ * Congruent triangles: identify condition, find missing side/angle
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/congruence-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Given two congruent triangles, find a missing side
+    const sides = [randInt(3, 12), randInt(3, 12), randInt(3, 12)];
+    const idx = randInt(0, 2);
+    answer = sides[idx];
+    display = String(answer) + ' cm';
+    const labels1 = ['AB', 'BC', 'CA'];
+    const labels2 = ['PQ', 'QR', 'RP'];
+    const known = sides.map((s, i) => i === idx ? '?' : s);
+    prompt = `△ABC ≅ △PQR. ${labels1.filter((_, i) => i !== idx).map((l, i) => `${l} = ${sides.filter((_, j) => j !== idx)[i]} cm`).join(', ')}, and ${labels2[idx]} = ${sides[idx]} cm. Find ${labels1[idx]}.`;
+  } else if (diff === 'medium') {
+    // Given congruent triangles, find a missing angle
+    const a1 = randInt(30, 80);
+    const a2 = randInt(30, 130 - a1);
+    const a3 = 180 - a1 - a2;
+    const angles = [a1, a2, a3];
+    const idx = randInt(0, 2);
+    answer = angles[idx];
+    display = answer + '°';
+    const labels1 = ['A', 'B', 'C'];
+    const labels2 = ['P', 'Q', 'R'];
+    prompt = `△ABC ≅ △PQR. Angle ${labels2[idx]} = ${angles[idx]}°. Find angle ${labels1[idx]}.`;
+  } else if (diff === 'hard') {
+    // Identify congruence condition: give info, ask which rule
+    const rules = [
+      { info: 'Three sides of one triangle equal three sides of another', answer: 'SSS' },
+      { info: 'Two sides and the included angle of one triangle equal those of another', answer: 'SAS' },
+      { info: 'Two angles and the included side of one triangle equal those of another', answer: 'ASA' },
+      { info: 'A right angle, the hypotenuse, and one other side are equal in both triangles', answer: 'RHS' },
+    ];
+    const pick = rules[randInt(0, rules.length - 1)];
+    answer = pick.answer;
+    display = answer;
+    prompt = `${pick.info}. Which congruence condition is this? (SSS, SAS, ASA, or RHS)`;
+  } else {
+    // Use congruence to find a side in a real figure
+    // Two triangles sharing a side, with given congruence
+    const shared = randInt(4, 10);
+    const sideA = randInt(3, 9);
+    const sideB = randInt(3, 9);
+    answer = sideA;
+    display = answer + ' cm';
+    prompt = `In the figure, △ABD ≅ △CBD (by SAS). AB = ${sideA} cm and BD = ${shared} cm. Find CB.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/congruence-api/check', express.json(), (req, res) => {
+  const ua = (req.body.userAnswer || '').trim().replace(/[°\s]/g, '').toUpperCase();
+  const ans = String(req.body.answer).replace(/[°\s]/g, '').toUpperCase();
+  const correct = ua === ans || parseFloat(ua) === parseFloat(ans);
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PYTHAGORAS API  /pythag-api
+ * Find hypotenuse, shorter side, word problems, 3D diagonal
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+const PYTH_TRIPLES = [[3,4,5],[5,12,13],[8,15,17],[7,24,25],[6,8,10],[9,12,15],[12,16,20],[15,20,25],[9,40,41],[11,60,61],[20,21,29]];
+
+app.get('/pythag-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Find hypotenuse given two legs
+    const t = PYTH_TRIPLES[randInt(0, 5)];
+    const k = randInt(1, 3);
+    const a = t[0] * k, b = t[1] * k, c = t[2] * k;
+    answer = c;
+    display = answer + ' cm';
+    prompt = `A right-angled triangle has legs ${a} cm and ${b} cm. Find the hypotenuse.`;
+  } else if (diff === 'medium') {
+    // Find a leg given hypotenuse and one leg
+    const t = PYTH_TRIPLES[randInt(0, 5)];
+    const k = randInt(1, 3);
+    const a = t[0] * k, b = t[1] * k, c = t[2] * k;
+    const pick = randInt(0, 1);
+    if (pick === 0) {
+      answer = a;
+      display = answer + ' cm';
+      prompt = `A right-angled triangle has hypotenuse ${c} cm and one leg ${b} cm. Find the other leg.`;
+    } else {
+      answer = b;
+      display = answer + ' cm';
+      prompt = `A right-angled triangle has hypotenuse ${c} cm and one leg ${a} cm. Find the other leg.`;
+    }
+  } else if (diff === 'hard') {
+    // Word problem: ladder against wall
+    const t = PYTH_TRIPLES[randInt(0, 5)];
+    const k = randInt(1, 2);
+    const base = t[0] * k, height = t[1] * k, ladder = t[2] * k;
+    const pick = randInt(0, 1);
+    if (pick === 0) {
+      answer = height;
+      display = answer + ' m';
+      prompt = `A ${ladder} m ladder leans against a wall. Its base is ${base} m from the wall. How high up the wall does it reach?`;
+    } else {
+      answer = base;
+      display = answer + ' m';
+      prompt = `A ${ladder} m ladder reaches ${height} m up a wall. How far is the base of the ladder from the wall?`;
+    }
+  } else {
+    // 3D Pythagoras: space diagonal of cuboid
+    // Use triples that nest: e.g. 3,4,5 then diagonal = √(3²+4²+5²) — not always clean
+    // Instead: pick a,b,c so a²+b²+c² is a perfect square
+    const combos = [[1,2,2,3],[2,3,6,7],[2,6,9,11],[1,4,8,9],[4,4,7,9],[2,4,4,6],[3,6,6,9],[6,6,7,11],[1,2,14,15]];
+    // Actually simpler: use nested Pythagoras. floor diagonal d = √(a²+b²), then space = √(d²+c²)
+    // Pick a triple for floor: (3,4,5), then space with c: (5,12,13) → a=3,b=4,c=12, space=13
+    const nested = [
+      { a: 3, b: 4, c: 12, space: 13 },
+      { a: 6, b: 8, c: 24, space: 26 },
+      { a: 5, b: 12, c: 84, space: 85 },
+      { a: 1, b: 2, c: 2, space: 3 },
+      { a: 2, b: 4, c: 4, space: 6 },
+      { a: 2, b: 3, c: 6, space: 7 },
+    ];
+    const pick = nested[randInt(0, nested.length - 1)];
+    answer = pick.space;
+    display = answer + ' cm';
+    prompt = `A cuboid has dimensions ${pick.a} cm × ${pick.b} cm × ${pick.c} cm. Find the length of the space diagonal.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/pythag-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/[^\d.\-]/g, ''));
+  const correct = !isNaN(ua) && Math.abs(ua - req.body.answer) < 0.5;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * POLYGONS API  /polygons-api
+ * Interior/exterior angle sums, regular polygon angles, diagonals
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+const POLYGON_NAMES = { 3: 'triangle', 4: 'quadrilateral', 5: 'pentagon', 6: 'hexagon', 7: 'heptagon', 8: 'octagon', 9: 'nonagon', 10: 'decagon', 12: 'dodecagon' };
+
+app.get('/polygons-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Interior angle sum = (n-2)×180
+    const n = [4, 5, 6, 7, 8, 10][randInt(0, 5)];
+    answer = (n - 2) * 180;
+    display = answer + '°';
+    prompt = `Find the sum of interior angles of a ${POLYGON_NAMES[n] || n + '-sided polygon'}.`;
+  } else if (diff === 'medium') {
+    // Each interior angle of a regular polygon
+    const n = [3, 4, 5, 6, 8, 9, 10, 12][randInt(0, 7)];
+    answer = (n - 2) * 180 / n;
+    display = answer + '°';
+    prompt = `Find each interior angle of a regular ${POLYGON_NAMES[n] || n + '-sided polygon'}.`;
+  } else if (diff === 'hard') {
+    // Given each exterior angle, find number of sides
+    const n = [5, 6, 8, 9, 10, 12, 15, 18, 20, 24, 36][randInt(0, 10)];
+    const ext = 360 / n;
+    answer = n;
+    display = String(n) + ' sides';
+    prompt = `A regular polygon has each exterior angle equal to ${ext}°. How many sides does it have?`;
+  } else {
+    // Number of diagonals = n(n-3)/2
+    const n = [5, 6, 7, 8, 9, 10, 12][randInt(0, 6)];
+    answer = n * (n - 3) / 2;
+    display = String(answer);
+    prompt = `How many diagonals does a ${POLYGON_NAMES[n] || n + '-sided polygon'} have?`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/polygons-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/[°\s]/g, ''));
+  const correct = !isNaN(ua) && Math.abs(ua - req.body.answer) < 0.5;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SIMILARITY API  /similarity-api
+ * Similar triangles: scale factor, missing side, area/volume ratios
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/similarity-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Find missing side using scale factor
+    const k = randInt(2, 5);
+    const a = randInt(3, 10);
+    const b = randInt(3, 10);
+    answer = a * k;
+    display = answer + ' cm';
+    prompt = `△ABC is similar to △PQR. AB = ${a} cm, BC = ${b} cm, PQ = ${a * k} cm. Find QR.`;
+    // QR = b * k
+    answer = b * k;
+    display = answer + ' cm';
+  } else if (diff === 'medium') {
+    // Find scale factor and then a side (non-integer scale factor using fractions)
+    const small = randInt(4, 10);
+    const big = small * randInt(2, 4);
+    const otherSmall = randInt(3, 8);
+    // scale factor = big/small
+    const ansNum = otherSmall * big;
+    const ansDen = small;
+    const g = gcd(Math.abs(ansNum), ansDen);
+    const rn = ansNum / g;
+    const rd = ansDen / g;
+    answer = rd === 1 ? rn : rn / rd;
+    answer = Math.round(answer * 100) / 100;
+    display = answer + ' cm';
+    prompt = `Two similar triangles have corresponding sides ${small} cm and ${big} cm. If another side of the smaller triangle is ${otherSmall} cm, find the corresponding side of the larger triangle.`;
+  } else if (diff === 'hard') {
+    // Area ratio = k²
+    const k = randInt(2, 5);
+    const areaSmall = randInt(5, 30);
+    const areaLarge = areaSmall * k * k;
+    answer = areaLarge;
+    display = answer + ' cm²';
+    prompt = `Two similar figures have a length ratio of 1:${k}. The smaller figure has area ${areaSmall} cm². Find the area of the larger figure.`;
+  } else {
+    // Volume ratio = k³
+    const k = randInt(2, 4);
+    const volSmall = randInt(5, 25);
+    const volLarge = volSmall * k * k * k;
+    answer = volLarge;
+    display = answer + ' cm³';
+    prompt = `Two similar solids have a length ratio of 1:${k}. The smaller solid has volume ${volSmall} cm³. Find the volume of the larger solid.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/similarity-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/[^\d.\-]/g, ''));
+  const correct = !isNaN(ua) && Math.abs(ua - req.body.answer) < 0.5;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
 /**
  * CATCH-ALL ROUTE
  * ═══════════════════════════════════════════════════════════════════════════

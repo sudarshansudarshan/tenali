@@ -1742,6 +1742,12 @@ function App() {
     rounding: RoundingApp,         // Rounding
     binomial: BinomialApp,         // Binomial Theorem
     complex: ComplexApp,           // Complex Numbers
+    angles: AnglesApp,             // Angles
+    triangles: TrianglesApp,       // Triangles
+    congruence: CongruenceApp,     // Congruence
+    pythag: PythagApp,             // Pythagoras' Theorem
+    polygons: PolygonsApp,         // Polygons
+    similarity: SimilarityApp,     // Similarity
     custom: CustomApp,             // Custom lesson builder
   }
 
@@ -1823,6 +1829,12 @@ function Home({ onSelect }) {
     { key: 'rounding', name: 'Rounding', subtitle: 'D.P., sig. figs, estimation', color: 'green' },
     { key: 'binomial', name: 'Binomial Theorem', subtitle: 'Expansions & coefficients', color: 'purple' },
     { key: 'complex', name: 'Complex Numbers', subtitle: 'Add, multiply, modulus', color: 'blue' },
+    { key: 'angles', name: 'Angles', subtitle: 'Lines, points, parallel lines', color: 'green' },
+    { key: 'triangles', name: 'Triangles', subtitle: 'Angle sum, isosceles, exterior', color: 'purple' },
+    { key: 'congruence', name: 'Congruence', subtitle: 'SSS, SAS, ASA, RHS', color: 'blue' },
+    { key: 'pythag', name: "Pythagoras' Theorem", subtitle: 'Hypotenuse, legs, 3D', color: 'green' },
+    { key: 'polygons', name: 'Polygons', subtitle: 'Interior & exterior angles', color: 'purple' },
+    { key: 'similarity', name: 'Similarity', subtitle: 'Scale factor, area & volume ratios', color: 'blue' },
     { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'green' },
   ]
 
@@ -3395,6 +3407,42 @@ const ComplexApp = makeQuizApp({
   diffLabels: { easy: 'Easy — Addition', medium: 'Medium — Multiplication', hard: 'Hard — Modulus', extrahard: 'Extra Hard — z²' },
   placeholders: (q, d) => d === 'hard' ? 'e.g. 13' : 'e.g. 3,-2 for 3-2i',
   tip: 'For complex answers give a,b where z = a + bi',
+})
+
+const AnglesApp = makeQuizApp({
+  title: 'Angles', subtitle: 'Lines, points, parallel line angles', apiPath: 'angles-api',
+  diffLabels: { easy: 'Easy — Straight line', medium: 'Medium — At a point', hard: 'Hard — Vertically opposite', extrahard: 'Extra Hard — Parallel lines' },
+  placeholders: 'e.g. 65',
+})
+
+const TrianglesApp = makeQuizApp({
+  title: 'Triangles', subtitle: 'Angle sum, isosceles, exterior angle', apiPath: 'triangles-api',
+  diffLabels: { easy: 'Easy — Angle sum', medium: 'Medium — Isosceles', hard: 'Hard — Exterior angle', extrahard: 'Extra Hard — Multi-step' },
+  placeholders: 'e.g. 72',
+})
+
+const CongruenceApp = makeQuizApp({
+  title: 'Congruence', subtitle: 'SSS, SAS, ASA, RHS', apiPath: 'congruence-api',
+  diffLabels: { easy: 'Easy — Find side', medium: 'Medium — Find angle', hard: 'Hard — Name the rule', extrahard: 'Extra Hard — In a figure' },
+  placeholders: (q, d) => d === 'hard' ? 'e.g. SAS' : 'e.g. 7',
+})
+
+const PythagApp = makeQuizApp({
+  title: "Pythagoras' Theorem", subtitle: 'Hypotenuse, legs, 3D diagonal', apiPath: 'pythag-api',
+  diffLabels: { easy: 'Easy — Hypotenuse', medium: 'Medium — Shorter side', hard: 'Hard — Word problem', extrahard: 'Extra Hard — 3D diagonal' },
+  placeholders: 'e.g. 13',
+})
+
+const PolygonsApp = makeQuizApp({
+  title: 'Polygons', subtitle: 'Interior & exterior angles, diagonals', apiPath: 'polygons-api',
+  diffLabels: { easy: 'Easy — Angle sum', medium: 'Medium — Each angle', hard: 'Hard — Find sides', extrahard: 'Extra Hard — Diagonals' },
+  placeholders: 'e.g. 540',
+})
+
+const SimilarityApp = makeQuizApp({
+  title: 'Similarity', subtitle: 'Scale factor, area & volume ratios', apiPath: 'similarity-api',
+  diffLabels: { easy: 'Easy — Missing side', medium: 'Medium — Scale factor', hard: 'Hard — Area ratio', extrahard: 'Extra Hard — Volume ratio' },
+  placeholders: 'e.g. 24',
 })
 
 /* ── Sets App ───────────────────────────────────────── */
@@ -6445,6 +6493,12 @@ const CUSTOM_PUZZLES = [
   { key: 'rounding', name: 'Rounding' },
   { key: 'binomial', name: 'Binomial Theorem' },
   { key: 'complex', name: 'Complex Numbers' },
+  { key: 'angles', name: 'Angles' },
+  { key: 'triangles', name: 'Triangles' },
+  { key: 'congruence', name: 'Congruence' },
+  { key: 'pythag', name: "Pythagoras' Theorem" },
+  { key: 'polygons', name: 'Polygons' },
+  { key: 'similarity', name: 'Similarity' },
 ]
 
 /**
@@ -6513,6 +6567,12 @@ function fetchQuestionForType(type, difficulty) {
     rounding: `${API}/rounding-api/question?difficulty=${difficulty}`,
     binomial: `${API}/binomial-api/question?difficulty=${difficulty}`,
     complex: `${API}/complex-api/question?difficulty=${difficulty}`,
+    angles: `${API}/angles-api/question?difficulty=${difficulty}`,
+    triangles: `${API}/triangles-api/question?difficulty=${difficulty}`,
+    congruence: `${API}/congruence-api/question?difficulty=${difficulty}`,
+    pythag: `${API}/pythag-api/question?difficulty=${difficulty}`,
+    polygons: `${API}/polygons-api/question?difficulty=${difficulty}`,
+    similarity: `${API}/similarity-api/question?difficulty=${difficulty}`,
   }
   return fetch(urls[type]).then(r => r.json())
 }
@@ -6558,6 +6618,7 @@ function getPromptForType(type, q) {
     case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
     case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
     case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
+    case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity':
       return q.prompt || ''
     default: return ''
   }
@@ -6967,9 +7028,10 @@ function CustomApp({ onBack }) {
       case 'matrix': case 'vectors': case 'transform': case 'mensur':
       case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
       case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
-      case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex': {
+      case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
+      case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity': {
         if (answer === '') return
-        const apiMap = { trig: 'trig-api', ineq: 'ineq-api', coordgeom: 'coordgeom-api', prob: 'prob-api', stats: 'stats-api', matrix: 'matrix-api', vectors: 'vectors-api', transform: 'transform-api', mensur: 'mensur-api', bearings: 'bearings-api', log: 'log-api', diff: 'diff-api', bases: 'bases-api', circleth: 'circle-api', integ: 'integ-api', stdform: 'stdform-api', bounds: 'bounds-api', sdt: 'sdt-api', variation: 'variation-api', hcflcm: 'hcflcm-api', profitloss: 'profitloss-api', rounding: 'rounding-api', binomial: 'binomial-api', complex: 'complex-api' }
+        const apiMap = { trig: 'trig-api', ineq: 'ineq-api', coordgeom: 'coordgeom-api', prob: 'prob-api', stats: 'stats-api', matrix: 'matrix-api', vectors: 'vectors-api', transform: 'transform-api', mensur: 'mensur-api', bearings: 'bearings-api', log: 'log-api', diff: 'diff-api', bases: 'bases-api', circleth: 'circle-api', integ: 'integ-api', stdform: 'stdform-api', bounds: 'bounds-api', sdt: 'sdt-api', variation: 'variation-api', hcflcm: 'hcflcm-api', profitloss: 'profitloss-api', rounding: 'rounding-api', binomial: 'binomial-api', complex: 'complex-api', angles: 'angles-api', triangles: 'triangles-api', congruence: 'congruence-api', pythag: 'pythag-api', polygons: 'polygons-api', similarity: 'similarity-api' }
         const genPayload = { ...question, userAnswer: answer.trim() }
         res = await fetch(`${API}/${apiMap[curType]}/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(genPayload) })
         data = await res.json()
@@ -7113,6 +7175,7 @@ function CustomApp({ onBack }) {
       case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
       case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
       case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
+      case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity':
         return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
       case 'gk': case 'vocab':
         if (!question.options) return null

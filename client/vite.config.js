@@ -105,6 +105,12 @@ export default defineConfig({
       '/rounding-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       '/binomial-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       '/complex-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/angles-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/triangles-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/congruence-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/pythag-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/polygons-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      '/similarity-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
     },
   },
 })

@@ -703,7 +703,7 @@ function AdaptiveTablesApp({ studentName }) {
  * @param {Object} props
  * @param {string} props.studentName - Student's display name
  */
-function ScaffoldedTablesApp({ studentName }) {
+function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   // localStorage key for persisting this student's scaffolding state
   const storageKey = `tenali-scaffold-${studentName}`
 
@@ -725,7 +725,7 @@ function ScaffoldedTablesApp({ studentName }) {
       const saved = JSON.parse(localStorage.getItem(storageKey))
       if (saved && saved.currentTable >= 2) return saved.currentTable
     } catch {}
-    return 2
+    return defaultTable
   })
 
   // ── Quiz Runtime State ───────────────────────────────────────────────
@@ -1665,7 +1665,7 @@ function App() {
         <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
-        <ScaffoldedTablesApp studentName="Taittiriya" />
+        <ScaffoldedTablesApp studentName="Taittiriya" defaultTable={3} />
       </>
     )
   }

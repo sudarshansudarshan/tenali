@@ -1900,16 +1900,17 @@ button:disabled {
 }
 
 .ee-input {
-  /* Input field for a and b values */
+  /* Input field for a and b values — wide enough for 20+ digit numbers */
   font-family: var(--font-body);
   font-size: 1.1rem;
   font-weight: 600;
-  padding: 10px 16px;
+  padding: 12px 16px;
   border: 1.5px solid var(--clr-border);
   border-radius: var(--radius-sm);
   background: var(--clr-input);
   color: var(--clr-text);
-  width: 140px;
+  width: 300px;
+  max-width: 90vw;
   text-align: center;
   outline: none;
   transition: border-color var(--transition), box-shadow var(--transition);

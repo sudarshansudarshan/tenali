@@ -9237,40 +9237,40 @@ function ExtendedEuclidApp() {
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
 
   /**
-   * compute(): Run extended Euclidean algorithm
-   * Validates inputs (not NaN, not both zero)
-   * Computes step-by-step table: rows with {r, s, t, q, step}
+   * compute(): Run extended Euclidean algorithm using BigInt
+   * Supports arbitrarily large integers (20+ digits)
+   * Computes step-by-step table: rows with {r, s, t, q, step} (all as strings for React)
    * Adjusts final x,y for negative inputs
-   * Stores results in steps state
    */
   const compute = () => {
-    const na = parseInt(a, 10)
-    const nb = parseInt(b, 10)
-    if (isNaN(na) || isNaN(nb) || (na === 0 && nb === 0)) return
+    const strA = a.trim(), strB = b.trim()
+    if (!strA || !strB || !/^-?\d+$/.test(strA) || !/^-?\d+$/.test(strB)) return
+    let na, nb
+    try { na = BigInt(strA); nb = BigInt(strB) } catch { return }
+    if (na === 0n && nb === 0n) return
 
-    // ─────── Initialize Algorithm
+    // ─────── Initialize Algorithm (BigInt for precision)
     const rows = []
-    let r0 = Math.abs(na), r1 = Math.abs(nb)
-    let s0 = 1, s1 = 0
-    let t0 = 0, t1 = 1
+    let r0 = na < 0n ? -na : na
+    let r1 = nb < 0n ? -nb : nb
+    let s0 = 1n, s1 = 0n
+    let t0 = 0n, t1 = 1n
 
-    // Record initial rows for step 0 and 1
-    rows.push({ r: r0, s: s0, t: t0, q: null, step: 0 })
-    rows.push({ r: r1, s: s1, t: t1, q: null, step: 1 })
+    // Record initial rows (convert to strings for React rendering)
+    const S = v => String(v)
+    rows.push({ r: S(r0), s: S(s0), t: S(t0), q: null, step: 0 })
+    rows.push({ r: S(r1), s: S(s1), t: S(t1), q: null, step: 1 })
 
     // ─────── Main Loop: Euclid's Algorithm
     let i = 2
-    while (r1 !== 0) {
-      // Division: r_0 = q * r_1 + r_2
-      const q = Math.floor(r0 / r1)
+    while (r1 !== 0n) {
+      const q = r0 / r1
       const r2 = r0 - q * r1
-      // Compute new s and t using recurrence: s_i = s_(i-2) - q*s_(i-1)
       const s2 = s0 - q * s1
       const t2 = t0 - q * t1
 
-      rows.push({ r: r2, s: s2, t: t2, q, step: i })
+      rows.push({ r: S(r2), s: S(s2), t: S(t2), q: S(q), step: i })
 
-      // Shift values for next iteration
       r0 = r1; r1 = r2
       s0 = s1; s1 = s2
       t0 = t1; t1 = t2
@@ -9278,16 +9278,19 @@ function ExtendedEuclidApp() {
     }
 
     // ─────── Final Results
-    // gcd is the last non-zero remainder (r0)
-    // Adjust x and y for negative original inputs
-    const signA = na >= 0 ? 1 : -1
-    const signB = nb >= 0 ? 1 : -1
+    const signA = na >= 0n ? 1n : -1n
+    const signB = nb >= 0n ? 1n : -1n
     const gcd = r0
     const x = s0 * signA
     const y = t0 * signB
+    const absA = na < 0n ? -na : na
+    const absB = nb < 0n ? -nb : nb
 
-    // Store computation results
-    setSteps({ rows, gcd, x, y, a: na, b: nb })
+    setSteps({
+      rows, gcd: S(gcd), x: S(x), y: S(y),
+      a: S(na), b: S(nb), absA: S(absA), absB: S(absB),
+      verification: S(x * na + y * nb)
+    })
   }
 
   /**
@@ -9314,7 +9317,7 @@ function ExtendedEuclidApp() {
 
           <div className="is-algo-explain">
             <strong>How it works:</strong> The algorithm repeatedly divides the larger number by the smaller and tracks coefficients.
-            At each step: r_i = r_(i-2) − q_i · r_(i-1), and similarly for s_i and t_i. When the remainder reaches 0, the previous remainder is the GCD, and the coefficients give the linear combination.
+            At each step: r<sub>i</sub> = r<sub>i−2</sub> − q<sub>i</sub> · r<sub>i−1</sub>, and similarly for s<sub>i</sub> and t<sub>i</sub>. When the remainder reaches 0, the previous remainder is the GCD, and the coefficients give the linear combination.
           </div>
 
           <div className="ee-input-row">
@@ -9322,10 +9325,11 @@ function ExtendedEuclidApp() {
               <label className="ee-label">a</label>
               <input
                 className="ee-input"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={a}
-                onChange={e => { setA(e.target.value); setSteps(null) }}
-                placeholder="e.g. 252"
+                onChange={e => { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) { setA(v); setSteps(null) } }}
+                placeholder="e.g. 12345678901234567890"
                 onKeyDown={e => e.key === 'Enter' && compute()}
               />
             </div>
@@ -9333,10 +9337,11 @@ function ExtendedEuclidApp() {
               <label className="ee-label">b</label>
               <input
                 className="ee-input"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={b}
-                onChange={e => { setB(e.target.value); setSteps(null) }}
-                placeholder="e.g. 198"
+                onChange={e => { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) { setB(v); setSteps(null) } }}
+                placeholder="e.g. 98765432109876543210"
                 onKeyDown={e => e.key === 'Enter' && compute()}
               />
             </div>
@@ -9351,15 +9356,15 @@ function ExtendedEuclidApp() {
           {steps && (
             <>
               {/* Result summary */}
-              <div className="is-result" style={{ marginTop: '24px' }}>
+              <div className="is-result" style={{ marginTop: '24px', wordBreak: 'break-all' }}>
                 <strong>gcd({steps.a}, {steps.b}) = {steps.gcd}</strong>
                 <br />
                 <span style={{ fontSize: '1.05rem' }}>
-                  ({steps.x}) · {steps.a} + ({steps.y}) · {steps.b} = {steps.gcd}
+                  ({steps.x}) × {steps.a} + ({steps.y}) × {steps.b} = {steps.gcd}
                 </span>
                 <br />
                 <span className="is-result-note">
-                  Verification: {steps.x} × {steps.a} + {steps.y} × {steps.b} = {steps.x * steps.a + steps.y * steps.b}
+                  Verification: {steps.x} × {steps.a} + {steps.y} × {steps.b} = {steps.verification}
                 </span>
               </div>
 
@@ -9368,25 +9373,25 @@ function ExtendedEuclidApp() {
                 <table className="ee-table">
                   <thead>
                     <tr>
-                      <th>Step i</th>
-                      <th>q_i</th>
-                      <th>r_i</th>
-                      <th>s_i</th>
-                      <th>t_i</th>
+                      <th>Step</th>
+                      <th>q<sub>i</sub></th>
+                      <th>r<sub>i</sub></th>
+                      <th>s<sub>i</sub></th>
+                      <th>t<sub>i</sub></th>
                       <th>Equation</th>
                     </tr>
                   </thead>
                   <tbody>
                     {steps.rows.map((row, idx) => (
-                      <tr key={idx} className={row.r === 0 ? 'ee-row-zero' : idx === steps.rows.length - 2 ? 'ee-row-gcd' : ''}>
+                      <tr key={idx} className={row.r === '0' ? 'ee-row-zero' : idx === steps.rows.length - 2 ? 'ee-row-gcd' : ''}>
                         <td>{row.step}</td>
                         <td>{row.q !== null ? row.q : '—'}</td>
                         <td><strong>{row.r}</strong></td>
                         <td>{row.s}</td>
                         <td>{row.t}</td>
                         <td className="ee-eq">
-                          {row.r !== 0 ? (
-                            <span>{row.r} = ({row.s}) · {Math.abs(steps.a)} + ({row.t}) · {Math.abs(steps.b)}</span>
+                          {row.r !== '0' ? (
+                            <span>{row.r} = ({row.s}) × {steps.absA} + ({row.t}) × {steps.absB}</span>
                           ) : (
                             <span className="is-result-note">remainder = 0, stop</span>
                           )}
@@ -9407,7 +9412,7 @@ function ExtendedEuclidApp() {
                     <div key={idx} className="ee-division-step">
                       <span className="is-log-step">Step {idx + 1}:</span>
                       {prev2.r} = {row.q} × {prev1.r} + {row.r}
-                      {row.r === 0 && <span className="is-result-note"> (done — gcd is {prev1.r})</span>}
+                      {row.r === '0' && <span className="is-result-note"> (done — gcd is {prev1.r})</span>}
                     </div>
                   )
                 })}

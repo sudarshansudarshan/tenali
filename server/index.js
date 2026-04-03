@@ -2853,6 +2853,1130 @@ app.post('/sets-api/check', express.json(), (req, res) => {
   res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TRIGONOMETRY API
+// ═══════════════════════════════════════════════════════════════════════════
+
+function triRand(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
+function triPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+app.get('/trig-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // SOH-CAH-TOA: find missing side in right triangle
+    // Use Pythagorean triples for clean answers
+    const triples = [[3,4,5],[5,12,13],[8,15,17],[7,24,25],[6,8,10],[9,12,15],[10,24,26],[20,21,29]];
+    const [a, b, c] = triPick(triples);
+    const subtype = triPick(['find_hyp', 'find_leg']);
+    let prompt, answer;
+    if (subtype === 'find_hyp') {
+      prompt = `Right triangle: legs = ${a} and ${b}. Find the hypotenuse.`;
+      answer = c;
+    } else {
+      prompt = `Right triangle: hypotenuse = ${c}, one leg = ${a}. Find the other leg.`;
+      answer = b;
+    }
+    res.json({ id, difficulty, type: 'pythagoras', prompt, answer, answerDen: 1 });
+  }
+  else if (difficulty === 'medium') {
+    // Find angle using trig ratios (answer in degrees, rounded to 1dp)
+    const angle = triRand(15, 75);
+    const rad = angle * Math.PI / 180;
+    const side = triRand(5, 20);
+    const fn = triPick(['sin', 'cos', 'tan']);
+    let opp, adj, hyp, prompt;
+    if (fn === 'sin') {
+      hyp = side;
+      opp = Math.round(hyp * Math.sin(rad) * 10) / 10;
+      prompt = `Right triangle: opposite = ${opp}, hypotenuse = ${hyp}. Find the angle (degrees).`;
+    } else if (fn === 'cos') {
+      hyp = side;
+      adj = Math.round(hyp * Math.cos(rad) * 10) / 10;
+      prompt = `Right triangle: adjacent = ${adj}, hypotenuse = ${hyp}. Find the angle (degrees).`;
+    } else {
+      adj = side;
+      opp = Math.round(adj * Math.tan(rad) * 10) / 10;
+      prompt = `Right triangle: opposite = ${opp}, adjacent = ${adj}. Find the angle (degrees).`;
+    }
+    res.json({ id, difficulty, type: 'find_angle', prompt, answer: angle, answerDen: 1 });
+  }
+  else if (difficulty === 'hard') {
+    // Sine rule: a/sinA = b/sinB — find missing side or angle
+    const A = triRand(30, 80);
+    const B = triRand(30, 150 - A);
+    const C = 180 - A - B;
+    const radA = A * Math.PI / 180;
+    const radB = B * Math.PI / 180;
+    const a = triRand(5, 20);
+    const b = Math.round(a * Math.sin(radB) / Math.sin(radA) * 10) / 10;
+    const subtype = triPick(['find_side', 'find_angle']);
+    let prompt, answer;
+    if (subtype === 'find_side') {
+      prompt = `Triangle: a = ${a}, angle A = ${A}°, angle B = ${B}°. Find side b (1 d.p.).`;
+      answer = b;
+    } else {
+      prompt = `Triangle: a = ${a}, b = ${b}, angle A = ${A}°. Find angle B (degrees).`;
+      answer = B;
+    }
+    res.json({ id, difficulty, type: 'sine_rule', prompt, answer, answerDen: 1 });
+  }
+  else {
+    // Cosine rule or area = ½ab·sinC
+    const subtype = triPick(['cosine', 'area']);
+    if (subtype === 'cosine') {
+      const a = triRand(5, 15);
+      const b = triRand(5, 15);
+      const C = triRand(30, 120);
+      const radC = C * Math.PI / 180;
+      const c2 = a*a + b*b - 2*a*b*Math.cos(radC);
+      const c = Math.round(Math.sqrt(c2) * 10) / 10;
+      const prompt = `Triangle: a = ${a}, b = ${b}, angle C = ${C}°. Find side c (1 d.p.).`;
+      res.json({ id, difficulty, type: 'cosine_rule', prompt, answer: c, answerDen: 1 });
+    } else {
+      const a = triRand(5, 15);
+      const b = triRand(5, 15);
+      const C = triRand(30, 120);
+      const radC = C * Math.PI / 180;
+      const area = Math.round(0.5 * a * b * Math.sin(radC) * 10) / 10;
+      const prompt = `Triangle: a = ${a}, b = ${b}, angle C = ${C}°. Find the area (1 d.p.).`;
+      res.json({ id, difficulty, type: 'area', prompt, answer: area, answerDen: 1 });
+    }
+  }
+});
+
+app.post('/trig-api/check', express.json(), (req, res) => {
+  const { answer: expected } = req.body;
+  const userNum = parseFloat((req.body.userAnswer || '').replace(/[°\s]/g, ''));
+  const correct = !isNaN(userNum) && Math.abs(userNum - expected) < 0.5;
+  res.json({ correct, display: String(expected), message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INEQUALITIES API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/ineq-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Linear: ax + b > c → x > (c-b)/a
+    const a = triPick([1, 2, 3, 4, 5, -1, -2, -3]);
+    const b = triRand(-10, 10);
+    const c = triRand(-10, 10);
+    const op = triPick(['>', '<', '>=', '<=']);
+    const opDisplay = op.replace('>=', '≥').replace('<=', '≤');
+    const prompt = `Solve: ${a}x ${b >= 0 ? '+ ' + b : '− ' + Math.abs(b)} ${opDisplay} ${c}`;
+    const val = (c - b) / a;
+    // Flip inequality if dividing by negative
+    let resultOp = op;
+    if (a < 0) resultOp = op === '>' ? '<' : op === '<' ? '>' : op === '>=' ? '<=' : '>=';
+    const resultOpDisplay = resultOp.replace('>=', '≥').replace('<=', '≤');
+    // Simplify fraction
+    const g = gcd(Math.abs(c - b), Math.abs(a));
+    const ansNum = (c - b) / g * (a < 0 ? -1 : 1);
+    const ansDen = Math.abs(a) / g;
+    const valStr = ansDen === 1 ? String(ansNum) : `${ansNum}/${ansDen}`;
+    const display = `x ${resultOpDisplay} ${valStr}`;
+    res.json({ id, difficulty, type: 'linear', prompt, display, ansNum, ansDen, resultOp });
+  }
+  else if (difficulty === 'medium') {
+    // Double inequality: a < 2x + 1 < b, list integers
+    const m = triRand(1, 3);
+    const c = triRand(-5, 5);
+    const lo = triRand(-8, 2);
+    const hi = lo + triRand(4, 10);
+    // lo < mx + c < hi → (lo-c)/m < x < (hi-c)/m
+    const xLo = (lo - c) / m;
+    const xHi = (hi - c) / m;
+    const integers = [];
+    for (let i = Math.ceil(xLo + 0.001); i < xHi; i++) integers.push(i);
+    const prompt = `List the integers satisfying: ${lo} < ${m}x ${c >= 0 ? '+ ' + c : '− ' + Math.abs(c)} < ${hi}`;
+    res.json({ id, difficulty, type: 'list_integers', prompt, answer: integers, display: integers.join(', ') || 'none' });
+  }
+  else if (difficulty === 'hard') {
+    // Quadratic: x² − bx + c ≤ 0 or ≥ 0
+    const r1 = triRand(-5, 5);
+    const r2 = triRand(r1 + 1, r1 + 8);
+    // (x-r1)(x-r2) = x² - (r1+r2)x + r1*r2
+    const B = -(r1 + r2);
+    const C = r1 * r2;
+    const op = triPick(['<=', '>=']);
+    const opDisplay = op === '<=' ? '≤' : '≥';
+    const prompt = `Solve: x² ${B >= 0 ? '+ ' + B : '− ' + Math.abs(B)}x ${C >= 0 ? '+ ' + C : '− ' + Math.abs(C)} ${opDisplay} 0`;
+    let display;
+    if (op === '<=') {
+      display = `${r1} ≤ x ≤ ${r2}`;
+    } else {
+      display = `x ≤ ${r1} or x ≥ ${r2}`;
+    }
+    res.json({ id, difficulty, type: 'quadratic', prompt, display, r1, r2, op });
+  }
+  else {
+    // Represent on number line: find integer solutions to compound inequality
+    const a = triRand(-3, 3); if (a === 0) a = 1;
+    const b = triRand(-5, 5);
+    const lo = triRand(-10, 0);
+    const hi = triRand(1, 10);
+    const prompt = `How many integers satisfy: ${lo} ≤ ${a === 1 ? '' : a === -1 ? '-' : a}x ${b >= 0 ? '+ ' + b : '− ' + Math.abs(b)} ≤ ${hi}?`;
+    const xLo = (lo - b) / a;
+    const xHi = (hi - b) / a;
+    const realLo = Math.min(xLo, xHi);
+    const realHi = Math.max(xLo, xHi);
+    let count = 0;
+    for (let i = Math.ceil(realLo - 0.001); i <= Math.floor(realHi + 0.001); i++) {
+      const val = a * i + b;
+      if (val >= lo && val <= hi) count++;
+    }
+    res.json({ id, difficulty, type: 'count_integers', prompt, answer: count, display: String(count) });
+  }
+});
+
+app.post('/ineq-api/check', express.json(), (req, res) => {
+  const { type, display } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-').replace(/>=/g, '≥').replace(/<=/g, '≤');
+  let correct = false;
+
+  if (type === 'linear') {
+    // Check if user answer matches the display (normalized)
+    const normDisplay = display.replace(/\s+/g, '');
+    correct = userStr === normDisplay;
+    // Also accept >= for ≥ etc
+    if (!correct) {
+      const altUser = userStr.replace(/≥/g, '>=').replace(/≤/g, '<=');
+      const altDisplay = normDisplay.replace(/≥/g, '>=').replace(/≤/g, '<=');
+      correct = altUser === altDisplay;
+    }
+  }
+  else if (type === 'list_integers') {
+    const expected = req.body.answer;
+    const userNums = userStr === 'none' || userStr === '' ? [] :
+      userStr.split(',').map(s => parseInt(s)).filter(n => !isNaN(n)).sort((a, b) => a - b);
+    const expSorted = [...expected].sort((a, b) => a - b);
+    correct = userNums.length === expSorted.length && userNums.every((v, i) => v === expSorted[i]);
+  }
+  else if (type === 'quadratic') {
+    // Accept various formats: "1<=x<=5", "x<=1 or x>=5", etc
+    const normDisplay = display.replace(/\s+/g, '').replace(/>=/g, '≥').replace(/<=/g, '≤');
+    const normUser = userStr.replace(/or/gi, 'or');
+    correct = normUser === normDisplay;
+    // Relaxed check
+    if (!correct) {
+      const altD = normDisplay.replace(/≥/g, '>=').replace(/≤/g, '<=');
+      const altU = normUser.replace(/≥/g, '>=').replace(/≤/g, '<=');
+      correct = altU === altD;
+    }
+  }
+  else if (type === 'count_integers') {
+    const userNum = parseInt(userStr);
+    correct = !isNaN(userNum) && userNum === req.body.answer;
+  }
+
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COORDINATE GEOMETRY API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/coordgeom-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Midpoint of two points
+    // Use even sums for clean midpoints
+    const x1 = triRand(-10, 10); const y1 = triRand(-10, 10);
+    const x2 = x1 + 2 * triRand(-5, 5); const y2 = y1 + 2 * triRand(-5, 5);
+    const mx = (x1 + x2) / 2; const my = (y1 + y2) / 2;
+    const prompt = `Find the midpoint of (${x1}, ${y1}) and (${x2}, ${y2})`;
+    res.json({ id, difficulty, type: 'midpoint', prompt, ansX: mx, ansY: my, display: `(${mx}, ${my})` });
+  }
+  else if (difficulty === 'medium') {
+    // Distance between two points (use Pythagorean triples for clean answers)
+    const triples = [[3,4,5],[5,12,13],[8,15,17],[6,8,10],[9,12,15]];
+    const [dx, dy, dist] = triPick(triples);
+    const x1 = triRand(-5, 5); const y1 = triRand(-5, 5);
+    const sx = triPick([1, -1]); const sy = triPick([1, -1]);
+    const x2 = x1 + sx * dx; const y2 = y1 + sy * dy;
+    const prompt = `Find the distance between (${x1}, ${y1}) and (${x2}, ${y2})`;
+    res.json({ id, difficulty, type: 'distance', prompt, answer: dist, display: String(dist) });
+  }
+  else if (difficulty === 'hard') {
+    // Gradient of line through two points
+    const x1 = triRand(-8, 8); const y1 = triRand(-8, 8);
+    const dx = triRand(1, 6) * triPick([1, -1]);
+    const dy = triRand(-8, 8);
+    const x2 = x1 + dx; const y2 = y1 + dy;
+    const g = gcd(Math.abs(dy), Math.abs(dx));
+    const ansNum = dy / g * (dx < 0 ? -1 : 1);
+    const ansDen = Math.abs(dx) / g;
+    const display = ansDen === 1 ? String(ansNum) : `${ansNum}/${ansDen}`;
+    const prompt = `Find the gradient of the line through (${x1}, ${y1}) and (${x2}, ${y2})`;
+    res.json({ id, difficulty, type: 'gradient', prompt, ansNum, ansDen, display });
+  }
+  else {
+    // Equation of perpendicular bisector
+    const x1 = triRand(-6, 6); const y1 = triRand(-6, 6);
+    const dx = triRand(1, 4) * triPick([1, -1]);
+    const dy = triRand(1, 4) * triPick([1, -1]);
+    const x2 = x1 + 2 * dx; const y2 = y1 + 2 * dy;
+    const mx = (x1 + x2) / 2; const my = (y1 + y2) / 2;
+    // Original gradient: dy/dx, perpendicular: -dx/dy
+    const perpNum = -dx;
+    const perpDen = dy;
+    const g = gcd(Math.abs(perpNum), Math.abs(perpDen));
+    const mNum = perpNum / g * (perpDen < 0 ? -1 : 1);
+    const mDen = Math.abs(perpDen) / g;
+    // y - my = m(x - mx) → y = mx/mDen - m*mx/mDen + my
+    const prompt = `Find the gradient of the perpendicular bisector of (${x1}, ${y1}) and (${x2}, ${y2})`;
+    const display = mDen === 1 ? String(mNum) : `${mNum}/${mDen}`;
+    res.json({ id, difficulty, type: 'perp_bisector', prompt, ansNum: mNum, ansDen: mDen, display });
+  }
+});
+
+app.post('/coordgeom-api/check', express.json(), (req, res) => {
+  const { type } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-');
+  let correct = false;
+
+  if (type === 'midpoint') {
+    const m = userStr.replace(/[()]/g, '').split(',');
+    if (m.length === 2) {
+      correct = parseFloat(m[0]) === req.body.ansX && parseFloat(m[1]) === req.body.ansY;
+    }
+  }
+  else if (type === 'distance') {
+    const userNum = parseFloat(userStr);
+    correct = !isNaN(userNum) && Math.abs(userNum - req.body.answer) < 0.5;
+  }
+  else if (type === 'gradient' || type === 'perp_bisector') {
+    const { ansNum, ansDen } = req.body;
+    const fracMatch = userStr.match(/^(-?\d+)\/(-?\d+)$/);
+    let uNum, uDen;
+    if (fracMatch) { uNum = parseInt(fracMatch[1]); uDen = parseInt(fracMatch[2]); }
+    else { const n = parseFloat(userStr); if (!isNaN(n) && Number.isInteger(n)) { uNum = n; uDen = 1; } }
+    if (uNum !== undefined && uDen !== undefined && uDen !== 0) {
+      const us = simplifyFraction(uNum, uDen);
+      const es = simplifyFraction(ansNum, ansDen);
+      correct = us.num === es.num && us.den === es.den;
+    }
+  }
+
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROBABILITY API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/prob-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Simple probability: P(event) from a bag/deck
+    const items = triPick([
+      { desc: 'bag', contents: { red: triRand(2,6), blue: triRand(2,6), green: triRand(1,4) }, ask: 'red' },
+      { desc: 'bag', contents: { red: triRand(1,5), blue: triRand(2,7), yellow: triRand(1,3) }, ask: 'blue' },
+      { desc: 'box', contents: { apple: triRand(2,5), orange: triRand(3,6), banana: triRand(1,4) }, ask: 'orange' },
+    ]);
+    const total = Object.values(items.contents).reduce((s, v) => s + v, 0);
+    const favorable = items.contents[items.ask];
+    const g = gcd(favorable, total);
+    const prompt = `A ${items.desc} has ${Object.entries(items.contents).map(([k,v]) => `${v} ${k}`).join(', ')}. P(${items.ask})?`;
+    res.json({ id, difficulty, type: 'simple', prompt, ansNum: favorable / g, ansDen: total / g });
+  }
+  else if (difficulty === 'medium') {
+    // Two independent events: P(A and B) = P(A) × P(B)
+    const n1 = triRand(2, 6); const d1 = triRand(n1 + 1, 10);
+    const n2 = triRand(2, 6); const d2 = triRand(n2 + 1, 10);
+    const prodN = n1 * n2; const prodD = d1 * d2;
+    const g = gcd(prodN, prodD);
+    const prompt = `P(A) = ${n1}/${d1}, P(B) = ${n2}/${d2}. A and B are independent. Find P(A and B).`;
+    res.json({ id, difficulty, type: 'independent', prompt, ansNum: prodN / g, ansDen: prodD / g });
+  }
+  else if (difficulty === 'hard') {
+    // P(A or B) = P(A) + P(B) - P(A and B) for mutually exclusive or not
+    const exclusive = triPick([true, false]);
+    if (exclusive) {
+      const n1 = triRand(1, 4); const n2 = triRand(1, 4); const d = triRand(n1 + n2 + 1, 12);
+      const g = gcd(n1 + n2, d);
+      const prompt = `P(A) = ${n1}/${d}, P(B) = ${n2}/${d}. A and B are mutually exclusive. Find P(A or B).`;
+      res.json({ id, difficulty, type: 'or_event', prompt, ansNum: (n1 + n2) / g, ansDen: d / g });
+    } else {
+      const d = triRand(8, 20);
+      const nA = triRand(3, d - 3);
+      const nB = triRand(3, d - 3);
+      const nAB = triRand(1, Math.min(nA, nB) - 1);
+      const nAuB = nA + nB - nAB;
+      const g = gcd(nAuB, d);
+      const prompt = `P(A) = ${nA}/${d}, P(B) = ${nB}/${d}, P(A and B) = ${nAB}/${d}. Find P(A or B).`;
+      res.json({ id, difficulty, type: 'or_event', prompt, ansNum: nAuB / g, ansDen: d / g });
+    }
+  }
+  else {
+    // Conditional / without replacement
+    const total = triRand(8, 15);
+    const typeA = triRand(3, total - 3);
+    const typeB = total - typeA;
+    // P(both same type) without replacement
+    const pNum = typeA * (typeA - 1) + typeB * (typeB - 1);
+    const pDen = total * (total - 1);
+    const g = gcd(pNum, pDen);
+    const prompt = `A bag has ${typeA} red and ${typeB} blue balls. Two drawn without replacement. P(same colour)?`;
+    res.json({ id, difficulty, type: 'without_replacement', prompt, ansNum: pNum / g, ansDen: pDen / g });
+  }
+});
+
+app.post('/prob-api/check', express.json(), (req, res) => {
+  const { ansNum, ansDen } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-');
+  let correct = false;
+  const fracMatch = userStr.match(/^(-?\d+)\/(-?\d+)$/);
+  let uNum, uDen;
+  if (fracMatch) { uNum = parseInt(fracMatch[1]); uDen = parseInt(fracMatch[2]); }
+  else { const n = parseFloat(userStr); if (!isNaN(n)) { uNum = Math.round(n * 1000); uDen = 1000; } }
+  if (uNum !== undefined && uDen !== undefined && uDen !== 0) {
+    const us = simplifyFraction(uNum, uDen);
+    const es = simplifyFraction(ansNum, ansDen);
+    correct = us.num === es.num && us.den === es.den;
+  }
+  const es = simplifyFraction(ansNum, ansDen);
+  const display = es.den === 1 ? String(es.num) : `${es.num}/${es.den}`;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATISTICS API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/stats-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Mean of a list
+    const n = triRand(5, 8);
+    const data = Array.from({ length: n }, () => triRand(1, 20));
+    const sum = data.reduce((s, v) => s + v, 0);
+    const mean = sum / n;
+    const g = gcd(Math.abs(sum), n);
+    const prompt = `Find the mean of: ${data.join(', ')}`;
+    res.json({ id, difficulty, type: 'mean', prompt, data, ansNum: sum / g, ansDen: n / g });
+  }
+  else if (difficulty === 'medium') {
+    // Median of a list
+    const n = triPick([5, 7, 9, 6, 8, 10]);
+    const data = Array.from({ length: n }, () => triRand(1, 30));
+    const sorted = [...data].sort((a, b) => a - b);
+    let median, ansNum, ansDen;
+    if (n % 2 === 1) {
+      median = sorted[Math.floor(n / 2)];
+      ansNum = median; ansDen = 1;
+    } else {
+      const a = sorted[n / 2 - 1]; const b = sorted[n / 2];
+      const g = gcd(Math.abs(a + b), 2);
+      ansNum = (a + b) / g; ansDen = 2 / g;
+    }
+    const prompt = `Find the median of: ${data.join(', ')}`;
+    res.json({ id, difficulty, type: 'median', prompt, data, ansNum, ansDen });
+  }
+  else if (difficulty === 'hard') {
+    // Mode and range
+    const subtype = triPick(['mode', 'range']);
+    const n = triRand(7, 12);
+    let data;
+    if (subtype === 'mode') {
+      const modeVal = triRand(1, 20);
+      data = [modeVal, modeVal, modeVal];
+      while (data.length < n) {
+        const v = triRand(1, 25);
+        if (v !== modeVal || data.filter(x => x === v).length < 2) data.push(v);
+      }
+      // Shuffle
+      for (let i = data.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [data[i], data[j]] = [data[j], data[i]]; }
+      const prompt = `Find the mode of: ${data.join(', ')}`;
+      res.json({ id, difficulty, type: 'mode', subtype: 'mode', prompt, data, answer: modeVal, display: String(modeVal) });
+    } else {
+      data = Array.from({ length: n }, () => triRand(1, 50));
+      const range = Math.max(...data) - Math.min(...data);
+      const prompt = `Find the range of: ${data.join(', ')}`;
+      res.json({ id, difficulty, type: 'range', subtype: 'range', prompt, data, answer: range, display: String(range) });
+    }
+  }
+  else {
+    // Mean from frequency table
+    const values = [1, 2, 3, 4, 5];
+    const freqs = values.map(() => triRand(1, 10));
+    const totalF = freqs.reduce((s, v) => s + v, 0);
+    const totalFx = values.reduce((s, v, i) => s + v * freqs[i], 0);
+    const g = gcd(Math.abs(totalFx), totalF);
+    const table = values.map((v, i) => `${v}(×${freqs[i]})`).join(', ');
+    const prompt = `Frequency table: ${table}. Find the mean.`;
+    res.json({ id, difficulty, type: 'freq_mean', prompt, ansNum: totalFx / g, ansDen: totalF / g });
+  }
+});
+
+app.post('/stats-api/check', express.json(), (req, res) => {
+  const { type } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-');
+  let correct = false;
+  let display;
+
+  if (type === 'mode' || type === 'range') {
+    const userNum = parseFloat(userStr);
+    correct = !isNaN(userNum) && userNum === req.body.answer;
+    display = req.body.display;
+  } else {
+    const { ansNum, ansDen } = req.body;
+    const es = simplifyFraction(ansNum, ansDen);
+    const fracMatch = userStr.match(/^(-?\d+)\/(-?\d+)$/);
+    let uNum, uDen;
+    if (fracMatch) { uNum = parseInt(fracMatch[1]); uDen = parseInt(fracMatch[2]); }
+    else { const n = parseFloat(userStr);
+      if (!isNaN(n)) {
+        // Convert decimal to fraction for comparison
+        if (Number.isInteger(n)) { uNum = n; uDen = 1; }
+        else { uNum = Math.round(n * 100); uDen = 100; }
+      }
+    }
+    if (uNum !== undefined && uDen !== undefined && uDen !== 0) {
+      const us = simplifyFraction(uNum, uDen);
+      correct = us.num === es.num && us.den === es.den;
+    }
+    // Also accept decimal approximation
+    if (!correct && !isNaN(parseFloat(userStr))) {
+      correct = Math.abs(parseFloat(userStr) - es.num / es.den) < 0.01;
+    }
+    display = es.den === 1 ? String(es.num) : `${es.num}/${es.den}`;
+  }
+
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MATRICES API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/matrix-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Add two 2×2 matrices
+    const A = [[triRand(-5,9), triRand(-5,9)], [triRand(-5,9), triRand(-5,9)]];
+    const B = [[triRand(-5,9), triRand(-5,9)], [triRand(-5,9), triRand(-5,9)]];
+    const R = [[A[0][0]+B[0][0], A[0][1]+B[0][1]], [A[1][0]+B[1][0], A[1][1]+B[1][1]]];
+    const fmtM = (m) => `[${m[0][0]},${m[0][1]};${m[1][0]},${m[1][1]}]`;
+    const prompt = `A = ${fmtM(A)}, B = ${fmtM(B)}. Find A + B.`;
+    res.json({ id, difficulty, type: 'add', prompt, answer: R, display: fmtM(R) });
+  }
+  else if (difficulty === 'medium') {
+    // Scalar multiplication
+    const k = triRand(-3, 5); if (k === 0) k = 2;
+    const A = [[triRand(-5,9), triRand(-5,9)], [triRand(-5,9), triRand(-5,9)]];
+    const R = [[k*A[0][0], k*A[0][1]], [k*A[1][0], k*A[1][1]]];
+    const fmtM = (m) => `[${m[0][0]},${m[0][1]};${m[1][0]},${m[1][1]}]`;
+    const prompt = `A = ${fmtM(A)}. Find ${k}A.`;
+    res.json({ id, difficulty, type: 'scalar', prompt, answer: R, display: fmtM(R) });
+  }
+  else if (difficulty === 'hard') {
+    // Determinant of 2×2
+    const a = triRand(-5,8); const b = triRand(-5,8);
+    const c = triRand(-5,8); const d = triRand(-5,8);
+    const det = a * d - b * c;
+    const prompt = `Find the determinant of [${a},${b};${c},${d}]`;
+    res.json({ id, difficulty, type: 'determinant', prompt, answer: det, display: String(det) });
+  }
+  else {
+    // Multiply two 2×2 matrices
+    const A = [[triRand(-3,5), triRand(-3,5)], [triRand(-3,5), triRand(-3,5)]];
+    const B = [[triRand(-3,5), triRand(-3,5)], [triRand(-3,5), triRand(-3,5)]];
+    const R = [
+      [A[0][0]*B[0][0]+A[0][1]*B[1][0], A[0][0]*B[0][1]+A[0][1]*B[1][1]],
+      [A[1][0]*B[0][0]+A[1][1]*B[1][0], A[1][0]*B[0][1]+A[1][1]*B[1][1]]
+    ];
+    const fmtM = (m) => `[${m[0][0]},${m[0][1]};${m[1][0]},${m[1][1]}]`;
+    const prompt = `A = ${fmtM(A)}, B = ${fmtM(B)}. Find AB.`;
+    res.json({ id, difficulty, type: 'multiply', prompt, answer: R, display: fmtM(R) });
+  }
+});
+
+app.post('/matrix-api/check', express.json(), (req, res) => {
+  const { type, answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-');
+  let correct = false;
+
+  if (type === 'determinant') {
+    const userNum = parseInt(userStr);
+    correct = !isNaN(userNum) && userNum === answer;
+  } else {
+    // Parse matrix: [a,b;c,d]
+    const m = userStr.replace(/[\[\]]/g, '').split(';');
+    if (m.length === 2) {
+      const r0 = m[0].split(',').map(Number);
+      const r1 = m[1].split(',').map(Number);
+      if (r0.length === 2 && r1.length === 2) {
+        correct = r0[0] === answer[0][0] && r0[1] === answer[0][1] &&
+                  r1[0] === answer[1][0] && r1[1] === answer[1][1];
+      }
+    }
+  }
+
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VECTORS API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/vectors-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Add two column vectors
+    const a = [triRand(-8,8), triRand(-8,8)];
+    const b = [triRand(-8,8), triRand(-8,8)];
+    const ans = [a[0]+b[0], a[1]+b[1]];
+    const prompt = `a = (${a[0]}, ${a[1]}), b = (${b[0]}, ${b[1]}). Find a + b.`;
+    res.json({ id, difficulty, type: 'add', prompt, ansX: ans[0], ansY: ans[1], display: `(${ans[0]}, ${ans[1]})` });
+  }
+  else if (difficulty === 'medium') {
+    // Scalar multiplication
+    const k = triRand(-3, 5); if (k === 0) k = 2;
+    const a = [triRand(-6,6), triRand(-6,6)];
+    const ans = [k*a[0], k*a[1]];
+    const prompt = `a = (${a[0]}, ${a[1]}). Find ${k}a.`;
+    res.json({ id, difficulty, type: 'scalar', prompt, ansX: ans[0], ansY: ans[1], display: `(${ans[0]}, ${ans[1]})` });
+  }
+  else if (difficulty === 'hard') {
+    // Magnitude (use Pythagorean triples for clean answers)
+    const triples = [[3,4,5],[5,12,13],[8,15,17],[6,8,10]];
+    const [x, y, mag] = triPick(triples);
+    const sx = triPick([1,-1]); const sy = triPick([1,-1]);
+    const prompt = `Find |v| where v = (${sx*x}, ${sy*y})`;
+    res.json({ id, difficulty, type: 'magnitude', prompt, answer: mag, display: String(mag) });
+  }
+  else {
+    // Vector between two points
+    const x1 = triRand(-8,8); const y1 = triRand(-8,8);
+    const x2 = triRand(-8,8); const y2 = triRand(-8,8);
+    const prompt = `A = (${x1}, ${y1}), B = (${x2}, ${y2}). Find vector AB.`;
+    res.json({ id, difficulty, type: 'position', prompt, ansX: x2-x1, ansY: y2-y1, display: `(${x2-x1}, ${y2-y1})` });
+  }
+});
+
+app.post('/vectors-api/check', express.json(), (req, res) => {
+  const { type } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-');
+  let correct = false;
+
+  if (type === 'magnitude') {
+    const userNum = parseFloat(userStr);
+    correct = !isNaN(userNum) && Math.abs(userNum - req.body.answer) < 0.5;
+  } else {
+    const m = userStr.replace(/[()]/g, '').split(',');
+    if (m.length === 2) {
+      correct = parseInt(m[0]) === req.body.ansX && parseInt(m[1]) === req.body.ansY;
+    }
+  }
+
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TRANSFORMATIONS API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/transform-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+  const x = triRand(-8, 8); const y = triRand(-8, 8);
+
+  if (difficulty === 'easy') {
+    // Reflection in x-axis or y-axis
+    const axis = triPick(['x-axis', 'y-axis']);
+    const ansX = axis === 'y-axis' ? -x : x;
+    const ansY = axis === 'x-axis' ? -y : y;
+    const prompt = `Reflect (${x}, ${y}) in the ${axis}`;
+    res.json({ id, difficulty, type: 'reflect', prompt, ansX, ansY, display: `(${ansX}, ${ansY})` });
+  }
+  else if (difficulty === 'medium') {
+    // Translation by vector
+    const dx = triRand(-6, 6); const dy = triRand(-6, 6);
+    const prompt = `Translate (${x}, ${y}) by vector (${dx}, ${dy})`;
+    res.json({ id, difficulty, type: 'translate', prompt, ansX: x + dx, ansY: y + dy, display: `(${x+dx}, ${y+dy})` });
+  }
+  else if (difficulty === 'hard') {
+    // Rotation 90° or 180° about origin
+    const angle = triPick([90, 180, 270]);
+    let ansX, ansY;
+    if (angle === 90) { ansX = -y; ansY = x; }        // 90° anticlockwise
+    else if (angle === 180) { ansX = -x; ansY = -y; }
+    else { ansX = y; ansY = -x; }                       // 270° anticlockwise = 90° clockwise
+    const prompt = `Rotate (${x}, ${y}) by ${angle}° anticlockwise about the origin`;
+    res.json({ id, difficulty, type: 'rotate', prompt, ansX, ansY, display: `(${ansX}, ${ansY})` });
+  }
+  else {
+    // Enlargement from origin with scale factor
+    const sf = triPick([2, 3, -1, -2, 0.5]);
+    const ansX = x * sf; const ansY = y * sf;
+    const sfStr = sf === 0.5 ? '1/2' : String(sf);
+    const prompt = `Enlarge (${x}, ${y}) by scale factor ${sfStr} from the origin`;
+    res.json({ id, difficulty, type: 'enlarge', prompt, ansX, ansY, display: `(${ansX}, ${ansY})` });
+  }
+});
+
+app.post('/transform-api/check', express.json(), (req, res) => {
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-');
+  const m = userStr.replace(/[()]/g, '').split(',');
+  let correct = false;
+  if (m.length === 2) {
+    correct = parseFloat(m[0]) === req.body.ansX && parseFloat(m[1]) === req.body.ansY;
+  }
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MENSURATION API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/mensur-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Area of rectangle, triangle, or parallelogram
+    const shape = triPick(['rectangle', 'triangle', 'parallelogram']);
+    const a = triRand(3, 15); const b = triRand(3, 15);
+    let answer, prompt;
+    if (shape === 'rectangle') { answer = a * b; prompt = `Area of rectangle: length = ${a}, width = ${b}`; }
+    else if (shape === 'triangle') { answer = a * b / 2; prompt = `Area of triangle: base = ${a}, height = ${b}`; }
+    else { answer = a * b; prompt = `Area of parallelogram: base = ${a}, height = ${b}`; }
+    res.json({ id, difficulty, type: 'area_2d', prompt, answer, display: String(answer) });
+  }
+  else if (difficulty === 'medium') {
+    // Area & circumference of circle
+    const r = triRand(2, 12);
+    const subtype = triPick(['area', 'circumference']);
+    let answer, prompt;
+    if (subtype === 'area') {
+      answer = Math.round(Math.PI * r * r * 100) / 100;
+      prompt = `Area of circle with radius ${r} (to 2 d.p., use π = 3.14159...)`;
+    } else {
+      answer = Math.round(2 * Math.PI * r * 100) / 100;
+      prompt = `Circumference of circle with radius ${r} (to 2 d.p.)`;
+    }
+    res.json({ id, difficulty, type: 'circle', prompt, answer, display: String(answer) });
+  }
+  else if (difficulty === 'hard') {
+    // Volume of cylinder, cone, or sphere
+    const shape = triPick(['cylinder', 'cone', 'sphere']);
+    const r = triRand(2, 8);
+    let answer, prompt;
+    if (shape === 'cylinder') {
+      const h = triRand(3, 12);
+      answer = Math.round(Math.PI * r * r * h * 100) / 100;
+      prompt = `Volume of cylinder: radius = ${r}, height = ${h} (2 d.p.)`;
+    } else if (shape === 'cone') {
+      const h = triRand(3, 12);
+      answer = Math.round(Math.PI * r * r * h / 3 * 100) / 100;
+      prompt = `Volume of cone: radius = ${r}, height = ${h} (2 d.p.)`;
+    } else {
+      answer = Math.round(4/3 * Math.PI * r * r * r * 100) / 100;
+      prompt = `Volume of sphere with radius ${r} (2 d.p.)`;
+    }
+    res.json({ id, difficulty, type: 'volume', prompt, answer, display: String(answer) });
+  }
+  else {
+    // Surface area of cylinder, cone, or sphere
+    const shape = triPick(['cylinder', 'sphere']);
+    const r = triRand(2, 8);
+    let answer, prompt;
+    if (shape === 'cylinder') {
+      const h = triRand(3, 12);
+      answer = Math.round(2 * Math.PI * r * (r + h) * 100) / 100;
+      prompt = `Total surface area of cylinder: radius = ${r}, height = ${h} (2 d.p.)`;
+    } else {
+      answer = Math.round(4 * Math.PI * r * r * 100) / 100;
+      prompt = `Surface area of sphere with radius ${r} (2 d.p.)`;
+    }
+    res.json({ id, difficulty, type: 'surface_area', prompt, answer, display: String(answer) });
+  }
+});
+
+app.post('/mensur-api/check', express.json(), (req, res) => {
+  const userNum = parseFloat((req.body.userAnswer || '').replace(/\s+/g, ''));
+  const correct = !isNaN(userNum) && Math.abs(userNum - req.body.answer) < 0.5;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BEARINGS API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/bearings-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Convert compass direction to bearing
+    const dirs = [
+      { name: 'North', bearing: '000' }, { name: 'East', bearing: '090' },
+      { name: 'South', bearing: '180' }, { name: 'West', bearing: '270' },
+      { name: 'North-East', bearing: '045' }, { name: 'South-East', bearing: '135' },
+      { name: 'South-West', bearing: '225' }, { name: 'North-West', bearing: '315' },
+    ];
+    const d = triPick(dirs);
+    const prompt = `What is the three-figure bearing of ${d.name}?`;
+    res.json({ id, difficulty, type: 'compass', prompt, answer: parseInt(d.bearing), display: d.bearing });
+  }
+  else if (difficulty === 'medium') {
+    // Back bearing: if bearing from A to B is x, what is bearing from B to A?
+    const bearing = triRand(0, 359);
+    const back = (bearing + 180) % 360;
+    const fmtB = (b) => String(b).padStart(3, '0');
+    const prompt = `The bearing from A to B is ${fmtB(bearing)}°. Find the bearing from B to A.`;
+    res.json({ id, difficulty, type: 'back_bearing', prompt, answer: back, display: fmtB(back) });
+  }
+  else if (difficulty === 'hard') {
+    // Find bearing given coordinates
+    const dx = triRand(-10, 10); const dy = triRand(-10, 10);
+    if (dx === 0 && dy === 0) dx = 1;
+    // Bearing = angle measured clockwise from North
+    let angle = Math.atan2(dx, dy) * 180 / Math.PI;
+    if (angle < 0) angle += 360;
+    const bearing = Math.round(angle);
+    const fmtB = (b) => String(b).padStart(3, '0');
+    const prompt = `A is at origin. B is ${Math.abs(dx)} units ${dx >= 0 ? 'East' : 'West'} and ${Math.abs(dy)} units ${dy >= 0 ? 'North' : 'South'}. Bearing of B from A?`;
+    res.json({ id, difficulty, type: 'from_coords', prompt, answer: bearing, display: fmtB(bearing) });
+  }
+  else {
+    // Distance using bearing + trig
+    const bearing = triRand(0, 359);
+    const distance = triRand(5, 50);
+    const rad = bearing * Math.PI / 180;
+    const east = Math.round(distance * Math.sin(rad) * 10) / 10;
+    const north = Math.round(distance * Math.cos(rad) * 10) / 10;
+    const fmtB = (b) => String(b).padStart(3, '0');
+    const prompt = `Walking ${distance}m on bearing ${fmtB(bearing)}°. How far East? (1 d.p.)`;
+    res.json({ id, difficulty, type: 'distance_component', prompt, answer: east, display: String(east) });
+  }
+});
+
+app.post('/bearings-api/check', express.json(), (req, res) => {
+  const userStr = (req.body.userAnswer || '').replace(/[°\s]/g, '').replace(/−/g, '-');
+  const userNum = parseFloat(userStr);
+  const correct = !isNaN(userNum) && Math.abs(userNum - req.body.answer) < 1;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LOGARITHMS API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/log-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Evaluate log_b(n) where n is a perfect power of b
+    const combos = [
+      { b: 2, n: 4, ans: 2 }, { b: 2, n: 8, ans: 3 }, { b: 2, n: 16, ans: 4 }, { b: 2, n: 32, ans: 5 },
+      { b: 2, n: 64, ans: 6 }, { b: 3, n: 9, ans: 2 }, { b: 3, n: 27, ans: 3 }, { b: 3, n: 81, ans: 4 },
+      { b: 5, n: 25, ans: 2 }, { b: 5, n: 125, ans: 3 }, { b: 10, n: 100, ans: 2 }, { b: 10, n: 1000, ans: 3 },
+      { b: 4, n: 16, ans: 2 }, { b: 4, n: 64, ans: 3 }, { b: 7, n: 49, ans: 2 }, { b: 6, n: 36, ans: 2 },
+      { b: 2, n: 1, ans: 0 }, { b: 3, n: 1, ans: 0 }, { b: 10, n: 1, ans: 0 },
+      { b: 10, n: 10, ans: 1 }, { b: 2, n: 2, ans: 1 },
+    ];
+    const c = triPick(combos);
+    const prompt = `Evaluate log${c.b === 10 ? '' : '₊'.replace('₊', String(c.b).split('').map(d => '₀₁₂₃₄₅₆₇₈₉'[d]).join(''))}(${c.n})`;
+    res.json({ id, difficulty, type: 'evaluate', prompt, answer: c.ans, display: String(c.ans) });
+  }
+  else if (difficulty === 'medium') {
+    // Laws of logs: log(a) + log(b) = log(ab), log(a) - log(b) = log(a/b)
+    const base = triPick([2, 3, 10]);
+    const sub = (n) => String(n).split('').map(d => '₀₁₂₃₄₅₆₇₈₉'[d]).join('');
+    const bStr = base === 10 ? '' : sub(base);
+    const subtype = triPick(['add', 'subtract', 'power']);
+    if (subtype === 'add') {
+      const a = triRand(2, 20); const b = triRand(2, 20);
+      const prompt = `Simplify: log${bStr}(${a}) + log${bStr}(${b})`;
+      const product = a * b;
+      // Check if product is a clean power of base
+      let ans = product;
+      const display = `log${bStr}(${product})`;
+      res.json({ id, difficulty, type: 'simplify_log', prompt, ansProduct: product, base, display });
+    } else if (subtype === 'subtract') {
+      const b = triRand(2, 8); const a = b * triRand(2, 8);
+      const prompt = `Simplify: log${bStr}(${a}) − log${bStr}(${b})`;
+      const quotient = a / b;
+      const display = `log${bStr}(${quotient})`;
+      res.json({ id, difficulty, type: 'simplify_log', prompt, ansProduct: quotient, base, display });
+    } else {
+      const n = triRand(2, 10); const k = triRand(2, 4);
+      const prompt = `Simplify: ${k} × log${bStr}(${n})`;
+      const power = Math.pow(n, k);
+      const display = `log${bStr}(${power})`;
+      res.json({ id, difficulty, type: 'simplify_log', prompt, ansProduct: power, base, display });
+    }
+  }
+  else if (difficulty === 'hard') {
+    // Solve: b^x = n → x = log(n)/log(b)
+    const combos = [
+      { b: 2, n: 4, x: 2 }, { b: 2, n: 8, x: 3 }, { b: 2, n: 16, x: 4 },
+      { b: 3, n: 9, x: 2 }, { b: 3, n: 27, x: 3 }, { b: 5, n: 25, x: 2 },
+      { b: 5, n: 125, x: 3 }, { b: 4, n: 64, x: 3 }, { b: 10, n: 100, x: 2 },
+      { b: 2, n: 32, x: 5 }, { b: 3, n: 81, x: 4 },
+    ];
+    const c = triPick(combos);
+    const prompt = `Solve: ${c.b}ˣ = ${c.n}`;
+    res.json({ id, difficulty, type: 'solve_exp', prompt, answer: c.x, display: `x = ${c.x}` });
+  }
+  else {
+    // Solve log equations: log(x+a) = b → x+a = 10^b
+    const base = triPick([2, 10]);
+    const sub = (n) => String(n).split('').map(d => '₀₁₂₃₄₅₆₇₈₉'[d]).join('');
+    const bStr = base === 10 ? '' : sub(base);
+    const exp = triRand(1, 4);
+    const a = triRand(-10, 10);
+    const val = Math.pow(base, exp);
+    const x = val - a;
+    const prompt = `Solve: log${bStr}(x ${a >= 0 ? '+ ' + a : '− ' + Math.abs(a)}) = ${exp}`;
+    res.json({ id, difficulty, type: 'solve_log', prompt, answer: x, display: `x = ${x}` });
+  }
+});
+
+app.post('/log-api/check', express.json(), (req, res) => {
+  const { type } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-').replace(/^x=/i, '');
+  let correct = false;
+
+  if (type === 'simplify_log') {
+    // User should enter e.g. "log(40)" or just "40" (the argument)
+    const cleaned = userStr.replace(/log[₀₁₂₃₄₅₆₇₈₉]*/g, '').replace(/[()]/g, '');
+    const userNum = parseInt(cleaned);
+    correct = !isNaN(userNum) && userNum === req.body.ansProduct;
+  } else {
+    const expected = req.body.answer;
+    const userNum = parseFloat(userStr);
+    correct = !isNaN(userNum) && Math.abs(userNum - expected) < 0.01;
+  }
+
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DIFFERENTIATION API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/diff-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Differentiate ax^n → anx^(n-1), evaluate at a point
+    const a = triRand(1, 6); const n = triRand(2, 5);
+    const x = triRand(1, 5);
+    const deriv = a * n * Math.pow(x, n - 1);
+    const prompt = `f(x) = ${a}x${sup(n)}. Find f'(${x}).`;
+    res.json({ id, difficulty, type: 'power_rule', prompt, answer: deriv, display: String(deriv) });
+  }
+  else if (difficulty === 'medium') {
+    // Differentiate polynomial: ax² + bx + c
+    const a = triRand(-5, 5); const b = triRand(-8, 8); const c = triRand(-10, 10);
+    if (a === 0) a = 2;
+    const x = triRand(-3, 3);
+    const deriv = 2 * a * x + b;
+    const bStr = b >= 0 ? `+ ${b}` : `− ${Math.abs(b)}`;
+    const cStr = c >= 0 ? `+ ${c}` : `− ${Math.abs(c)}`;
+    const prompt = `f(x) = ${a}x² ${bStr}x ${cStr}. Find f'(${x}).`;
+    res.json({ id, difficulty, type: 'polynomial', prompt, answer: deriv, display: String(deriv) });
+  }
+  else if (difficulty === 'hard') {
+    // Find gradient at a point, or find x where gradient = 0 (turning point)
+    const a = triRand(1, 4); const b = triRand(-10, 10);
+    const c = triRand(-10, 10);
+    // f(x) = ax² + bx + c, f'(x) = 2ax + b = 0 → x = -b/(2a)
+    const g = gcd(Math.abs(b), 2 * a);
+    const ansNum = -b / g;
+    const ansDen = (2 * a) / g;
+    const bStr = b >= 0 ? `+ ${b}` : `− ${Math.abs(b)}`;
+    const cStr = c >= 0 ? `+ ${c}` : `− ${Math.abs(c)}`;
+    const prompt = `f(x) = ${a}x² ${bStr}x ${cStr}. Find x where f'(x) = 0.`;
+    const display = ansDen === 1 ? String(ansNum) : `${ansNum}/${ansDen}`;
+    res.json({ id, difficulty, type: 'turning_point', prompt, ansNum, ansDen, display });
+  }
+  else {
+    // Find whether turning point is max or min, and its y-value
+    const a = triPick([1, -1, 2, -2, 3]);
+    const b = triRand(-8, 8);
+    const c = triRand(-10, 10);
+    // f'(x) = 2ax + b = 0 → x = -b/(2a)
+    const xTurn = -b / (2 * a);
+    const yTurn = a * xTurn * xTurn + b * xTurn + c;
+    const rounded = Math.round(yTurn * 100) / 100;
+    const nature = a > 0 ? 'minimum' : 'maximum';
+    const bStr = b >= 0 ? `+ ${b}` : `− ${Math.abs(b)}`;
+    const cStr = c >= 0 ? `+ ${c}` : `− ${Math.abs(c)}`;
+    const prompt = `f(x) = ${a}x² ${bStr}x ${cStr}. Find the ${nature} value of f(x).`;
+    res.json({ id, difficulty, type: 'min_max', prompt, answer: rounded, display: String(rounded) });
+  }
+});
+
+app.post('/diff-api/check', express.json(), (req, res) => {
+  const { type } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-').replace(/^x=/i, '');
+  let correct = false;
+
+  if (type === 'turning_point') {
+    const { ansNum, ansDen } = req.body;
+    const fracMatch = userStr.match(/^(-?\d+)\/(-?\d+)$/);
+    let uNum, uDen;
+    if (fracMatch) { uNum = parseInt(fracMatch[1]); uDen = parseInt(fracMatch[2]); }
+    else { const n = parseFloat(userStr); if (!isNaN(n) && Number.isInteger(n)) { uNum = n; uDen = 1; }
+      else if (!isNaN(n)) { correct = Math.abs(n - ansNum / ansDen) < 0.01; } }
+    if (!correct && uNum !== undefined && uDen !== undefined && uDen !== 0) {
+      const us = simplifyFraction(uNum, uDen);
+      const es = simplifyFraction(ansNum, ansDen);
+      correct = us.num === es.num && us.den === es.den;
+    }
+  } else {
+    const userNum = parseFloat(userStr);
+    correct = !isNaN(userNum) && Math.abs(userNum - req.body.answer) < 0.5;
+  }
+
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NUMBER BASES API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/bases-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Convert decimal to binary
+    const n = triRand(5, 63);
+    const prompt = `Convert ${n} (decimal) to binary`;
+    res.json({ id, difficulty, type: 'dec_to_bin', prompt, answer: n.toString(2), display: n.toString(2) });
+  }
+  else if (difficulty === 'medium') {
+    // Convert binary to decimal
+    const n = triRand(10, 127);
+    const bin = n.toString(2);
+    const prompt = `Convert ${bin} (binary) to decimal`;
+    res.json({ id, difficulty, type: 'bin_to_dec', prompt, answer: n, display: String(n) });
+  }
+  else if (difficulty === 'hard') {
+    // Convert decimal to hexadecimal
+    const n = triRand(16, 255);
+    const prompt = `Convert ${n} (decimal) to hexadecimal`;
+    res.json({ id, difficulty, type: 'dec_to_hex', prompt, answer: n.toString(16).toUpperCase(), display: n.toString(16).toUpperCase() });
+  }
+  else {
+    // Binary addition or hex to binary
+    const subtype = triPick(['bin_add', 'hex_to_bin']);
+    if (subtype === 'bin_add') {
+      const a = triRand(5, 30); const b = triRand(5, 30);
+      const sum = a + b;
+      const prompt = `Add in binary: ${a.toString(2)} + ${b.toString(2)}`;
+      res.json({ id, difficulty, type: 'bin_add', prompt, answer: sum.toString(2), display: sum.toString(2) });
+    } else {
+      const n = triRand(16, 255);
+      const hex = n.toString(16).toUpperCase();
+      const prompt = `Convert ${hex} (hexadecimal) to binary`;
+      res.json({ id, difficulty, type: 'hex_to_bin', prompt, answer: n.toString(2), display: n.toString(2) });
+    }
+  }
+});
+
+app.post('/bases-api/check', express.json(), (req, res) => {
+  const { type, answer } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').toUpperCase().replace(/^0+/, '') || '0';
+  let correct = false;
+
+  if (type === 'bin_to_dec') {
+    correct = parseInt(userStr) === answer;
+  } else {
+    const expected = String(answer).toUpperCase().replace(/^0+/, '') || '0';
+    correct = userStr === expected;
+  }
+
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CIRCLE THEOREMS API
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/circle-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Angle in semicircle = 90°
+    const a = triRand(20, 70);
+    const b = 90 - a;
+    const prompt = `Triangle inscribed in semicircle. One angle at circumference = ${a}°. Find the other angle at circumference.`;
+    res.json({ id, difficulty, type: 'semicircle', prompt, answer: b, display: `${b}°` });
+  }
+  else if (difficulty === 'medium') {
+    // Angle at centre = 2 × angle at circumference
+    const circumAngle = triRand(20, 80);
+    const centreAngle = 2 * circumAngle;
+    const subtype = triPick(['find_centre', 'find_circum']);
+    if (subtype === 'find_centre') {
+      const prompt = `Angle at circumference = ${circumAngle}°. Find the angle at the centre subtended by the same arc.`;
+      res.json({ id, difficulty, type: 'centre_circum', prompt, answer: centreAngle, display: `${centreAngle}°` });
+    } else {
+      const prompt = `Angle at centre = ${centreAngle}°. Find the angle at the circumference subtended by the same arc.`;
+      res.json({ id, difficulty, type: 'centre_circum', prompt, answer: circumAngle, display: `${circumAngle}°` });
+    }
+  }
+  else if (difficulty === 'hard') {
+    // Cyclic quadrilateral: opposite angles sum to 180°
+    const a = triRand(40, 140);
+    const c = 180 - a;
+    const b = triRand(40, 140);
+    const d = 180 - b;
+    const subtype = triPick(['find_opp_a', 'find_opp_b']);
+    if (subtype === 'find_opp_a') {
+      const prompt = `Cyclic quadrilateral ABCD. Angle A = ${a}°. Find angle C.`;
+      res.json({ id, difficulty, type: 'cyclic', prompt, answer: c, display: `${c}°` });
+    } else {
+      const prompt = `Cyclic quadrilateral ABCD. Angle B = ${b}°. Find angle D.`;
+      res.json({ id, difficulty, type: 'cyclic', prompt, answer: d, display: `${d}°` });
+    }
+  }
+  else {
+    // Tangent perpendicular to radius; alternate segment theorem
+    const subtype = triPick(['tangent_radius', 'alternate_segment']);
+    if (subtype === 'tangent_radius') {
+      const angle = triRand(15, 75);
+      const answer = 90 - angle;
+      const prompt = `Tangent meets radius at point P. Angle between tangent and chord = ${angle}°. Find the angle between radius and chord.`;
+      res.json({ id, difficulty, type: 'tangent', prompt, answer, display: `${answer}°` });
+    } else {
+      const angle = triRand(20, 80);
+      const prompt = `Alternate segment theorem: angle between tangent and chord = ${angle}°. Find the angle in the alternate segment.`;
+      res.json({ id, difficulty, type: 'alt_segment', prompt, answer: angle, display: `${angle}°` });
+    }
+  }
+});
+
+app.post('/circle-api/check', express.json(), (req, res) => {
+  const userNum = parseFloat((req.body.userAnswer || '').replace(/[°\s]/g, ''));
+  const correct = !isNaN(userNum) && Math.abs(userNum - req.body.answer) < 0.5;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
 /**
  * CATCH-ALL ROUTE
  * ═══════════════════════════════════════════════════════════════════════════

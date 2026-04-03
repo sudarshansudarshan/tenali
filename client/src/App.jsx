@@ -1718,6 +1718,20 @@ function App() {
     ratio: RatioApp,               // Ratio & Proportion
     percent: PercentApp,           // Percentages
     sets: SetsApp,                 // Sets & Venn diagrams
+    trig: TrigApp,                 // Trigonometry
+    ineq: IneqApp,                 // Inequalities
+    coordgeom: CoordGeomApp,       // Coordinate Geometry
+    prob: ProbApp,                 // Probability
+    stats: StatsApp,               // Statistics
+    matrix: MatrixApp,             // Matrices
+    vectors: VectorsApp,           // Vectors
+    transform: TransformApp,       // Transformations
+    mensur: MensurApp,             // Mensuration
+    bearings: BearingsApp,         // Bearings
+    log: LogApp,                   // Logarithms
+    diff: DiffApp,                 // Differentiation
+    bases: BasesApp,               // Number Bases
+    circleth: CircleThApp,         // Circle Theorems
     custom: CustomApp,             // Custom lesson builder
   }
 
@@ -1775,6 +1789,20 @@ function Home({ onSelect }) {
     { key: 'ratio', name: 'Ratio', subtitle: 'Ratio & proportion', color: 'green' },
     { key: 'percent', name: 'Percentages', subtitle: 'Find, increase, reverse, compound', color: 'purple' },
     { key: 'sets', name: 'Sets', subtitle: 'Union, intersection, Venn diagrams', color: 'blue' },
+    { key: 'trig', name: 'Trigonometry', subtitle: 'SOH-CAH-TOA, sine/cosine rule', color: 'green' },
+    { key: 'ineq', name: 'Inequalities', subtitle: 'Linear & quadratic inequalities', color: 'purple' },
+    { key: 'coordgeom', name: 'Coord. Geometry', subtitle: 'Midpoint, distance, gradient', color: 'blue' },
+    { key: 'prob', name: 'Probability', subtitle: 'Single & combined events', color: 'green' },
+    { key: 'stats', name: 'Statistics', subtitle: 'Mean, median, mode, range', color: 'purple' },
+    { key: 'matrix', name: 'Matrices', subtitle: 'Add, multiply, determinant', color: 'blue' },
+    { key: 'vectors', name: 'Vectors', subtitle: 'Add, scale, magnitude', color: 'green' },
+    { key: 'transform', name: 'Transformations', subtitle: 'Reflect, rotate, translate, enlarge', color: 'purple' },
+    { key: 'mensur', name: 'Mensuration', subtitle: 'Area, volume, surface area', color: 'blue' },
+    { key: 'bearings', name: 'Bearings', subtitle: 'Three-figure bearings', color: 'green' },
+    { key: 'log', name: 'Logarithms', subtitle: 'Evaluate, simplify, solve', color: 'purple' },
+    { key: 'diff', name: 'Differentiation', subtitle: 'Power rule, turning points', color: 'blue' },
+    { key: 'bases', name: 'Number Bases', subtitle: 'Binary, decimal, hexadecimal', color: 'green' },
+    { key: 'circleth', name: 'Circle Theorems', subtitle: 'Angles, tangents, cyclic quads', color: 'purple' },
     { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'green' },
   ]
 
@@ -3084,6 +3112,210 @@ function VocabApp({ onBack }) {
  * @param {Object} props
  * @param {Function} props.onBack - Callback to return to home menu
  */
+/**
+ * makeQuizApp — Factory for standard quiz components.
+ * All share the same state machine: setup → playing → finished.
+ * Differences are: title, subtitle, API path, difficulty labels, placeholders, field name for answer.
+ */
+function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, answerField }) {
+  return function GeneratedQuizApp({ onBack }) {
+    const diffs = Object.keys(diffLabels)
+    const [difficulty, setDifficulty] = useState(diffs[0])
+    const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+    const [started, setStarted] = useState(false)
+    const [finished, setFinished] = useState(false)
+    const [question, setQuestion] = useState(null)
+    const [answer, setAnswer] = useState('')
+    const [score, setScore] = useState(0)
+    const [questionNumber, setQuestionNumber] = useState(0)
+    const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+    const [feedback, setFeedback] = useState('')
+    const [isCorrect, setIsCorrect] = useState(null)
+    const [loading, setLoading] = useState(false)
+    const [revealed, setRevealed] = useState(false)
+    const [results, setResults] = useState([])
+    const timer = useTimer()
+    const advanceFnRef = useRef(null)
+
+    const loadQuestion = async () => {
+      setLoading(true)
+      try {
+        const r = await fetch(`${API}/${apiPath}/question?difficulty=${difficulty}`)
+        const data = await r.json()
+        setQuestion(data)
+        setAnswer('')
+        setFeedback('')
+        setIsCorrect(null)
+        setRevealed(false)
+        timer.start()
+      } catch (e) { console.error(`Failed to load ${title} question:`, e) }
+      setLoading(false)
+    }
+    const startQuiz = () => {
+      const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
+      setTotalQ(t); setScore(0); setQuestionNumber(1); setResults([]); setStarted(true); setFinished(false)
+    }
+    useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
+    const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+    advanceFnRef.current = advance
+    useAutoAdvance(revealed, advanceFnRef, isCorrect)
+    useEffect(() => {
+      if (!revealed || isCorrect) return
+      const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+      window.addEventListener('keydown', h)
+      return () => window.removeEventListener('keydown', h)
+    }, [revealed, isCorrect, questionNumber])
+
+    const handleSubmit = async () => {
+      if (!question || revealed || !answer.trim()) return
+      const timeTaken = timer.stop()
+      const payload = { ...question, [answerField || 'userAnswer']: answer.trim() }
+      try {
+        const r = await fetch(`${API}/${apiPath}/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        const data = await r.json()
+        setIsCorrect(data.correct); setRevealed(true)
+        if (data.correct) setScore(s => s + 1)
+        setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
+        setResults(prev => [...prev, { prompt: question.prompt, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+      } catch (e) { console.error(`Failed to check ${title} answer:`, e) }
+    }
+    const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
+    const getPlaceholder = () => {
+      if (typeof placeholders === 'string') return placeholders
+      if (typeof placeholders === 'function') return placeholders(question, difficulty)
+      return placeholders?.[difficulty] || 'Type your answer'
+    }
+
+    return (
+      <QuizLayout title={title} subtitle={subtitle} onBack={onBack} timer={started && !finished ? timer : null}>
+        {!started && !finished && <div className="welcome-box">
+          <p className="welcome-text">Practice {title.toLowerCase()}!</p>
+          {tip && <p style={{ fontSize: '0.85rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>{tip}</p>}
+          <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+            {diffs.map(d => (
+              <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
+                <input type="radio" name={`${apiPath}-diff`} checked={difficulty === d} onChange={() => setDifficulty(d)} />
+                {diffLabels[d]}
+              </label>
+            ))}
+          </div>
+          <div className="question-count-row">
+            <label className="question-count-label">How many questions?</label>
+            <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+          </div>
+          <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+        </div>}
+        {started && !finished && <>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {question && <div style={{ textAlign: 'center' }}>
+            <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '20px 0', lineHeight: '1.6' }}>{question.prompt}</div>
+            <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={getPlaceholder()} onKeyDown={handleKeyDown} autoFocus />
+          </div>}
+          {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+          <div className="button-row">
+            {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+              : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+          </div>
+          {results.length > 0 && <ResultsTable results={results} />}
+        </>}
+        {finished && <div className="welcome-box">
+          <p className="welcome-text">Quiz complete!</p>
+          <p className="final-score">Final score: {score}/{totalQ}</p>
+          <ResultsTable results={results} />
+          <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+        </div>}
+      </QuizLayout>
+    )
+  }
+}
+
+// ── Generate all 14 new quiz apps ──────────────────────
+const TrigApp = makeQuizApp({
+  title: 'Trigonometry', subtitle: 'SOH-CAH-TOA, sine/cosine rule', apiPath: 'trig-api',
+  diffLabels: { easy: 'Easy — Pythagoras', medium: 'Medium — Find Angle', hard: 'Hard — Sine Rule', extrahard: 'Extra Hard — Cosine/Area' },
+  placeholders: 'e.g. 13 or 45.5',
+})
+
+const IneqApp = makeQuizApp({
+  title: 'Inequalities', subtitle: 'Linear & quadratic inequalities', apiPath: 'ineq-api',
+  diffLabels: { easy: 'Easy — Linear', medium: 'Medium — List integers', hard: 'Hard — Quadratic', extrahard: 'Extra Hard — Count' },
+  placeholders: (q, d) => d === 'easy' ? 'e.g. x > 3' : d === 'medium' ? 'e.g. -1, 0, 1, 2' : d === 'hard' ? 'e.g. 1<=x<=5' : 'e.g. 7',
+  tip: 'Use >= for ≥ and <= for ≤',
+})
+
+const CoordGeomApp = makeQuizApp({
+  title: 'Coordinate Geometry', subtitle: 'Midpoint, distance, gradient', apiPath: 'coordgeom-api',
+  diffLabels: { easy: 'Easy — Midpoint', medium: 'Medium — Distance', hard: 'Hard — Gradient', extrahard: 'Extra Hard — Perp. Bisector' },
+  placeholders: (q, d) => d === 'easy' ? 'e.g. (3, 4)' : d === 'hard' || d === 'extrahard' ? 'e.g. 3/4 or 2' : 'e.g. 13',
+})
+
+const ProbApp = makeQuizApp({
+  title: 'Probability', subtitle: 'Single & combined events', apiPath: 'prob-api',
+  diffLabels: { easy: 'Easy — Simple', medium: 'Medium — Independent', hard: 'Hard — Or events', extrahard: 'Extra Hard — No replacement' },
+  placeholders: 'e.g. 3/10',
+})
+
+const StatsApp = makeQuizApp({
+  title: 'Statistics', subtitle: 'Mean, median, mode, range', apiPath: 'stats-api',
+  diffLabels: { easy: 'Easy — Mean', medium: 'Medium — Median', hard: 'Hard — Mode/Range', extrahard: 'Extra Hard — Frequency' },
+  placeholders: 'e.g. 12 or 7/3',
+})
+
+const MatrixApp = makeQuizApp({
+  title: 'Matrices', subtitle: 'Add, multiply, determinant', apiPath: 'matrix-api',
+  diffLabels: { easy: 'Easy — Addition', medium: 'Medium — Scalar ×', hard: 'Hard — Determinant', extrahard: 'Extra Hard — Multiply' },
+  placeholders: (q, d) => d === 'hard' ? 'e.g. 7' : 'e.g. [1,2;3,4]',
+  tip: 'Enter matrices as [a,b;c,d] — semicolon separates rows',
+})
+
+const VectorsApp = makeQuizApp({
+  title: 'Vectors', subtitle: 'Add, scale, magnitude', apiPath: 'vectors-api',
+  diffLabels: { easy: 'Easy — Addition', medium: 'Medium — Scalar ×', hard: 'Hard — Magnitude', extrahard: 'Extra Hard — Position' },
+  placeholders: (q, d) => d === 'hard' ? 'e.g. 13' : 'e.g. (3, -2)',
+})
+
+const TransformApp = makeQuizApp({
+  title: 'Transformations', subtitle: 'Reflect, translate, rotate, enlarge', apiPath: 'transform-api',
+  diffLabels: { easy: 'Easy — Reflect', medium: 'Medium — Translate', hard: 'Hard — Rotate', extrahard: 'Extra Hard — Enlarge' },
+  placeholders: 'e.g. (-3, 4)',
+})
+
+const MensurApp = makeQuizApp({
+  title: 'Mensuration', subtitle: 'Area, volume, surface area', apiPath: 'mensur-api',
+  diffLabels: { easy: 'Easy — 2D Area', medium: 'Medium — Circle', hard: 'Hard — Volume', extrahard: 'Extra Hard — Surface Area' },
+  placeholders: 'e.g. 150.72',
+})
+
+const BearingsApp = makeQuizApp({
+  title: 'Bearings', subtitle: 'Three-figure bearings', apiPath: 'bearings-api',
+  diffLabels: { easy: 'Easy — Compass', medium: 'Medium — Back bearing', hard: 'Hard — From coords', extrahard: 'Extra Hard — Components' },
+  placeholders: 'e.g. 045 or 270',
+})
+
+const LogApp = makeQuizApp({
+  title: 'Logarithms', subtitle: 'Evaluate, simplify, solve', apiPath: 'log-api',
+  diffLabels: { easy: 'Easy — Evaluate', medium: 'Medium — Laws of logs', hard: 'Hard — Solve bˣ = n', extrahard: 'Extra Hard — Log equations' },
+  placeholders: (q, d) => d === 'medium' ? 'e.g. 40 (the argument)' : 'e.g. 3',
+})
+
+const DiffApp = makeQuizApp({
+  title: 'Differentiation', subtitle: 'Power rule, turning points', apiPath: 'diff-api',
+  diffLabels: { easy: 'Easy — Power rule', medium: 'Medium — Polynomial', hard: 'Hard — Turning point x', extrahard: 'Extra Hard — Min/Max value' },
+  placeholders: 'e.g. 12 or -3/2',
+})
+
+const BasesApp = makeQuizApp({
+  title: 'Number Bases', subtitle: 'Binary, decimal, hexadecimal', apiPath: 'bases-api',
+  diffLabels: { easy: 'Easy — Dec→Bin', medium: 'Medium — Bin→Dec', hard: 'Hard — Dec→Hex', extrahard: 'Extra Hard — Bin add / Hex→Bin' },
+  placeholders: (q, d) => d === 'medium' ? 'e.g. 42' : d === 'hard' ? 'e.g. FF' : 'e.g. 101010',
+})
+
+const CircleThApp = makeQuizApp({
+  title: 'Circle Theorems', subtitle: 'Angles, tangents, cyclic quads', apiPath: 'circle-api',
+  diffLabels: { easy: 'Easy — Semicircle', medium: 'Medium — Centre/Circum', hard: 'Hard — Cyclic quad', extrahard: 'Extra Hard — Tangent' },
+  placeholders: 'e.g. 45',
+})
+
 /* ── Sets App ───────────────────────────────────────── */
 function SetsApp({ onBack }) {
   const [difficulty, setDifficulty] = useState('easy')
@@ -6108,6 +6340,20 @@ const CUSTOM_PUZZLES = [
   { key: 'ratio', name: 'Ratio' },
   { key: 'percent', name: 'Percentages' },
   { key: 'sets', name: 'Sets' },
+  { key: 'trig', name: 'Trigonometry' },
+  { key: 'ineq', name: 'Inequalities' },
+  { key: 'coordgeom', name: 'Coord. Geometry' },
+  { key: 'prob', name: 'Probability' },
+  { key: 'stats', name: 'Statistics' },
+  { key: 'matrix', name: 'Matrices' },
+  { key: 'vectors', name: 'Vectors' },
+  { key: 'transform', name: 'Transformations' },
+  { key: 'mensur', name: 'Mensuration' },
+  { key: 'bearings', name: 'Bearings' },
+  { key: 'log', name: 'Logarithms' },
+  { key: 'diff', name: 'Differentiation' },
+  { key: 'bases', name: 'Number Bases' },
+  { key: 'circleth', name: 'Circle Theorems' },
 ]
 
 /**
@@ -6152,6 +6398,20 @@ function fetchQuestionForType(type, difficulty) {
     percent: `${API}/percent-api/question?difficulty=${difficulty}`,
     // Sets
     sets: `${API}/sets-api/question?difficulty=${difficulty}`,
+    trig: `${API}/trig-api/question?difficulty=${difficulty}`,
+    ineq: `${API}/ineq-api/question?difficulty=${difficulty}`,
+    coordgeom: `${API}/coordgeom-api/question?difficulty=${difficulty}`,
+    prob: `${API}/prob-api/question?difficulty=${difficulty}`,
+    stats: `${API}/stats-api/question?difficulty=${difficulty}`,
+    matrix: `${API}/matrix-api/question?difficulty=${difficulty}`,
+    vectors: `${API}/vectors-api/question?difficulty=${difficulty}`,
+    transform: `${API}/transform-api/question?difficulty=${difficulty}`,
+    mensur: `${API}/mensur-api/question?difficulty=${difficulty}`,
+    bearings: `${API}/bearings-api/question?difficulty=${difficulty}`,
+    log: `${API}/log-api/question?difficulty=${difficulty}`,
+    diff: `${API}/diff-api/question?difficulty=${difficulty}`,
+    bases: `${API}/bases-api/question?difficulty=${difficulty}`,
+    circleth: `${API}/circle-api/question?difficulty=${difficulty}`,
   }
   return fetch(urls[type]).then(r => r.json())
 }
@@ -6192,6 +6452,10 @@ function getPromptForType(type, q) {
     case 'ratio': return q.prompt || ''
     case 'percent': return q.prompt || ''
     case 'sets': return q.prompt || ''
+    case 'trig': case 'ineq': case 'coordgeom': case 'prob': case 'stats':
+    case 'matrix': case 'vectors': case 'transform': case 'mensur':
+    case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
+      return q.prompt || ''
     default: return ''
   }
 }
@@ -6595,6 +6859,19 @@ function CustomApp({ onBack }) {
         setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
         break
       }
+      // ─────── Generic API puzzles ──────────────────────────────────
+      case 'trig': case 'ineq': case 'coordgeom': case 'prob': case 'stats':
+      case 'matrix': case 'vectors': case 'transform': case 'mensur':
+      case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth': {
+        if (answer === '') return
+        const apiMap = { trig: 'trig-api', ineq: 'ineq-api', coordgeom: 'coordgeom-api', prob: 'prob-api', stats: 'stats-api', matrix: 'matrix-api', vectors: 'vectors-api', transform: 'transform-api', mensur: 'mensur-api', bearings: 'bearings-api', log: 'log-api', diff: 'diff-api', bases: 'bases-api', circleth: 'circle-api' }
+        const genPayload = { ...question, userAnswer: answer.trim() }
+        res = await fetch(`${API}/${apiMap[curType]}/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(genPayload) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = data.display; userDisplay = answer.trim()
+        setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
+        break
+      }
       // ─────── Multiple Choice Puzzles (GK, Vocab) ──────────────────────────────────
       case 'gk': case 'vocab': {
         if (!optionToUse) return
@@ -6726,6 +7003,10 @@ function CustomApp({ onBack }) {
         return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
       case 'sets':
         return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={question?.type === 'list' ? 'e.g. {1, 3, 5}' : 'e.g. 12'} onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
+      case 'trig': case 'ineq': case 'coordgeom': case 'prob': case 'stats':
+      case 'matrix': case 'vectors': case 'transform': case 'mensur':
+      case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
+        return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
       case 'gk': case 'vocab':
         if (!question.options) return null
         return <div className="options-grid">

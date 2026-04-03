@@ -1874,8 +1874,13 @@ function Home({ onSelect }) {
 
   return (
     <>
-      <h1>Tenali</h1>
-      <p className="subtitle">Choose a learning game to begin</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '4px' }}>
+        <img src="/tenali.png" alt="Tenali Raman" style={{ width: '80px', height: 'auto', flexShrink: 0 }} />
+        <div>
+          <h1 style={{ margin: 0 }}>Tenali</h1>
+          <p className="subtitle" style={{ margin: 0 }}>Choose a learning game to begin</p>
+        </div>
+      </div>
       <div className="search-bar-row">
         <input
           className="search-bar"

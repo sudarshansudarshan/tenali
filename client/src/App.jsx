@@ -1123,7 +1123,8 @@ function AdaptiveMixedApp({ studentName }) {
   }
 
   // ── Phase & Persisted State ──────────────────────────────────────────
-  const [phase, setPhase] = useState('setup') // 'setup' | 'playing' | 'finished'
+  // No setup phase — auto-starts immediately
+  const [phase, setPhase] = useState('playing') // 'playing' | 'finished'
   const [diffLevel, setDiffLevel] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey))
@@ -1306,9 +1307,10 @@ function AdaptiveMixedApp({ studentName }) {
   }
 
   /**
-   * beginPractice(): Start a new session
+   * startSession(): Start or restart a session
+   * Resets all quiz state and generates first question
    */
-  const beginPractice = () => {
+  const startSession = () => {
     setPhase('playing')
     setQuestionNum(0)
     setScore(0)
@@ -1325,6 +1327,22 @@ function AdaptiveMixedApp({ studentName }) {
     setQuestionNum(1)
     setTimeout(() => inputRef.current?.focus(), 50)
   }
+
+  // Auto-start on first mount: generate first question immediately
+  useEffect(() => {
+    if (phase === 'playing' && !question) {
+      const q = generateRandomQuestion(diffLevel)
+      setQuestion(q)
+      setAnswer('')
+      setFeedback('')
+      setIsCorrect(null)
+      setRevealed(false)
+      setStartTime(Date.now())
+      setQuestionNum(1)
+      setStatusMsg(`Level ${diffLevel} — Let's go!`)
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }
+  }, [])
 
   /**
    * nextQuestion(): Advance to next question or finish
@@ -1468,28 +1486,6 @@ function AdaptiveMixedApp({ studentName }) {
     return (total / results.length).toFixed(1)
   }
 
-  // ══════════ RENDER: SETUP ══════════
-  if (phase === 'setup') {
-    return (
-      <div className="app-shell">
-        <div className="card">
-          <h1>{studentName}'s Practice</h1>
-          <div className="welcome-box">
-            <p className="welcome-text">Mixed Math Practice ({TOTAL_QUESTIONS} questions)</p>
-            <p style={{ opacity: 0.7, fontSize: '0.9rem', margin: '0.5rem 0' }}>
-              Fractions, monomials, and arithmetic — all mixed up!<br />
-              Difficulty adapts as you go. Currently at Level {diffLevel}.
-            </p>
-            <div style={{ fontSize: '0.85rem', opacity: 0.6, margin: '0.5rem 0' }}>
-              Topics: Fraction +, Fraction ×, Monomial +, Monomial ×, Addition ±
-            </div>
-            <button onClick={beginPractice}>Start Practice</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   // ══════════ RENDER: FINISHED ══════════
   if (phase === 'finished') {
     return (
@@ -1531,7 +1527,7 @@ function AdaptiveMixedApp({ studentName }) {
                 </tbody>
               </table>
             </div>
-            <button onClick={() => setPhase('setup')} style={{ marginTop: '1rem' }}>Play Again</button>
+            <button onClick={startSession} style={{ marginTop: '1rem' }}>Play Again</button>
           </div>
         </div>
       </div>
@@ -1542,9 +1538,6 @@ function AdaptiveMixedApp({ studentName }) {
   return (
     <div className="app-shell">
       <div className="card">
-        <div className="header-row">
-          <button className="back-button" onClick={() => setPhase('setup')}>← Back</button>
-        </div>
         <h1>{studentName}'s Practice</h1>
         <div className="top-mini-row">
           <span className="score-pill">Score {score}</span>

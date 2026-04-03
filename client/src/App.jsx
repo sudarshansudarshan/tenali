@@ -1712,6 +1712,8 @@ function App() {
     lineq: LineEqApp,              // Line equation
     basicarith: BasicArithApp,     // Basic arithmetic (+, −, ×)
     fractionadd: FractionAddApp,   // Fraction addition
+    surds: SurdsApp,               // Surds (simplify, add, multiply, rationalise)
+    indices: IndicesApp,           // Indices (laws of exponents)
     custom: CustomApp,             // Custom lesson builder
   }
 
@@ -1763,6 +1765,8 @@ function Home({ onSelect }) {
     { key: 'lineq', name: 'Line Equation', subtitle: 'Find m and c from two points', color: 'green' },
     { key: 'basicarith', name: 'Arithmetic', subtitle: '+, −, × with positive & negative', color: 'purple' },
     { key: 'fractionadd', name: 'Fractions (Add)', subtitle: 'Add fractions and simplify', color: 'blue' },
+    { key: 'surds', name: 'Surds', subtitle: 'Simplify, add, multiply, rationalise', color: 'green' },
+    { key: 'indices', name: 'Indices', subtitle: 'Laws of exponents', color: 'purple' },
     { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'green' },
   ]
 
@@ -3072,6 +3076,389 @@ function VocabApp({ onBack }) {
  * @param {Object} props
  * @param {Function} props.onBack - Callback to return to home menu
  */
+/* ── Indices App ─────────────────────────────────────── */
+/**
+ * IndicesApp Component
+ * Practice laws of exponents (indices) — IGCSE syllabus.
+ * Easy: multiply/divide/power-of-power with variable bases
+ * Medium: zero and negative exponents (numeric evaluation)
+ * Hard: fractional exponents (numeric evaluation)
+ * ExtraHard: negative fractional exponents, fraction bases
+ *
+ * For 'simplify' questions: user enters the resulting exponent (integer)
+ * For 'evaluate' questions: user enters a number or fraction (e.g. "8", "1/4")
+ */
+function IndicesApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [score, setScore] = useState(0)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(`${API}/indices-api/question?difficulty=${difficulty}`)
+      const data = await r.json()
+      setQuestion(data)
+      setAnswer('')
+      setFeedback('')
+      setIsCorrect(null)
+      setRevealed(false)
+      timer.start()
+    } catch (e) { console.error('Failed to load indices question:', e) }
+    setLoading(false)
+  }
+
+  const startQuiz = () => {
+    const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
+    setTotalQ(t)
+    setScore(0)
+    setQuestionNumber(1)
+    setResults([])
+    setStarted(true)
+    setFinished(false)
+  }
+
+  useEffect(() => {
+    if (started && !finished && questionNumber > 0) loadQuestion()
+  }, [started, questionNumber])
+
+  const advance = () => {
+    if (questionNumber >= totalQ) setFinished(true)
+    else setQuestionNumber(n => n + 1)
+  }
+  advanceFnRef.current = advance
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  const handleSubmit = async () => {
+    if (!question || revealed || !answer.trim()) return
+    const timeTaken = timer.stop()
+
+    const payload = { ...question, answer: answer.trim() }
+    try {
+      const r = await fetch(`${API}/indices-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const data = await r.json()
+      setIsCorrect(data.correct)
+      setRevealed(true)
+      if (data.correct) setScore(s => s + 1)
+
+      const prompt = question.prompt
+      setFeedback(data.correct
+        ? `Correct! ${prompt} = ${data.display}`
+        : `Incorrect. ${prompt} = ${data.display}`)
+
+      setResults(prev => [...prev, {
+        prompt,
+        userAnswer: answer.trim(),
+        correctAnswer: data.display,
+        correct: data.correct,
+        time: timeTaken
+      }])
+    } catch (e) { console.error('Failed to check indices answer:', e) }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (revealed) advance()
+      else handleSubmit()
+    }
+  }
+
+  const diffLabels = { easy: 'Easy — Basic Laws', medium: 'Medium — Negative/Zero', hard: 'Hard — Fractional', extrahard: 'Extra Hard — Mixed' }
+  const placeholders = { easy: 'Enter the exponent, e.g. 7', medium: 'e.g. 1 or 1/8', hard: 'e.g. 8 or 9', extrahard: 'e.g. 1/4 or 9/4' }
+
+  return (
+    <QuizLayout title="Indices" subtitle="Laws of exponents" onBack={onBack} timer={started && !finished ? timer : null}>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Practice laws of indices!</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="indices-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+              {diffLabels[d]}
+            </label>
+          ))}
+        </div>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && (
+          <div style={{ textAlign: 'center' }}>
+            <div className="question-prompt" style={{ fontSize: '1.6rem', margin: '20px 0' }}>{question.prompt} = ?</div>
+            {question.type === 'simplify' && <p style={{ fontSize: '0.85rem', color: 'var(--clr-dim)', margin: '0 0 8px' }}>Enter the exponent only (e.g. type 7 for {question.base}{'\u2077'})</p>}
+            <input
+              className="answer-input"
+              type="text"
+              value={answer}
+              onChange={e => { if (!revealed) setAnswer(e.target.value) }}
+              disabled={revealed}
+              placeholder={placeholders[difficulty] || 'Type your answer'}
+              onKeyDown={handleKeyDown}
+              autoFocus
+            />
+          </div>
+        )}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed ? (
+            <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+          ) : (
+            <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>
+          )}
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+
+      {finished && (
+        <div className="welcome-box">
+          <p className="welcome-text">Quiz complete!</p>
+          <p className="final-score">Final score: {score}/{totalQ}</p>
+          <ResultsTable results={results} />
+          <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+        </div>
+      )}
+    </QuizLayout>
+  )
+}
+
+/* ── Surds App ─────────────────────────────────────── */
+/**
+ * SurdsApp Component
+ * Practice simplifying, adding, multiplying, and rationalising surds.
+ * Difficulty levels:
+ *   Easy      — Simplify √n (e.g. √72 = 6√2)
+ *   Medium    — Add/subtract like surds (e.g. 3√5 + 2√5 = 5√5)
+ *   Hard      — Multiply surds and simplify (e.g. √6 × √10 = 2√15)
+ *   ExtraHard — Rationalise denominators (e.g. 6/√3 = 2√3)
+ *
+ * User types answers using √ symbol (keyboard hint provided) or "sqrt".
+ * Auto-advance on correct answers; Enter key advances after wrong answers.
+ */
+function SurdsApp({ onBack }) {
+  const [difficulty, setDifficulty] = useState('easy')
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [score, setScore] = useState(0)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(`${API}/surds-api/question?difficulty=${difficulty}`)
+      const data = await r.json()
+      setQuestion(data)
+      setAnswer('')
+      setFeedback('')
+      setIsCorrect(null)
+      setRevealed(false)
+      timer.start()
+    } catch (e) { console.error('Failed to load surds question:', e) }
+    setLoading(false)
+  }
+
+  const startQuiz = () => {
+    const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
+    setTotalQ(t)
+    setScore(0)
+    setQuestionNumber(1)
+    setResults([])
+    setStarted(true)
+    setFinished(false)
+  }
+
+  useEffect(() => {
+    if (started && !finished && questionNumber > 0) loadQuestion()
+  }, [started, questionNumber])
+
+  const advance = () => {
+    if (questionNumber >= totalQ) setFinished(true)
+    else setQuestionNumber(n => n + 1)
+  }
+  advanceFnRef.current = advance
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  /** Normalize user input: replace "sqrt" with √, strip spaces */
+  const normalizeAnswer = (s) => s.replace(/sqrt/gi, '√').replace(/\s+/g, ' ').trim()
+
+  /** Build the prompt string shown for the question */
+  const getPrompt = (q) => {
+    if (!q) return ''
+    if (q.type === 'simplify') return `Simplify √${q.n}`
+    if (q.type === 'addsub') {
+      const aStr = q.a === 1 ? '√' + q.r : q.a + '√' + q.r
+      const bStr = q.b === 1 ? '√' + q.r : q.b + '√' + q.r
+      return `${aStr} ${q.op} ${bStr}`
+    }
+    if (q.type === 'multiply') {
+      const p1 = q.c1 === 1 ? '√' + q.r1 : q.c1 + '√' + q.r1
+      const p2 = q.c2 === 1 ? '√' + q.r2 : q.c2 + '√' + q.r2
+      return `${p1} × ${p2}`
+    }
+    if (q.type === 'rationalise') {
+      if (q.subtype === 'simple') {
+        const den = q.b === 1 ? '√' + q.r : q.b + '√' + q.r
+        return `${q.a} ÷ (${den})`
+      } else {
+        const sign = q.q > 0 ? '+' : ''
+        const qStr = Math.abs(q.q) === 1 ? (q.q > 0 ? '' : '-') : String(q.q)
+        return `${q.a} ÷ (${q.p}${sign}${qStr}√${q.r})`
+      }
+    }
+    return ''
+  }
+
+  const handleSubmit = async () => {
+    if (!question || revealed) return
+    const normalized = normalizeAnswer(answer)
+    if (!normalized) return
+    const timeTaken = timer.stop()
+
+    const payload = { ...question, answer: normalized }
+
+    try {
+      const r = await fetch(`${API}/surds-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const data = await r.json()
+      setIsCorrect(data.correct)
+      setRevealed(true)
+      if (data.correct) setScore(s => s + 1)
+
+      const prompt = getPrompt(question)
+      setFeedback(data.correct
+        ? `Correct! ${prompt} = ${data.display}`
+        : `Incorrect. ${prompt} = ${data.display}`)
+
+      setResults(prev => [...prev, {
+        prompt,
+        userAnswer: normalized,
+        correctAnswer: data.display,
+        correct: data.correct,
+        time: timeTaken
+      }])
+    } catch (e) { console.error('Failed to check surds answer:', e) }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (revealed) advance()
+      else handleSubmit()
+    }
+  }
+
+  const diffLabels = { easy: 'Easy — Simplify', medium: 'Medium — Add/Sub', hard: 'Hard — Multiply', extrahard: 'Extra Hard — Rationalise' }
+
+  return (
+    <QuizLayout title="Surds" subtitle="Simplify, add, multiply, rationalise" onBack={onBack} timer={started && !finished ? timer : null}>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Practice working with surds!</p>
+        <p style={{ fontSize: '0.85rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Tip: type √ using "sqrt" or copy-paste √</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {['easy', 'medium', 'hard', 'extrahard'].map(d => (
+            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="surds-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+              {diffLabels[d]}
+            </label>
+          ))}
+        </div>
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+
+      {started && !finished && <>
+        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        {question && (
+          <div style={{ textAlign: 'center' }}>
+            <div className="question-prompt" style={{ fontSize: '1.6rem', margin: '20px 0' }}>{getPrompt(question)}</div>
+            <input
+              className="answer-input"
+              type="text"
+              value={answer}
+              onChange={e => { if (!revealed) setAnswer(e.target.value) }}
+              disabled={revealed}
+              placeholder="e.g. 6√2"
+              onKeyDown={handleKeyDown}
+              autoFocus
+            />
+          </div>
+        )}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed ? (
+            <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+          ) : (
+            <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>
+          )}
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+
+      {finished && (
+        <div className="welcome-box">
+          <p className="welcome-text">Quiz complete!</p>
+          <p className="final-score">Final score: {score}/{totalQ}</p>
+          <ResultsTable results={results} />
+          <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+        </div>
+      )}
+    </QuizLayout>
+  )
+}
+
 function FractionAddApp({ onBack }) {
   // ── State variables ──────────────────────────────────────────────────
   // Difficulty: 'easy' | 'medium' | 'hard'
@@ -5248,6 +5635,8 @@ const CUSTOM_PUZZLES = [
   { key: 'gk', name: 'General Knowledge' },
   { key: 'vocab', name: 'Vocab Builder' },
   { key: 'fractionadd', name: 'Fractions (Add)' },
+  { key: 'surds', name: 'Surds' },
+  { key: 'indices', name: 'Indices' },
 ]
 
 /**
@@ -5280,6 +5669,10 @@ function fetchQuestionForType(type, difficulty) {
     vocab: `${API}/vocab-api/question?difficulty=${difficulty}`,
     // Fraction addition puzzle
     fractionadd: `${API}/fractionadd-api/question?difficulty=${difficulty}`,
+    // Surds puzzle
+    surds: `${API}/surds-api/question?difficulty=${difficulty}`,
+    // Indices puzzle
+    indices: `${API}/indices-api/question?difficulty=${difficulty}`,
   }
   return fetch(urls[type]).then(r => r.json())
 }
@@ -5307,6 +5700,15 @@ function getPromptForType(type, q) {
     case 'gk': return q.question
     case 'vocab': return `What does "${q.question}" mean?`
     case 'fractionadd': return q.mixed ? `${q.w1} ${q.n1}/${q.d1} + ${q.w2} ${q.n2}/${q.d2} = ?` : `${q.n1}/${q.d1} + ${q.n2}/${q.d2} = ?`
+    case 'surds': {
+      if (q.type === 'simplify') return `Simplify √${q.n}`
+      if (q.type === 'addsub') { const aS = q.a === 1 ? '√'+q.r : q.a+'√'+q.r; const bS = q.b === 1 ? '√'+q.r : q.b+'√'+q.r; return `${aS} ${q.op} ${bS} = ?` }
+      if (q.type === 'multiply') { const p1 = q.c1 === 1 ? '√'+q.r1 : q.c1+'√'+q.r1; const p2 = q.c2 === 1 ? '√'+q.r2 : q.c2+'√'+q.r2; return `${p1} × ${p2} = ?` }
+      if (q.type === 'rationalise' && q.subtype === 'simple') { const d = q.b===1 ? '√'+q.r : q.b+'√'+q.r; return `Rationalise: ${q.a} / (${d})` }
+      if (q.type === 'rationalise' && q.subtype === 'conjugate') { const sg = q.q>0?'+':''; const qS = Math.abs(q.q)===1?(q.q>0?'':'-'):String(q.q); return `Rationalise: ${q.a} / (${q.p}${sg}${qS}√${q.r})` }
+      return ''
+    }
+    case 'indices': return q.prompt ? `${q.prompt} = ?` : ''
     default: return ''
   }
 }
@@ -5649,6 +6051,27 @@ function CustomApp({ onBack }) {
         setFeedback(data.correct ? `Correct! = ${data.display}` : `Incorrect. = ${data.display}`)
         break
       }
+      // ─────── Surds Puzzle ──────────────────────────────────
+      case 'surds': {
+        if (answer === '') return
+        const surdAnswer = answer.replace(/sqrt/gi, '√').trim()
+        const surdPayload = { ...question, answer: surdAnswer }
+        res = await fetch(`${API}/surds-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(surdPayload) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = data.display; userDisplay = surdAnswer
+        setFeedback(data.correct ? `Correct! = ${data.display}` : `Incorrect. = ${data.display}`)
+        break
+      }
+      // ─────── Indices Puzzle ──────────────────────────────────
+      case 'indices': {
+        if (answer === '') return
+        const idxPayload = { ...question, answer: answer.trim() }
+        res = await fetch(`${API}/indices-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(idxPayload) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = data.display; userDisplay = answer.trim()
+        setFeedback(data.correct ? `Correct! = ${data.display}` : `Incorrect. = ${data.display}`)
+        break
+      }
       // ─────── Multiple Choice Puzzles (GK, Vocab) ──────────────────────────────────
       case 'gk': case 'vocab': {
         if (!optionToUse) return
@@ -5768,6 +6191,10 @@ function CustomApp({ onBack }) {
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d*\.?\d*$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
           <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} />
         </>
+      case 'surds':
+        return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="e.g. 6√2 (type sqrt for √)" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
+      case 'indices':
+        return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={question?.type === 'simplify' ? 'Enter the exponent, e.g. 7' : 'e.g. 8 or 1/4'} onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
       case 'gk': case 'vocab':
         if (!question.options) return null
         return <div className="options-grid">

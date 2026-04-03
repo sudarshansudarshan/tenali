@@ -1775,6 +1775,545 @@ app.post('/fractionadd-api/check', (req, res) => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SURDS API — Simplify, add/subtract, multiply, rationalise denominators
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Utility: check if n is a perfect square
+ */
+function isPerfectSquare(n) {
+  if (n < 0) return false;
+  const s = Math.round(Math.sqrt(n));
+  return s * s === n;
+}
+
+/**
+ * Utility: largest perfect-square factor of n (n>0)
+ * Returns { outer, inner } such that √n = outer × √inner, inner is square-free
+ */
+function simpleSurd(n) {
+  let outer = 1;
+  let inner = n;
+  for (let f = 2; f * f <= inner; f++) {
+    while (inner % (f * f) === 0) {
+      outer *= f;
+      inner /= (f * f);
+    }
+  }
+  return { outer, inner };
+}
+
+/**
+ * Utility: list of small primes for generating radicands
+ */
+const SQUARE_FREE = [2,3,5,6,7,10,11,13,14,15,17,19,21,22,23,26,29,30];
+
+function randInt(lo, hi) {
+  return lo + Math.floor(Math.random() * (hi - lo + 1));
+}
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * GET /surds-api/question?difficulty=easy|medium|hard|extrahard
+ *
+ * Easy:      Simplify √n  (e.g. √72 = 6√2)
+ * Medium:    Add/subtract like surds (e.g. 3√5 + 2√5 = 5√5)
+ * Hard:      Multiply surds and simplify (e.g. √6 × √10 = 2√15)
+ * ExtraHard: Rationalise denominators (e.g. 6/√3, or 5/(2+√3))
+ */
+app.get('/surds-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Simplify √n where n = a² × b, b is square-free
+    const b = pick(SQUARE_FREE);
+    const a = randInt(2, 9);
+    const n = a * a * b;
+    res.json({ id, difficulty, type: 'simplify', n });
+  }
+  else if (difficulty === 'medium') {
+    // a√r ± b√r = ?√r
+    const r = pick(SQUARE_FREE);
+    const a = randInt(1, 9);
+    const b = randInt(1, 9);
+    const op = pick(['+', '-']);
+    // Ensure result is positive for subtraction
+    const realA = op === '-' ? Math.max(a, b) + 1 : a;
+    const realB = op === '-' ? Math.min(a, b) : b;
+    res.json({ id, difficulty, type: 'addsub', a: realA, b: realB, r, op });
+  }
+  else if (difficulty === 'hard') {
+    // √(a) × √(b) = simplify √(a*b)
+    // Make sure a*b has a nice simplification
+    const r1 = pick(SQUARE_FREE);
+    const c1 = randInt(1, 5);
+    const r2 = pick(SQUARE_FREE);
+    const c2 = randInt(1, 5);
+    // Question: (c1√r1) × (c2√r2) — simplify
+    res.json({ id, difficulty, type: 'multiply', c1, r1, c2, r2 });
+  }
+  else {
+    // Rationalise denominator
+    const subtype = pick(['simple', 'conjugate']);
+    if (subtype === 'simple') {
+      // a / (b√r)  →  rationalise
+      const r = pick(SQUARE_FREE);
+      const b = randInt(1, 4);
+      const a = randInt(1, 12);
+      res.json({ id, difficulty, type: 'rationalise', subtype: 'simple', a, b, r });
+    } else {
+      // a / (p + q√r) → multiply by conjugate
+      const r = pick(SQUARE_FREE);
+      const p = randInt(1, 5);
+      const q = pick([1, -1, 2, -2, 1, 1]);  // keep q small
+      const a = randInt(1, 10);
+      res.json({ id, difficulty, type: 'rationalise', subtype: 'conjugate', a, p, q, r });
+    }
+  }
+});
+
+/**
+ * POST /surds-api/check
+ * Validates user's surd answer
+ *
+ * Answers accepted as strings, e.g. "6√2", "5√5", "2√15", "2√3", "10-5√3", "7"
+ * Server computes the correct answer and compares.
+ */
+app.post('/surds-api/check', express.json(), (req, res) => {
+  const body = req.body;
+  const { type } = body;
+
+  /**
+   * Parse a surd string like "6√2", "√3", "5", "-3√7", "10-5√3", "10+5√3"
+   * Returns { rational: number, coeff: number, radicand: number }
+   * where the value = rational + coeff × √radicand
+   */
+  function parseSurd(s) {
+    if (!s || typeof s !== 'string') return null;
+    s = s.replace(/\s+/g, '').replace(/−/g, '-');
+
+    // Pure integer
+    if (/^-?\d+$/.test(s)) {
+      return { rational: parseInt(s), coeff: 0, radicand: 1 };
+    }
+
+    // Single surd: c√r or √r
+    const singleMatch = s.match(/^(-?\d*)[√](\d+)$/);
+    if (singleMatch) {
+      const c = singleMatch[1] === '' || singleMatch[1] === '+' ? 1 : singleMatch[1] === '-' ? -1 : parseInt(singleMatch[1]);
+      return { rational: 0, coeff: c, radicand: parseInt(singleMatch[2]) };
+    }
+
+    // Rational ± coeff√radicand: e.g. "10-5√3" or "10+5√3"
+    const mixedMatch = s.match(/^(-?\d+)([+-]\d*)[√](\d+)$/);
+    if (mixedMatch) {
+      const rat = parseInt(mixedMatch[1]);
+      let cStr = mixedMatch[2];
+      const c = cStr === '+' ? 1 : cStr === '-' ? -1 : parseInt(cStr);
+      return { rational: rat, coeff: c, radicand: parseInt(mixedMatch[3]) };
+    }
+
+    return null;
+  }
+
+  /**
+   * Normalize a surd: simplify √radicand part so radicand is square-free
+   * E.g. 2√12 → 4√3
+   */
+  function normalizeSurd(rational, coeff, radicand) {
+    if (coeff === 0 || radicand <= 1) return { rational, coeff, radicand: radicand <= 0 ? 1 : radicand };
+    const s = simpleSurd(radicand);
+    return { rational, coeff: coeff * s.outer, radicand: s.inner };
+  }
+
+  let correctRational = 0, correctCoeff = 0, correctRadicand = 1;
+
+  if (type === 'simplify') {
+    // √n → outer√inner
+    const s = simpleSurd(body.n);
+    correctCoeff = s.outer;
+    correctRadicand = s.inner;
+    if (correctRadicand === 1) { correctRational = correctCoeff; correctCoeff = 0; }
+  }
+  else if (type === 'addsub') {
+    const { a, b, r, op } = body;
+    correctCoeff = op === '+' ? a + b : a - b;
+    correctRadicand = r;
+    if (correctCoeff === 0) { correctRational = 0; correctCoeff = 0; correctRadicand = 1; }
+  }
+  else if (type === 'multiply') {
+    // (c1√r1) × (c2√r2) = c1*c2 * √(r1*r2), then simplify
+    const { c1, r1, c2, r2 } = body;
+    const prodCoeff = c1 * c2;
+    const prodRad = r1 * r2;
+    const s = simpleSurd(prodRad);
+    correctCoeff = prodCoeff * s.outer;
+    correctRadicand = s.inner;
+    if (correctRadicand === 1) { correctRational = correctCoeff; correctCoeff = 0; }
+  }
+  else if (type === 'rationalise') {
+    const { subtype, a, r } = body;
+    if (subtype === 'simple') {
+      // a / (b√r) = a/(b√r) × (√r/√r) = a√r / (b*r)
+      const b = body.b;
+      const numCoeff = a;      // a√r
+      const den = b * r;       // b*r
+      // Simplify: gcd of numCoeff and den
+      const g = gcd(Math.abs(numCoeff), Math.abs(den));
+      correctCoeff = numCoeff / g;
+      correctRadicand = r;
+      const finalDen = den / g;
+      if (finalDen !== 1) {
+        // Express as fraction: (a/g)√r / (den/g)
+        // We need to represent this carefully
+        // Actually: a/(b√r) = (a√r)/(b*r) — simplify fraction a/(b*r) then attach √r
+        // Result coeff is the simplified numerator, but if den != 1 we have a fraction
+        // For simplicity, we'll compute: numerator = a, denominator = b*r, simplify, coeff = num/den * √r
+        // But user types e.g. "2√3/3" — let's handle this differently
+        // We'll express answer as fraction string and parse accordingly
+        correctRational = 0;
+        correctCoeff = numCoeff / g;
+        correctRadicand = r;
+        // Store denominator for comparison
+        body._correctDen = finalDen;
+      } else {
+        correctRational = 0;
+        body._correctDen = 1;
+      }
+    } else {
+      // a / (p + q√r) — multiply by conjugate (p - q√r)/(p - q√r)
+      const { p, q } = body;
+      const den = p * p - q * q * r;  // (p+q√r)(p-q√r) = p² - q²r
+      const numRational = a * p;       // a*p from the numerator
+      const numCoeff = -a * q;         // -a*q√r from the numerator
+      // Result: (numRational + numCoeff√r) / den
+      // Simplify by dividing all parts by gcd
+      const g = gcd(gcd(Math.abs(numRational), Math.abs(numCoeff)), Math.abs(den));
+      const sign = den < 0 ? -1 : 1;  // ensure positive denominator
+      correctRational = (numRational / g) * sign;
+      correctCoeff = (numCoeff / g) * sign;
+      correctRadicand = r;
+      body._correctDen = Math.abs(den) / g;
+      if (correctCoeff === 0) correctRadicand = 1;
+    }
+  }
+
+  // Parse user answer
+  const userParsed = parseSurd(body.answer);
+
+  // Build display string for correct answer
+  let display = '';
+  const cDen = body._correctDen || 1;
+
+  if (cDen === 1) {
+    if (correctCoeff === 0) {
+      display = `${correctRational}`;
+    } else if (correctRational === 0) {
+      if (correctCoeff === 1) display = `√${correctRadicand}`;
+      else if (correctCoeff === -1) display = `-√${correctRadicand}`;
+      else display = `${correctCoeff}√${correctRadicand}`;
+    } else {
+      const sign = correctCoeff > 0 ? '+' : '';
+      const cPart = Math.abs(correctCoeff) === 1 ? (correctCoeff > 0 ? '' : '-') : `${correctCoeff}`;
+      display = `${correctRational}${sign}${cPart}√${correctRadicand}`;
+    }
+  } else {
+    // Fractional answer
+    if (correctCoeff === 0) {
+      display = `${correctRational}/${cDen}`;
+    } else if (correctRational === 0) {
+      const cPart = Math.abs(correctCoeff) === 1 ? (correctCoeff > 0 ? '' : '-') : `${correctCoeff}`;
+      display = `${cPart}√${correctRadicand}/${cDen}`;
+    } else {
+      const sign = correctCoeff > 0 ? '+' : '';
+      const cPart = Math.abs(correctCoeff) === 1 ? (correctCoeff > 0 ? '' : '-') : `${correctCoeff}`;
+      display = `(${correctRational}${sign}${cPart}√${correctRadicand})/${cDen}`;
+    }
+  }
+
+  // Check correctness
+  let correct = false;
+  if (userParsed && cDen === 1) {
+    // Normalize user's surd
+    const userNorm = normalizeSurd(userParsed.rational, userParsed.coeff, userParsed.radicand);
+    correct = userNorm.rational === correctRational
+           && userNorm.coeff === correctCoeff
+           && (correctCoeff === 0 || userNorm.radicand === correctRadicand);
+  } else if (userParsed && cDen !== 1) {
+    // User might type e.g. "2√3/3" — parse fraction form
+    // Try parsing as "X/Y" where X is a surd expression
+    const fracMatch = (body.answer || '').replace(/\s+/g, '').match(/^\(?(.+?)\)?\/?(\d+)$/);
+    if (fracMatch) {
+      const numParsed = parseSurd(fracMatch[1]);
+      const userDen = parseInt(fracMatch[2]);
+      if (numParsed) {
+        const numNorm = normalizeSurd(numParsed.rational, numParsed.coeff, numParsed.radicand);
+        // Compare: user's (numNorm)/userDen vs correct/cDen
+        // Cross multiply to avoid floating point
+        correct = numNorm.rational * cDen === correctRational * userDen
+               && numNorm.coeff * cDen === correctCoeff * userDen
+               && (correctCoeff === 0 || numNorm.radicand === correctRadicand);
+      }
+    }
+  }
+
+  res.json({
+    correct,
+    display,
+    message: correct ? 'Correct!' : 'Incorrect'
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INDICES API — Laws of exponents (IGCSE syllabus)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Helper: pick random element
+ */
+function idxPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function idxRand(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
+
+/**
+ * Helper: format exponent for display — uses Unicode superscripts
+ */
+function sup(n) {
+  const map = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+  const s = String(Math.abs(n));
+  const digits = s.split('').map(d => map[Number(d)]).join('');
+  if (n < 0) return '⁻' + digits;
+  return digits;
+}
+
+/**
+ * Helper: format a fractional exponent like 2/3, 1/2, -2/3
+ */
+function fmtFracExp(num, den) {
+  if (den === 1) return String(num);
+  return `${num}/${den}`;
+}
+
+/**
+ * GET /indices-api/question?difficulty=easy|medium|hard|extrahard
+ *
+ * Easy:      Basic index laws — multiply (add exponents), divide (subtract), power of power
+ * Medium:    Zero and negative exponents — evaluate numeric expressions
+ * Hard:      Fractional exponents — evaluate e.g. 8^(1/3), 27^(2/3)
+ * ExtraHard: Mixed — negative fractional exponents, combined expressions
+ */
+app.get('/indices-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+  const bases = ['x', 'y', 'a', 'b', 'm', 'n', 'p'];
+
+  if (difficulty === 'easy') {
+    const subtype = idxPick(['multiply', 'divide', 'power']);
+    const base = idxPick(bases);
+    if (subtype === 'multiply') {
+      // a^m × a^n
+      const m = idxRand(2, 8);
+      const n = idxRand(2, 8);
+      const prompt = `${base}${sup(m)} × ${base}${sup(n)}`;
+      const answerExp = m + n;
+      res.json({ id, difficulty, type: 'simplify', subtype, base, m, n, prompt, answerExp });
+    } else if (subtype === 'divide') {
+      // a^m ÷ a^n (m > n to keep positive)
+      const m = idxRand(5, 12);
+      const n = idxRand(1, m - 1);
+      const prompt = `${base}${sup(m)} ÷ ${base}${sup(n)}`;
+      const answerExp = m - n;
+      res.json({ id, difficulty, type: 'simplify', subtype, base, m, n, prompt, answerExp });
+    } else {
+      // (a^m)^n
+      const m = idxRand(2, 5);
+      const n = idxRand(2, 5);
+      const prompt = `(${base}${sup(m)})${sup(n)}`;
+      const answerExp = m * n;
+      res.json({ id, difficulty, type: 'simplify', subtype, base, m, n, prompt, answerExp });
+    }
+  }
+  else if (difficulty === 'medium') {
+    const subtype = idxPick(['zero', 'negative_eval', 'negative_simplify']);
+    if (subtype === 'zero') {
+      // a^0 = 1
+      const numBase = idxRand(2, 20);
+      const prompt = `${numBase}⁰`;
+      res.json({ id, difficulty, type: 'evaluate', subtype, prompt, answerNum: 1, answerDen: 1 });
+    } else if (subtype === 'negative_eval') {
+      // a^(-n) = 1/a^n — evaluate numerically
+      const numBase = idxPick([2, 3, 4, 5, 10]);
+      const n = idxPick([1, 2, 3]);
+      // Keep answer manageable
+      if (numBase === 10 && n > 3) n = 2;
+      const prompt = `${numBase}${sup(-n)}`;
+      const answerNum = 1;
+      const answerDen = Math.pow(numBase, n);
+      res.json({ id, difficulty, type: 'evaluate', subtype, numBase, n, prompt, answerNum, answerDen });
+    } else {
+      // Simplify: x^(-a) × x^b
+      const base = idxPick(bases);
+      const a = idxRand(1, 5);
+      const b = idxRand(a + 1, a + 6); // ensure positive result most of the time
+      const prompt = `${base}${sup(-a)} × ${base}${sup(b)}`;
+      const answerExp = b - a;
+      res.json({ id, difficulty, type: 'simplify', subtype, base, m: -a, n: b, prompt, answerExp });
+    }
+  }
+  else if (difficulty === 'hard') {
+    // Fractional exponents — evaluate numerically
+    // Use bases that have clean roots
+    const combos = [
+      { base: 4, expNum: 1, expDen: 2 },    // 4^(1/2) = 2
+      { base: 9, expNum: 1, expDen: 2 },    // 9^(1/2) = 3
+      { base: 16, expNum: 1, expDen: 2 },   // 16^(1/2) = 4
+      { base: 25, expNum: 1, expDen: 2 },   // 25^(1/2) = 5
+      { base: 36, expNum: 1, expDen: 2 },   // 36^(1/2) = 6
+      { base: 49, expNum: 1, expDen: 2 },   // 49^(1/2) = 7
+      { base: 64, expNum: 1, expDen: 2 },   // 64^(1/2) = 8
+      { base: 100, expNum: 1, expDen: 2 },  // 100^(1/2) = 10
+      { base: 8, expNum: 1, expDen: 3 },    // 8^(1/3) = 2
+      { base: 27, expNum: 1, expDen: 3 },   // 27^(1/3) = 3
+      { base: 64, expNum: 1, expDen: 3 },   // 64^(1/3) = 4
+      { base: 125, expNum: 1, expDen: 3 },  // 125^(1/3) = 5
+      { base: 16, expNum: 1, expDen: 4 },   // 16^(1/4) = 2
+      { base: 81, expNum: 1, expDen: 4 },   // 81^(1/4) = 3
+      { base: 32, expNum: 1, expDen: 5 },   // 32^(1/5) = 2
+      // m/n fractional exponents
+      { base: 4, expNum: 3, expDen: 2 },    // 4^(3/2) = 8
+      { base: 9, expNum: 3, expDen: 2 },    // 9^(3/2) = 27
+      { base: 8, expNum: 2, expDen: 3 },    // 8^(2/3) = 4
+      { base: 27, expNum: 2, expDen: 3 },   // 27^(2/3) = 9
+      { base: 27, expNum: 4, expDen: 3 },   // 27^(4/3) = 81
+      { base: 16, expNum: 3, expDen: 4 },   // 16^(3/4) = 8
+      { base: 16, expNum: 3, expDen: 2 },   // 16^(3/2) = 64
+      { base: 25, expNum: 3, expDen: 2 },   // 25^(3/2) = 125
+      { base: 32, expNum: 2, expDen: 5 },   // 32^(2/5) = 4
+      { base: 32, expNum: 3, expDen: 5 },   // 32^(3/5) = 8
+      { base: 64, expNum: 2, expDen: 3 },   // 64^(2/3) = 16
+      { base: 100, expNum: 3, expDen: 2 },  // 100^(3/2) = 1000
+      { base: 81, expNum: 3, expDen: 4 },   // 81^(3/4) = 27
+    ];
+    const c = idxPick(combos);
+    const root = Math.round(Math.pow(c.base, 1 / c.expDen));
+    const answer = Math.pow(root, c.expNum);
+    const prompt = `${c.base}^(${fmtFracExp(c.expNum, c.expDen)})`;
+    res.json({ id, difficulty, type: 'evaluate', subtype: 'fractional', numBase: c.base, expNum: c.expNum, expDen: c.expDen, prompt, answerNum: answer, answerDen: 1 });
+  }
+  else {
+    // ExtraHard: negative fractional exponents and fraction bases
+    const subtype = idxPick(['neg_frac', 'frac_base']);
+    if (subtype === 'neg_frac') {
+      // a^(-m/n) = 1/a^(m/n)
+      const combos = [
+        { base: 4, expNum: 1, expDen: 2 },   // 4^(-1/2) = 1/2
+        { base: 9, expNum: 1, expDen: 2 },   // 9^(-1/2) = 1/3
+        { base: 8, expNum: 1, expDen: 3 },   // 8^(-1/3) = 1/2
+        { base: 27, expNum: 1, expDen: 3 },  // 27^(-1/3) = 1/3
+        { base: 27, expNum: 2, expDen: 3 },  // 27^(-2/3) = 1/9
+        { base: 8, expNum: 2, expDen: 3 },   // 8^(-2/3) = 1/4
+        { base: 16, expNum: 3, expDen: 4 },  // 16^(-3/4) = 1/8
+        { base: 25, expNum: 3, expDen: 2 },  // 25^(-3/2) = 1/125
+        { base: 32, expNum: 2, expDen: 5 },  // 32^(-2/5) = 1/4
+        { base: 64, expNum: 2, expDen: 3 },  // 64^(-2/3) = 1/16
+        { base: 100, expNum: 1, expDen: 2 }, // 100^(-1/2) = 1/10
+        { base: 81, expNum: 3, expDen: 4 },  // 81^(-3/4) = 1/27
+      ];
+      const c = idxPick(combos);
+      const root = Math.round(Math.pow(c.base, 1 / c.expDen));
+      const val = Math.pow(root, c.expNum);
+      const prompt = `${c.base}^(${fmtFracExp(-c.expNum, c.expDen)})`;
+      res.json({ id, difficulty, type: 'evaluate', subtype, numBase: c.base, expNum: -c.expNum, expDen: c.expDen, prompt, answerNum: 1, answerDen: val });
+    } else {
+      // (a/b)^(-n) = (b/a)^n   or   (a/b)^(m/n)
+      const fracBases = [
+        { a: 1, b: 2, exp: -2, ansNum: 4, ansDen: 1 },      // (1/2)^(-2) = 4
+        { a: 1, b: 3, exp: -2, ansNum: 9, ansDen: 1 },      // (1/3)^(-2) = 9
+        { a: 2, b: 3, exp: -1, ansNum: 3, ansDen: 2 },      // (2/3)^(-1) = 3/2
+        { a: 2, b: 5, exp: -2, ansNum: 25, ansDen: 4 },     // (2/5)^(-2) = 25/4
+        { a: 3, b: 4, exp: -2, ansNum: 16, ansDen: 9 },     // (3/4)^(-2) = 16/9
+        { a: 1, b: 5, exp: -3, ansNum: 125, ansDen: 1 },    // (1/5)^(-3) = 125
+        { a: 8, b: 27, exp: -100, ansNum: -1, ansDen: -1 },  // placeholder — replaced below
+        { a: 4, b: 9, exp: -100, ansNum: -1, ansDen: -1 },   // placeholder — replaced below
+      ];
+      // Replace placeholders with fractional-exponent fraction bases
+      fracBases[6] = { a: 8, b: 27, expNum: -2, expDen: 3, ansNum: 9, ansDen: 4 };  // (8/27)^(-2/3) = 9/4
+      fracBases[7] = { a: 4, b: 9, expNum: -1, expDen: 2, ansNum: 3, ansDen: 2 };   // (4/9)^(-1/2) = 3/2
+
+      const c = idxPick(fracBases);
+      let prompt, ansNum, ansDen;
+      if (c.expNum !== undefined) {
+        // Fractional exponent on fraction base
+        prompt = `(${c.a}/${c.b})^(${fmtFracExp(c.expNum, c.expDen)})`;
+        ansNum = c.ansNum; ansDen = c.ansDen;
+      } else {
+        prompt = `(${c.a}/${c.b})${sup(c.exp)}`;
+        ansNum = c.ansNum; ansDen = c.ansDen;
+      }
+      res.json({ id, difficulty, type: 'evaluate', subtype, prompt, answerNum: ansNum, answerDen: ansDen });
+    }
+  }
+});
+
+/**
+ * POST /indices-api/check
+ * Validates user's answer for indices questions.
+ *
+ * Two modes:
+ * - 'simplify': user answers with an exponent (e.g. "7" for x^7, or "-3" for x^(-3))
+ * - 'evaluate': user answers with a number or fraction (e.g. "8", "1/4", "9/4")
+ */
+app.post('/indices-api/check', express.json(), (req, res) => {
+  const { type, answerExp, answerNum, answerDen } = req.body;
+  const userAnswer = (req.body.answer || '').replace(/\s+/g, '').replace(/−/g, '-');
+
+  let correct = false;
+  let display = '';
+
+  if (type === 'simplify') {
+    // User should provide the exponent as an integer
+    const userExp = parseInt(userAnswer);
+    correct = !isNaN(userExp) && userExp === answerExp;
+    display = `${req.body.base}${sup(answerExp)}`;
+  }
+  else if (type === 'evaluate') {
+    // Parse user answer as fraction or integer
+    let uNum, uDen;
+    const fracMatch = userAnswer.match(/^(-?\d+)\/(-?\d+)$/);
+    if (fracMatch) {
+      uNum = parseInt(fracMatch[1]);
+      uDen = parseInt(fracMatch[2]);
+    } else {
+      const intMatch = userAnswer.match(/^(-?\d+)$/);
+      if (intMatch) { uNum = parseInt(intMatch[1]); uDen = 1; }
+    }
+
+    if (uNum !== undefined && uDen !== undefined && uDen !== 0) {
+      // Simplify both fractions and compare
+      const userSimp = simplifyFraction(uNum, uDen);
+      const correctSimp = simplifyFraction(answerNum, answerDen);
+      correct = userSimp.num === correctSimp.num && userSimp.den === correctSimp.den;
+    }
+
+    // Build display
+    if (answerDen === 1) {
+      display = `${answerNum}`;
+    } else {
+      const s = simplifyFraction(answerNum, answerDen);
+      display = s.den === 1 ? `${s.num}` : `${s.num}/${s.den}`;
+    }
+  }
+
+  res.json({
+    correct,
+    display,
+    message: correct ? 'Correct!' : 'Incorrect'
+  });
+});
+
 /**
  * CATCH-ALL ROUTE
  * ═══════════════════════════════════════════════════════════════════════════

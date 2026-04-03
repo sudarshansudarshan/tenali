@@ -69,6 +69,10 @@ export default defineConfig({
       '/basicarith-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       // Fraction addition quiz API
       '/fractionadd-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      // Surds quiz API
+      '/surds-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      // Indices quiz API
+      '/indices-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
     },
   },
 })

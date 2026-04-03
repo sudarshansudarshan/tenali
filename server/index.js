@@ -2681,6 +2681,178 @@ app.post('/percent-api/check', express.json(), (req, res) => {
   res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SETS API — Union, intersection, complement, Venn diagrams
+// ═══════════════════════════════════════════════════════════════════════════
+
+function setPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function setRand(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
+
+/** Generate a random subset of size k from universe */
+function randomSubset(universe, k) {
+  const copy = [...universe];
+  const result = [];
+  for (let i = 0; i < Math.min(k, copy.length); i++) {
+    const idx = Math.floor(Math.random() * copy.length);
+    result.push(copy.splice(idx, 1)[0]);
+  }
+  return result.sort((a, b) => a - b);
+}
+
+/** Set operations */
+function setUnion(a, b) { return [...new Set([...a, ...b])].sort((x, y) => x - y); }
+function setIntersect(a, b) { const s = new Set(b); return a.filter(x => s.has(x)).sort((x, y) => x - y); }
+function setDiff(a, b) { const s = new Set(b); return a.filter(x => !s.has(x)).sort((x, y) => x - y); }
+
+/**
+ * GET /sets-api/question?difficulty=easy|medium|hard|extrahard
+ *
+ * Easy:      List elements — union, intersection, complement, difference
+ * Medium:    Cardinality — n(A∪B) = n(A) + n(B) − n(A∩B)
+ * Hard:      2-set Venn — given some region counts, find a missing region
+ * ExtraHard: 3-set Venn — given totals, find specific region
+ */
+app.get('/sets-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Generate universe and two sets, ask for a set operation result
+    const universe = [];
+    for (let i = 1; i <= setRand(10, 15); i++) universe.push(i);
+    const A = randomSubset(universe, setRand(3, 6));
+    const B = randomSubset(universe, setRand(3, 6));
+
+    const ops = [
+      { op: 'A ∪ B', answer: setUnion(A, B) },
+      { op: 'A ∩ B', answer: setIntersect(A, B) },
+      { op: 'A − B', answer: setDiff(A, B) },
+      { op: 'B − A', answer: setDiff(B, A) },
+      { op: "A'", answer: setDiff(universe, A) },
+    ];
+    const chosen = setPick(ops);
+    const prompt = `U = {${universe.join(', ')}}, A = {${A.join(', ')}}, B = {${B.join(', ')}}. Find ${chosen.op}`;
+    res.json({ id, difficulty, type: 'list', prompt, answer: chosen.answer });
+  }
+  else if (difficulty === 'medium') {
+    // Cardinality problems using inclusion-exclusion
+    const nA = setRand(10, 30);
+    const nB = setRand(10, 30);
+    const nAB = setRand(2, Math.min(nA, nB) - 1); // intersection
+    const nAuB = nA + nB - nAB;
+
+    const subtype = setPick(['find_union', 'find_intersect', 'find_only_a']);
+    let prompt, answer;
+    if (subtype === 'find_union') {
+      prompt = `n(A) = ${nA}, n(B) = ${nB}, n(A ∩ B) = ${nAB}. Find n(A ∪ B)`;
+      answer = nAuB;
+    } else if (subtype === 'find_intersect') {
+      prompt = `n(A) = ${nA}, n(B) = ${nB}, n(A ∪ B) = ${nAuB}. Find n(A ∩ B)`;
+      answer = nAB;
+    } else {
+      prompt = `n(A) = ${nA}, n(A ∩ B) = ${nAB}. How many elements are in A only?`;
+      answer = nA - nAB;
+    }
+    res.json({ id, difficulty, type: 'cardinality', subtype, prompt, answer });
+  }
+  else if (difficulty === 'hard') {
+    // 2-set Venn diagram: given total and some regions, find missing
+    const onlyA = setRand(5, 20);
+    const both = setRand(3, 15);
+    const onlyB = setRand(5, 20);
+    const neither = setRand(2, 10);
+    const total = onlyA + both + onlyB + neither;
+
+    const subtype = setPick(['find_neither', 'find_both', 'find_onlyA', 'find_total']);
+    let prompt, answer;
+    if (subtype === 'find_neither') {
+      prompt = `In a group of ${total}: n(A only) = ${onlyA}, n(A ∩ B) = ${both}, n(B only) = ${onlyB}. How many are in neither A nor B?`;
+      answer = neither;
+    } else if (subtype === 'find_both') {
+      prompt = `In a group of ${total}: n(A) = ${onlyA + both}, n(B) = ${onlyB + both}, n(neither) = ${neither}. Find n(A ∩ B).`;
+      answer = both;
+    } else if (subtype === 'find_onlyA') {
+      prompt = `In a group of ${total}: n(A ∩ B) = ${both}, n(B only) = ${onlyB}, n(neither) = ${neither}. How many are in A only?`;
+      answer = onlyA;
+    } else {
+      prompt = `n(A only) = ${onlyA}, n(A ∩ B) = ${both}, n(B only) = ${onlyB}, n(neither) = ${neither}. Find the total.`;
+      answer = total;
+    }
+    res.json({ id, difficulty, type: 'venn2', subtype, prompt, answer });
+  }
+  else {
+    // 3-set Venn diagram
+    // Generate all 7 regions + neither
+    const abc = setRand(1, 5);        // all three
+    const abOnly = setRand(1, 8);     // A∩B only (not C)
+    const acOnly = setRand(1, 8);     // A∩C only (not B)
+    const bcOnly = setRand(1, 8);     // B∩C only (not A)
+    const aOnly = setRand(3, 12);     // A only
+    const bOnly = setRand(3, 12);     // B only
+    const cOnly = setRand(3, 12);     // C only
+    const neither = setRand(2, 8);
+
+    const nA = aOnly + abOnly + acOnly + abc;
+    const nB = bOnly + abOnly + bcOnly + abc;
+    const nC = cOnly + acOnly + bcOnly + abc;
+    const nAB = abOnly + abc;
+    const nAC = acOnly + abc;
+    const nBC = bcOnly + abc;
+    const total = aOnly + bOnly + cOnly + abOnly + acOnly + bcOnly + abc + neither;
+
+    const subtype = setPick(['find_abc', 'find_neither', 'find_aonly', 'find_total']);
+    let prompt, answer;
+    if (subtype === 'find_abc') {
+      prompt = `n(A) = ${nA}, n(B) = ${nB}, n(C) = ${nC}, n(A∩B) = ${nAB}, n(A∩C) = ${nAC}, n(B∩C) = ${nBC}, total in at least one set = ${total - neither}. Find n(A ∩ B ∩ C).`;
+      // Using inclusion-exclusion: n(A∪B∪C) = nA+nB+nC - nAB-nAC-nBC + nABC
+      answer = abc;
+    } else if (subtype === 'find_neither') {
+      prompt = `In a group of ${total}: n(A) = ${nA}, n(B) = ${nB}, n(C) = ${nC}, n(A∩B) = ${nAB}, n(A∩C) = ${nAC}, n(B∩C) = ${nBC}, n(A∩B∩C) = ${abc}. How many in neither?`;
+      const inAtLeastOne = nA + nB + nC - nAB - nAC - nBC + abc;
+      answer = total - inAtLeastOne;
+    } else if (subtype === 'find_aonly') {
+      prompt = `n(A) = ${nA}, n(A∩B) = ${nAB}, n(A∩C) = ${nAC}, n(A∩B∩C) = ${abc}. How many are in A only?`;
+      answer = aOnly;
+    } else {
+      prompt = `n(A only) = ${aOnly}, n(B only) = ${bOnly}, n(C only) = ${cOnly}, n(A∩B only) = ${abOnly}, n(A∩C only) = ${acOnly}, n(B∩C only) = ${bcOnly}, n(A∩B∩C) = ${abc}, neither = ${neither}. Find total.`;
+      answer = total;
+    }
+    res.json({ id, difficulty, type: 'venn3', subtype, prompt, answer });
+  }
+});
+
+/**
+ * POST /sets-api/check
+ */
+app.post('/sets-api/check', express.json(), (req, res) => {
+  const { type, answer: expected } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-');
+  let correct = false;
+  let display = '';
+
+  if (type === 'list') {
+    // Expected is an array of numbers. User types e.g. "{1,3,5}" or "1,3,5" or "{}" or "empty"
+    const cleaned = userStr.replace(/[{}]/g, '');
+    let userSet;
+    if (cleaned === '' || cleaned.toLowerCase() === 'empty') {
+      userSet = [];
+    } else {
+      userSet = cleaned.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).sort((a, b) => a - b);
+    }
+    const expectedSorted = [...expected].sort((a, b) => a - b);
+    correct = userSet.length === expectedSorted.length && userSet.every((v, i) => v === expectedSorted[i]);
+    display = expectedSorted.length === 0 ? '{ } (empty set)' : `{${expectedSorted.join(', ')}}`;
+  }
+  else {
+    // Cardinality / Venn — expect a number
+    const userNum = parseInt(userStr);
+    correct = !isNaN(userNum) && userNum === expected;
+    display = String(expected);
+  }
+
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
 /**
  * CATCH-ALL ROUTE
  * ═══════════════════════════════════════════════════════════════════════════

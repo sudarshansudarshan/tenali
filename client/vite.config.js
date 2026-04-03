@@ -79,6 +79,8 @@ export default defineConfig({
       '/ratio-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       // Percentages quiz API
       '/percent-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      // Sets quiz API
+      '/sets-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
     },
   },
 })

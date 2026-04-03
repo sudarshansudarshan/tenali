@@ -6415,6 +6415,13 @@ function PrimeFactorApp({ onBack }) {
   }
   // Auto-advance to next question when answer is correct and revealed (uses useAutoAdvance hook)
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
+  // Allow Enter key to advance when answer is wrong and revealed
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advanceFnRef.current() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
 
   /**
    * buildChain(): Construct display string showing factorization progress

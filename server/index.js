@@ -3609,49 +3609,43 @@ app.get('/dotprod-api/question', (req, res) => {
     const a = [pos1d(), pos1d()];
     const b = [pos1d(), pos1d()];
     const dot = a[0]*b[0] + a[1]*b[1];
-    const prompt = `Find the dot product: ${fmtVec(a)} · ${fmtVec(b)}`;
-    res.json({ id, difficulty, type: 'dot2d', prompt, answer: dot, display: String(dot) });
+    const prompt = `Find the dot product`;
+    res.json({ id, difficulty, type: 'dot2d', prompt, vecA: a, vecB: b, answer: dot, display: String(dot) });
   }
   else if (difficulty === 'medium') {
     // Randomly choose between 2D and 3D dot product
     if (Math.random() < 0.5) {
-      // 2D dot product (same as easy but included for variety)
       const a = [pos1d(), pos1d()];
       const b = [pos1d(), pos1d()];
       const dot = a[0]*b[0] + a[1]*b[1];
-      const prompt = `Find the dot product: ${fmtVec(a)} · ${fmtVec(b)}`;
-      res.json({ id, difficulty, type: 'dot2d', prompt, answer: dot, display: String(dot) });
+      const prompt = `Find the dot product`;
+      res.json({ id, difficulty, type: 'dot2d', prompt, vecA: a, vecB: b, answer: dot, display: String(dot) });
     } else {
-      // 3D dot product
       const a = [pos1d(), pos1d(), pos1d()];
       const b = [pos1d(), pos1d(), pos1d()];
       const dot = a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
-      const prompt = `Find the dot product: ${fmtVec(a)} · ${fmtVec(b)}`;
-      res.json({ id, difficulty, type: 'dot3d', prompt, answer: dot, display: String(dot) });
+      const prompt = `Find the dot product`;
+      res.json({ id, difficulty, type: 'dot3d', prompt, vecA: a, vecB: b, answer: dot, display: String(dot) });
     }
   }
   else if (difficulty === 'hard') {
     // Matrix multiplication: 2×2 or 3×3
     if (Math.random() < 0.5) {
-      // 2×2
       const A = Array.from({ length: 2 }, () => [pos1d(), pos1d()]);
       const B = Array.from({ length: 2 }, () => [pos1d(), pos1d()]);
       const C = matMul(A, B);
-      const prompt = `Compute the matrix product: ${fmtMat(A)} × ${fmtMat(B)}`;
-      res.json({ id, difficulty, type: 'matmul', size: 2, prompt, answer: C, display: fmtMat(C) });
+      const prompt = `Compute the matrix product A × B`;
+      res.json({ id, difficulty, type: 'matmul', size: 2, prompt, matA: A, matB: B, answer: C, display: fmtMat(C) });
     } else {
-      // 3×3
       const A = Array.from({ length: 3 }, () => [pos1d(), pos1d(), pos1d()]);
       const B = Array.from({ length: 3 }, () => [pos1d(), pos1d(), pos1d()]);
       const C = matMul(A, B);
-      const prompt = `Compute the matrix product: ${fmtMat(A)} × ${fmtMat(B)}`;
-      res.json({ id, difficulty, type: 'matmul', size: 3, prompt, answer: C, display: fmtMat(C) });
+      const prompt = `Compute the matrix product A × B`;
+      res.json({ id, difficulty, type: 'matmul', size: 3, prompt, matA: A, matB: B, answer: C, display: fmtMat(C) });
     }
   }
   else {
     // Extra hard: 4×4 matrix product with missing values
-    // Generate A and B (4×4, positive 1-digit), compute C = A×B
-    // Pick 4 random positions in C to blank out
     const A = Array.from({ length: 4 }, () => [pos1d(), pos1d(), pos1d(), pos1d()]);
     const B = Array.from({ length: 4 }, () => [pos1d(), pos1d(), pos1d(), pos1d()]);
     const C = matMul(A, B);
@@ -3661,7 +3655,6 @@ app.get('/dotprod-api/question', (req, res) => {
     for (let i = 0; i < 4; i++)
       for (let j = 0; j < 4; j++)
         allPos.push([i, j]);
-    // Shuffle and pick 4
     for (let i = allPos.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [allPos[i], allPos[j]] = [allPos[j], allPos[i]];
@@ -3669,15 +3662,14 @@ app.get('/dotprod-api/question', (req, res) => {
     const blanks = allPos.slice(0, 4).sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
     const missingValues = blanks.map(([r, c]) => C[r][c]);
 
-    // Build display matrix with ?₁, ?₂, etc.
+    // Build display matrix with blanks marked
     const Cdisplay = C.map(row => [...row]);
     blanks.forEach(([r, c], idx) => { Cdisplay[r][c] = '?' + (idx + 1); });
-    const dispRows = Cdisplay.map(row => row.join(', ')).join(' ; ');
 
-    const prompt = `A = ${fmtMat(A)}, B = ${fmtMat(B)}. C = A × B = [${dispRows}]. Find the missing values ?₁, ?₂, ?₃, ?₄`;
+    const prompt = `Find the missing values in C = A × B`;
     const display = missingValues.join(', ');
 
-    res.json({ id, difficulty, type: 'matfill', prompt, answer: missingValues, display });
+    res.json({ id, difficulty, type: 'matfill', prompt, matA: A, matB: B, matC: Cdisplay, blanks, answer: missingValues, display });
   }
 });
 

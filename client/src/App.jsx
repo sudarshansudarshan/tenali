@@ -3553,12 +3553,265 @@ const VectorsApp = makeQuizApp({
   placeholders: (q, d) => d === 'hard' ? 'e.g. 13' : 'e.g. (3, -2)',
 })
 
-const DotProdApp = makeQuizApp({
-  title: 'Dot Products', subtitle: 'Vectors, matrix multiply, fill blanks', apiPath: 'dotprod-api',
-  diffLabels: { easy: 'Easy — 2D Dot', medium: 'Medium — 3D / Multi', hard: 'Hard — Matrix ×', extrahard: 'Extra Hard — Fill Blanks' },
-  placeholders: (q, d) => d === 'easy' || d === 'medium' ? 'e.g. 42' : d === 'hard' ? 'e.g. [10,13;22,29]' : 'e.g. 120, 85, 44, 97',
-  tip: 'Easy/Medium: enter a number. Hard: enter matrix as [a,b;c,d]. Extra Hard: enter missing values separated by commas',
-})
+// ── Matrix / Vector display helpers for DotProdApp ─────────────
+function MatrixBox({ matrix, label }) {
+  return (
+    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', margin: '0 6px' }}>
+      {label && <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--clr-accent)', marginBottom: 4 }}>{label}</div>}
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', position: 'relative',
+        padding: '6px 12px', borderRadius: 0,
+        borderLeft: '2.5px solid var(--clr-text)', borderRight: '2.5px solid var(--clr-text)',
+      }}>
+        {/* top/bottom bracket caps */}
+        <span style={{ position: 'absolute', top: 0, left: 0, width: 8, height: '2.5px', background: 'var(--clr-text)' }} />
+        <span style={{ position: 'absolute', bottom: 0, left: 0, width: 8, height: '2.5px', background: 'var(--clr-text)' }} />
+        <span style={{ position: 'absolute', top: 0, right: 0, width: 8, height: '2.5px', background: 'var(--clr-text)' }} />
+        <span style={{ position: 'absolute', bottom: 0, right: 0, width: 8, height: '2.5px', background: 'var(--clr-text)' }} />
+        <table style={{ borderCollapse: 'collapse' }}>
+          <tbody>
+            {matrix.map((row, i) => (
+              <tr key={i}>
+                {row.map((val, j) => {
+                  const isBlank = typeof val === 'string' && val.startsWith('?')
+                  return (
+                    <td key={j} style={{
+                      padding: '4px 10px', textAlign: 'center', fontFamily: 'monospace',
+                      fontSize: '1.15rem', fontWeight: isBlank ? 700 : 400,
+                      color: isBlank ? 'var(--clr-accent)' : 'var(--clr-text)',
+                      background: isBlank ? 'rgba(var(--clr-accent-rgb, 99,102,241), 0.1)' : 'transparent',
+                      borderRadius: isBlank ? 4 : 0,
+                    }}>{val}</td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function VectorBox({ vec }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', fontFamily: 'monospace',
+      fontSize: '1.3rem', fontWeight: 500, margin: '0 4px',
+    }}>
+      <span style={{ fontSize: '1.6rem', fontWeight: 200, marginRight: 2 }}>(</span>
+      {vec.map((v, i) => (
+        <span key={i}>
+          <span style={{ padding: '0 3px' }}>{v}</span>
+          {i < vec.length - 1 && <span style={{ color: 'var(--clr-dim)', padding: '0 1px' }}>,</span>}
+        </span>
+      ))}
+      <span style={{ fontSize: '1.6rem', fontWeight: 200, marginLeft: 2 }}>)</span>
+    </span>
+  )
+}
+
+function DotProdApp({ onBack }) {
+  const DIFFS = ['easy', 'medium', 'hard', 'extrahard']
+  const DIFF_LABELS_DP = { easy: 'Easy — 2D Dot', medium: 'Medium — 2D / 3D', hard: 'Hard — Matrix ×', extrahard: 'Extra Hard — Fill Blanks' }
+
+  const [difficulty, setDifficulty] = useState('easy')
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [score, setScore] = useState(0)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+  const advanceFnRef = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    try {
+      const diff = effectiveDiff()
+      const r = await fetch(`${API}/dotprod-api/question?difficulty=${diff}`)
+      const data = await r.json()
+      setQuestion(data)
+      setAnswer('')
+      setFeedback('')
+      setIsCorrect(null)
+      setRevealed(false)
+      timer.start()
+    } catch (e) { console.error('Failed to load Dot Products question:', e) }
+    setLoading(false)
+  }
+
+  const startQuiz = () => {
+    const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
+    setTotalQ(t); setScore(0); setQuestionNumber(1); setResults([]); setStarted(true); setFinished(false)
+    setAdaptScore(0); adaptScoreRef.current = 0
+  }
+
+  useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
+
+  const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+  advanceFnRef.current = advance
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  const handleSubmit = async () => {
+    if (!question || revealed || !answer.trim()) return
+    const timeTaken = timer.stop()
+    const payload = { ...question, userAnswer: answer.trim() }
+    try {
+      const r = await fetch(`${API}/dotprod-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const data = await r.json()
+      setIsCorrect(data.correct); setRevealed(true)
+      if (data.correct) setScore(s => s + 1)
+      setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+      if (isAdaptive) {
+        setAdaptScore(prev => {
+          const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35)
+          adaptScoreRef.current = next
+          return next
+        })
+      }
+    } catch (e) { console.error('Failed to check Dot Products answer:', e) }
+  }
+
+  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
+
+  const getPlaceholder = () => {
+    const d = effectiveDiff()
+    if (d === 'easy' || d === 'medium') return 'e.g. 42'
+    if (d === 'hard') return 'e.g. [10,13;22,29]'
+    return 'e.g. 120, 85, 44, 97'
+  }
+
+  // ── Rich prompt rendering ──────────────────────────
+  const renderQuestion = () => {
+    if (!question) return null
+    const { type } = question
+
+    if (type === 'dot2d' || type === 'dot3d') {
+      return (
+        <div style={{ textAlign: 'center', margin: '18px 0' }}>
+          <div style={{ fontSize: '0.95rem', color: 'var(--clr-dim)', marginBottom: 10 }}>Find the dot product</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <VectorBox vec={question.vecA} />
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)' }}>·</span>
+            <VectorBox vec={question.vecB} />
+            <span style={{ fontSize: '1.3rem', fontWeight: 500, marginLeft: 4 }}>=  ?</span>
+          </div>
+        </div>
+      )
+    }
+
+    if (type === 'matmul') {
+      return (
+        <div style={{ textAlign: 'center', margin: '18px 0' }}>
+          <div style={{ fontSize: '0.95rem', color: 'var(--clr-dim)', marginBottom: 12 }}>Compute the matrix product A × B</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <MatrixBox matrix={question.matA} label="A" />
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)', margin: '0 4px' }}>×</span>
+            <MatrixBox matrix={question.matB} label="B" />
+            <span style={{ fontSize: '1.3rem', fontWeight: 500, margin: '0 4px' }}>=  ?</span>
+          </div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--clr-dim)', marginTop: 10 }}>Enter as [a,b;c,d] — semicolons separate rows</div>
+        </div>
+      )
+    }
+
+    if (type === 'matfill') {
+      return (
+        <div style={{ textAlign: 'center', margin: '18px 0' }}>
+          <div style={{ fontSize: '0.95rem', color: 'var(--clr-dim)', marginBottom: 12 }}>Find the missing values in C = A × B</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <MatrixBox matrix={question.matA} label="A" />
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)', margin: '0 4px' }}>×</span>
+            <MatrixBox matrix={question.matB} label="B" />
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)', margin: '0 4px' }}>=</span>
+            <MatrixBox matrix={question.matC} label="C" />
+          </div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--clr-dim)', marginTop: 10 }}>Enter missing values separated by commas, e.g. 120, 85, 44, 97</div>
+        </div>
+      )
+    }
+
+    // Fallback
+    return <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '20px 0', lineHeight: '1.6' }}>{question.prompt}</div>
+  }
+
+  return (
+    <QuizLayout title="Dot Products" subtitle="Vectors, matrix multiply, fill blanks" onBack={onBack} timer={started && !finished ? timer : null}>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Practice dot products & matrix multiplication!</p>
+        <p style={{ fontSize: '0.85rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Easy/Medium: dot product of vectors. Hard: matrix multiply. Extra Hard: fill missing values.</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {DIFFS.map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="dotprod-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {DIFF_LABELS_DP[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="dotprod-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && (
+          <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}>
+            <div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} />
+          </div>
+        )}
+        <div style={{ textAlign: 'center' }}>
+          {renderQuestion()}
+          <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={getPlaceholder()} onKeyDown={handleKeyDown} autoFocus style={{ maxWidth: 320 }} />
+        </div>
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
 
 const TransformApp = makeQuizApp({
   title: 'Transformations', subtitle: 'Reflect, translate, rotate, enlarge', apiPath: 'transform-api',

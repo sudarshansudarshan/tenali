@@ -3573,6 +3573,158 @@ app.post('/vectors-api/check', express.json(), (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DOT PRODUCTS API
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Helper: random positive 1-digit integer (1–9)
+function pos1d() { return 1 + Math.floor(Math.random() * 9); }
+
+// Helper: matrix multiply (generic NxM × MxP)
+function matMul(A, B) {
+  const n = A.length, m = B[0].length, p = B.length;
+  const C = Array.from({ length: n }, () => Array(m).fill(0));
+  for (let i = 0; i < n; i++)
+    for (let j = 0; j < m; j++)
+      for (let k = 0; k < p; k++)
+        C[i][j] += A[i][k] * B[k][j];
+  return C;
+}
+
+// Helper: format matrix as [a,b;c,d] or [a,b,c;d,e,f;g,h,i] etc.
+function fmtMat(M) {
+  return '[' + M.map(row => row.join(',')).join(';') + ']';
+}
+
+// Helper: format vector as (a, b) or (a, b, c)
+function fmtVec(v) {
+  return '(' + v.join(', ') + ')';
+}
+
+app.get('/dotprod-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Dot product of two 2D vectors, all positive 1-digit
+    const a = [pos1d(), pos1d()];
+    const b = [pos1d(), pos1d()];
+    const dot = a[0]*b[0] + a[1]*b[1];
+    const prompt = `Find the dot product: ${fmtVec(a)} · ${fmtVec(b)}`;
+    res.json({ id, difficulty, type: 'dot2d', prompt, answer: dot, display: String(dot) });
+  }
+  else if (difficulty === 'medium') {
+    // Randomly choose between 3D dot product or sum of two 2D dot products
+    if (Math.random() < 0.5) {
+      // 3D dot product
+      const a = [pos1d(), pos1d(), pos1d()];
+      const b = [pos1d(), pos1d(), pos1d()];
+      const dot = a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+      const prompt = `Find the dot product: ${fmtVec(a)} · ${fmtVec(b)}`;
+      res.json({ id, difficulty, type: 'dot3d', prompt, answer: dot, display: String(dot) });
+    } else {
+      // Sum of dot products of 3 pairs of 2D vectors
+      const pairs = [];
+      let total = 0;
+      for (let i = 0; i < 3; i++) {
+        const a = [pos1d(), pos1d()];
+        const b = [pos1d(), pos1d()];
+        total += a[0]*b[0] + a[1]*b[1];
+        pairs.push({ a, b });
+      }
+      const parts = pairs.map(p => `${fmtVec(p.a)} · ${fmtVec(p.b)}`).join(' + ');
+      const prompt = `Find the sum: ${parts}`;
+      res.json({ id, difficulty, type: 'dotsum', prompt, answer: total, display: String(total) });
+    }
+  }
+  else if (difficulty === 'hard') {
+    // Matrix multiplication: 2×2 or 3×3
+    if (Math.random() < 0.5) {
+      // 2×2
+      const A = Array.from({ length: 2 }, () => [pos1d(), pos1d()]);
+      const B = Array.from({ length: 2 }, () => [pos1d(), pos1d()]);
+      const C = matMul(A, B);
+      const prompt = `Compute the matrix product: ${fmtMat(A)} × ${fmtMat(B)}`;
+      res.json({ id, difficulty, type: 'matmul', size: 2, prompt, answer: C, display: fmtMat(C) });
+    } else {
+      // 3×3
+      const A = Array.from({ length: 3 }, () => [pos1d(), pos1d(), pos1d()]);
+      const B = Array.from({ length: 3 }, () => [pos1d(), pos1d(), pos1d()]);
+      const C = matMul(A, B);
+      const prompt = `Compute the matrix product: ${fmtMat(A)} × ${fmtMat(B)}`;
+      res.json({ id, difficulty, type: 'matmul', size: 3, prompt, answer: C, display: fmtMat(C) });
+    }
+  }
+  else {
+    // Extra hard: 4×4 matrix product with missing values
+    // Generate A and B (4×4, positive 1-digit), compute C = A×B
+    // Pick 4 random positions in C to blank out
+    const A = Array.from({ length: 4 }, () => [pos1d(), pos1d(), pos1d(), pos1d()]);
+    const B = Array.from({ length: 4 }, () => [pos1d(), pos1d(), pos1d(), pos1d()]);
+    const C = matMul(A, B);
+
+    // Pick 4 unique blank positions
+    const allPos = [];
+    for (let i = 0; i < 4; i++)
+      for (let j = 0; j < 4; j++)
+        allPos.push([i, j]);
+    // Shuffle and pick 4
+    for (let i = allPos.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allPos[i], allPos[j]] = [allPos[j], allPos[i]];
+    }
+    const blanks = allPos.slice(0, 4).sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
+    const missingValues = blanks.map(([r, c]) => C[r][c]);
+
+    // Build display matrix with ?₁, ?₂, etc.
+    const Cdisplay = C.map(row => [...row]);
+    blanks.forEach(([r, c], idx) => { Cdisplay[r][c] = '?' + (idx + 1); });
+    const dispRows = Cdisplay.map(row => row.join(', ')).join(' ; ');
+
+    const prompt = `A = ${fmtMat(A)}, B = ${fmtMat(B)}. C = A × B = [${dispRows}]. Find the missing values ?₁, ?₂, ?₃, ?₄`;
+    const display = missingValues.join(', ');
+
+    res.json({ id, difficulty, type: 'matfill', prompt, answer: missingValues, display });
+  }
+});
+
+app.post('/dotprod-api/check', express.json(), (req, res) => {
+  const { type, answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-');
+  let correct = false;
+
+  if (type === 'dot2d' || type === 'dot3d' || type === 'dotsum') {
+    // Single number answer
+    const userNum = parseInt(userStr);
+    correct = !isNaN(userNum) && userNum === answer;
+  }
+  else if (type === 'matmul') {
+    // Matrix answer: [a,b;c,d] or [a,b,c;d,e,f;g,h,i]
+    const inner = userStr.replace(/[\[\]]/g, '');
+    const rows = inner.split(';');
+    if (rows.length === answer.length) {
+      correct = true;
+      for (let i = 0; i < rows.length; i++) {
+        const vals = rows[i].split(',').map(Number);
+        if (vals.length !== answer[i].length) { correct = false; break; }
+        for (let j = 0; j < vals.length; j++) {
+          if (vals[j] !== answer[i][j]) { correct = false; break; }
+        }
+        if (!correct) break;
+      }
+    }
+  }
+  else if (type === 'matfill') {
+    // Comma-separated missing values
+    const vals = userStr.split(',').map(s => parseInt(s.trim()));
+    if (vals.length === answer.length) {
+      correct = vals.every((v, i) => !isNaN(v) && v === answer[i]);
+    }
+  }
+
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // TRANSFORMATIONS API
 // ═══════════════════════════════════════════════════════════════════════════
 

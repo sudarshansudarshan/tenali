@@ -1725,6 +1725,7 @@ function App() {
     stats: StatsApp,               // Statistics
     matrix: MatrixApp,             // Matrices
     vectors: VectorsApp,           // Vectors
+    dotprod: DotProdApp,           // Dot Products
     transform: TransformApp,       // Transformations
     mensur: MensurApp,             // Mensuration
     bearings: BearingsApp,         // Bearings
@@ -1801,7 +1802,8 @@ function Home({ onSelect }) {
     { key: 'congruence', name: 'Congruence', subtitle: 'SSS, SAS, ASA, RHS', color: 'green' },
     { key: 'coordgeom', name: 'Coord. Geometry', subtitle: 'Midpoint, distance, gradient', color: 'blue' },
     { key: 'diff', name: 'Differentiation', subtitle: 'Power rule, turning points', color: 'purple' },
-    { key: 'fractionadd', name: 'Fractions (Add)', subtitle: 'Add fractions and simplify', color: 'blue' },
+    { key: 'dotprod', name: 'Dot Products', subtitle: 'Vectors, matrices, fill blanks', color: 'blue' },
+    { key: 'fractionadd', name: 'Fractions (Add)', subtitle: 'Add fractions and simplify', color: 'green' },
     { key: 'funceval', name: 'Functions', subtitle: 'Evaluate f(x), f(x,y), f(x,y,z)', color: 'green' },
     { key: 'gk', name: 'GK', subtitle: 'General Knowledge questions', color: 'purple' },
     { key: 'hcflcm', name: 'HCF & LCM', subtitle: 'Highest common factor & LCM', color: 'blue' },
@@ -3551,6 +3553,13 @@ const VectorsApp = makeQuizApp({
   placeholders: (q, d) => d === 'hard' ? 'e.g. 13' : 'e.g. (3, -2)',
 })
 
+const DotProdApp = makeQuizApp({
+  title: 'Dot Products', subtitle: 'Vectors, matrix multiply, fill blanks', apiPath: 'dotprod-api',
+  diffLabels: { easy: 'Easy — 2D Dot', medium: 'Medium — 3D / Multi', hard: 'Hard — Matrix ×', extrahard: 'Extra Hard — Fill Blanks' },
+  placeholders: (q, d) => d === 'easy' || d === 'medium' ? 'e.g. 42' : d === 'hard' ? 'e.g. [10,13;22,29]' : 'e.g. 120, 85, 44, 97',
+  tip: 'Easy/Medium: enter a number. Hard: enter matrix as [a,b;c,d]. Extra Hard: enter missing values separated by commas',
+})
+
 const TransformApp = makeQuizApp({
   title: 'Transformations', subtitle: 'Reflect, translate, rotate, enlarge', apiPath: 'transform-api',
   diffLabels: { easy: 'Easy — Reflect', medium: 'Medium — Translate', hard: 'Hard — Rotate', extrahard: 'Extra Hard — Enlarge' },
@@ -3719,6 +3728,7 @@ const RANDOM_MIX_TOPICS = [
   { key: 'stats', name: 'Statistics', api: 'stats-api' },
   { key: 'matrix', name: 'Matrices', api: 'matrix-api' },
   { key: 'vectors', name: 'Vectors', api: 'vectors-api' },
+  { key: 'dotprod', name: 'Dot Products', api: 'dotprod-api' },
   { key: 'transform', name: 'Transformations', api: 'transform-api' },
   { key: 'mensur', name: 'Mensuration', api: 'mensur-api' },
   { key: 'bearings', name: 'Bearings', api: 'bearings-api' },
@@ -7464,6 +7474,7 @@ const CUSTOM_PUZZLES = [
   { key: 'stats', name: 'Statistics' },
   { key: 'matrix', name: 'Matrices' },
   { key: 'vectors', name: 'Vectors' },
+  { key: 'dotprod', name: 'Dot Products' },
   { key: 'transform', name: 'Transformations' },
   { key: 'mensur', name: 'Mensuration' },
   { key: 'bearings', name: 'Bearings' },
@@ -7538,6 +7549,7 @@ function fetchQuestionForType(type, difficulty) {
     stats: `${API}/stats-api/question?difficulty=${difficulty}`,
     matrix: `${API}/matrix-api/question?difficulty=${difficulty}`,
     vectors: `${API}/vectors-api/question?difficulty=${difficulty}`,
+    dotprod: `${API}/dotprod-api/question?difficulty=${difficulty}`,
     transform: `${API}/transform-api/question?difficulty=${difficulty}`,
     mensur: `${API}/mensur-api/question?difficulty=${difficulty}`,
     bearings: `${API}/bearings-api/question?difficulty=${difficulty}`,
@@ -7602,7 +7614,7 @@ function getPromptForType(type, q) {
     case 'percent': return q.prompt || ''
     case 'sets': return q.prompt || ''
     case 'trig': case 'ineq': case 'coordgeom': case 'prob': case 'stats':
-    case 'matrix': case 'vectors': case 'transform': case 'mensur':
+    case 'matrix': case 'vectors': case 'dotprod': case 'transform': case 'mensur':
     case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
     case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
     case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
@@ -8013,13 +8025,13 @@ function CustomApp({ onBack }) {
       }
       // ─────── Generic API puzzles ──────────────────────────────────
       case 'trig': case 'ineq': case 'coordgeom': case 'prob': case 'stats':
-      case 'matrix': case 'vectors': case 'transform': case 'mensur':
+      case 'matrix': case 'vectors': case 'dotprod': case 'transform': case 'mensur':
       case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
       case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
       case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
       case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity': {
         if (answer === '') return
-        const apiMap = { trig: 'trig-api', ineq: 'ineq-api', coordgeom: 'coordgeom-api', prob: 'prob-api', stats: 'stats-api', matrix: 'matrix-api', vectors: 'vectors-api', transform: 'transform-api', mensur: 'mensur-api', bearings: 'bearings-api', log: 'log-api', diff: 'diff-api', bases: 'bases-api', circleth: 'circle-api', integ: 'integ-api', stdform: 'stdform-api', bounds: 'bounds-api', sdt: 'sdt-api', variation: 'variation-api', hcflcm: 'hcflcm-api', profitloss: 'profitloss-api', rounding: 'rounding-api', binomial: 'binomial-api', complex: 'complex-api', angles: 'angles-api', triangles: 'triangles-api', congruence: 'congruence-api', pythag: 'pythag-api', polygons: 'polygons-api', similarity: 'similarity-api' }
+        const apiMap = { trig: 'trig-api', ineq: 'ineq-api', coordgeom: 'coordgeom-api', prob: 'prob-api', stats: 'stats-api', matrix: 'matrix-api', vectors: 'vectors-api', dotprod: 'dotprod-api', transform: 'transform-api', mensur: 'mensur-api', bearings: 'bearings-api', log: 'log-api', diff: 'diff-api', bases: 'bases-api', circleth: 'circle-api', integ: 'integ-api', stdform: 'stdform-api', bounds: 'bounds-api', sdt: 'sdt-api', variation: 'variation-api', hcflcm: 'hcflcm-api', profitloss: 'profitloss-api', rounding: 'rounding-api', binomial: 'binomial-api', complex: 'complex-api', angles: 'angles-api', triangles: 'triangles-api', congruence: 'congruence-api', pythag: 'pythag-api', polygons: 'polygons-api', similarity: 'similarity-api' }
         const genPayload = { ...question, userAnswer: answer.trim() }
         res = await fetch(`${API}/${apiMap[curType]}/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(genPayload) })
         data = await res.json()
@@ -8159,7 +8171,7 @@ function CustomApp({ onBack }) {
       case 'sets':
         return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={question?.type === 'list' ? 'e.g. {1, 3, 5}' : 'e.g. 12'} onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
       case 'trig': case 'ineq': case 'coordgeom': case 'prob': case 'stats':
-      case 'matrix': case 'vectors': case 'transform': case 'mensur':
+      case 'matrix': case 'vectors': case 'dotprod': case 'transform': case 'mensur':
       case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
       case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
       case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':

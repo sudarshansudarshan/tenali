@@ -3977,6 +3977,631 @@ app.post('/circle-api/check', express.json(), (req, res) => {
   res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
 });
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * INTEGRATION API  /integ-api
+ * Reverse differentiation, definite integrals, area under curve
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/integ-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Integrate ax^n → (a/(n+1))x^(n+1) + C, ask for coefficient and power
+    const a = randInt(1, 8);
+    const n = randInt(1, 4);
+    const newCoeffNum = a;
+    const newCoeffDen = n + 1;
+    const g = gcd(Math.abs(newCoeffNum), newCoeffDen);
+    const cNum = newCoeffNum / g;
+    const cDen = newCoeffDen / g;
+    const newPow = n + 1;
+    answer = cDen === 1 ? cNum : cNum + '/' + cDen;
+    display = `${answer}x^${newPow} + C`;
+    prompt = `Integrate ${a === 1 ? '' : a}x${n === 1 ? '' : '^' + n} dx.\nGive the coefficient of x^${newPow} (as a fraction if needed).`;
+  } else if (diff === 'medium') {
+    // Integrate polynomial ax^2 + bx + c between 0 and k
+    const a = randInt(1, 4);
+    const b = randInt(-5, 5);
+    const c = randInt(0, 6);
+    const k = randInt(1, 4);
+    // ∫ = (a/3)k^3 + (b/2)k^2 + ck
+    // Multiply through by 6 to keep integer: 2a*k^3 + 3b*k^2 + 6c*k, then /6
+    const num = 2 * a * k * k * k + 3 * b * k * k + 6 * c * k;
+    const den = 6;
+    const g = gcd(Math.abs(num), den);
+    const rn = num / g;
+    const rd = den / g;
+    answer = rd === 1 ? rn : rn + '/' + rd;
+    display = String(answer);
+    const bStr = b >= 0 ? ` + ${b}x` : ` − ${Math.abs(b)}x`;
+    const cStr = c > 0 ? ` + ${c}` : '';
+    prompt = `Evaluate ∫₀^${k} (${a}x² ${bStr}${cStr}) dx.`;
+  } else if (diff === 'hard') {
+    // ∫ (ax+b)^n dx between limits — substitution style, but keep it clean
+    const a = randInt(1, 3);
+    const b = randInt(-3, 3);
+    const n = randInt(2, 4);
+    const lo = 0;
+    const hi = randInt(1, 3);
+    const evalAt = (x) => Math.pow(a * x + b, n + 1) / (a * (n + 1));
+    const val = evalAt(hi) - evalAt(lo);
+    if (Number.isInteger(val)) {
+      answer = val;
+    } else {
+      // express as fraction
+      const top = Math.pow(a * hi + b, n + 1) - Math.pow(a * lo + b, n + 1);
+      const bot = a * (n + 1);
+      const g2 = gcd(Math.abs(top), Math.abs(bot));
+      const rn2 = top / g2;
+      const rd2 = bot / g2;
+      answer = rd2 === 1 ? rn2 : (rd2 < 0 ? -rn2 + '/' + -rd2 : rn2 + '/' + rd2);
+    }
+    display = String(answer);
+    const bStr = b >= 0 ? `+${b}` : `${b}`;
+    prompt = `Evaluate ∫₀^${hi} (${a}x${bStr})^${n} dx.`;
+  } else {
+    // Area between curve and x-axis: y = x^2 - kx, roots at 0 and k
+    const k = randInt(2, 6);
+    // Area = |∫₀^k (x²-kx) dx| = |k³/3 - k³/2| = k³/6
+    const num = k * k * k;
+    const den = 6;
+    const g = gcd(num, den);
+    answer = (den / g) === 1 ? num / g : (num / g) + '/' + (den / g);
+    display = String(answer);
+    prompt = `Find the area enclosed between y = x² − ${k}x and the x-axis.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/integ-api/check', express.json(), (req, res) => {
+  const ua = (req.body.userAnswer || '').trim().replace(/\s/g, '');
+  const ans = String(req.body.answer).replace(/\s/g, '');
+  let correct = ua === ans;
+  // Also check numeric equivalence for fractions
+  if (!correct) {
+    const evalFrac = (s) => { const p = String(s).split('/'); return p.length === 2 ? parseFloat(p[0]) / parseFloat(p[1]) : parseFloat(s); };
+    const u = evalFrac(ua);
+    const a2 = evalFrac(ans);
+    if (!isNaN(u) && !isNaN(a2) && Math.abs(u - a2) < 0.001) correct = true;
+  }
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * STANDARD FORM API  /stdform-api
+ * Scientific notation: convert, multiply, divide, add
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/stdform-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Convert number to standard form
+    const sig = randInt(11, 99) / 10; // e.g. 3.4
+    const exp = randInt(2, 7) * (Math.random() < 0.5 ? 1 : -1);
+    const val = sig * Math.pow(10, exp);
+    prompt = `Write ${exp > 0 ? val.toLocaleString('en-US', {useGrouping: false}) : val.toFixed(Math.abs(exp) + 1)} in standard form.`;
+    answer = `${sig} × 10^${exp}`;
+    display = answer;
+  } else if (diff === 'medium') {
+    // Multiply two numbers in standard form
+    const a = randInt(11, 49) / 10;
+    const ea = randInt(2, 5);
+    const b = randInt(11, 49) / 10;
+    const eb = randInt(2, 5);
+    let product = a * b;
+    let expR = ea + eb;
+    // Normalize
+    if (product >= 10) { product /= 10; expR += 1; }
+    product = Math.round(product * 100) / 100;
+    answer = `${product} × 10^${expR}`;
+    display = answer;
+    prompt = `Calculate (${a} × 10^${ea}) × (${b} × 10^${eb}). Give answer in standard form.`;
+  } else if (diff === 'hard') {
+    // Divide two numbers in standard form
+    const a = randInt(20, 90) / 10;
+    const ea = randInt(5, 9);
+    const b = randInt(11, 49) / 10;
+    const eb = randInt(2, 4);
+    let quotient = a / b;
+    let expR = ea - eb;
+    if (quotient < 1) { quotient *= 10; expR -= 1; }
+    if (quotient >= 10) { quotient /= 10; expR += 1; }
+    quotient = Math.round(quotient * 100) / 100;
+    answer = `${quotient} × 10^${expR}`;
+    display = answer;
+    prompt = `Calculate (${a} × 10^${ea}) ÷ (${b} × 10^${eb}). Give answer in standard form.`;
+  } else {
+    // Add/subtract two numbers in standard form (same power)
+    const exp = randInt(3, 7);
+    const a = randInt(11, 50) / 10;
+    const b = randInt(11, 40) / 10;
+    const sum = a + b;
+    let resCoeff = sum;
+    let resExp = exp;
+    if (resCoeff >= 10) { resCoeff /= 10; resExp += 1; }
+    resCoeff = Math.round(resCoeff * 100) / 100;
+    answer = `${resCoeff} × 10^${resExp}`;
+    display = answer;
+    prompt = `Calculate (${a} × 10^${exp}) + (${b} × 10^${exp}). Give answer in standard form.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/stdform-api/check', express.json(), (req, res) => {
+  const normalize = (s) => String(s).replace(/\s/g, '').replace(/×10\^/gi, 'e').replace(/x10\^/gi, 'e').replace(/\*10\^/gi, 'e');
+  const ua = normalize(req.body.userAnswer || '');
+  const ans = normalize(String(req.body.answer));
+  const correct = ua === ans;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * BOUNDS API  /bounds-api
+ * Upper/lower bounds, error intervals, significant figures
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/bounds-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Round to 1 dp → give lower bound
+    const val = randInt(10, 99);
+    const dp1 = randInt(1, 9);
+    const num = val + dp1 / 10; // e.g. 4.3
+    prompt = `${num} is rounded to 1 decimal place. What is the lower bound?`;
+    answer = num - 0.05;
+    display = String(answer);
+  } else if (diff === 'medium') {
+    // Nearest 10 → give upper bound
+    const base = randInt(3, 15) * 10; // e.g. 80
+    prompt = `A length is ${base} cm, rounded to the nearest 10 cm. What is the upper bound?`;
+    answer = base + 5;
+    display = String(answer);
+  } else if (diff === 'hard') {
+    // Bounds of a calculation: a+b where both rounded to 1dp
+    const a = randInt(20, 50) / 10; // e.g. 3.4
+    const b = randInt(20, 50) / 10;
+    prompt = `a = ${a} (1 d.p.) and b = ${b} (1 d.p.). Find the upper bound of a + b.`;
+    answer = Math.round((a + 0.05 + b + 0.05) * 100) / 100;
+    display = String(answer);
+  } else {
+    // Bounds of division: a/b, max = a_upper/b_lower
+    const a = randInt(30, 80) / 10;
+    const b = randInt(20, 40) / 10;
+    const upperA = a + 0.05;
+    const lowerB = b - 0.05;
+    const result = Math.round((upperA / lowerB) * 1000) / 1000;
+    prompt = `a = ${a} (1 d.p.) and b = ${b} (1 d.p.). Find the upper bound of a ÷ b. Give answer to 3 d.p.`;
+    answer = result;
+    display = String(answer);
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/bounds-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/\s/g, ''));
+  const correct = !isNaN(ua) && Math.abs(ua - req.body.answer) < 0.005;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SPEED DISTANCE TIME API  /sdt-api
+ * Rate problems, average speed, unit conversions
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/sdt-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Find distance = speed × time
+    const s = randInt(20, 80); // km/h
+    const t = randInt(2, 6); // hours
+    answer = s * t;
+    display = answer + ' km';
+    prompt = `A car travels at ${s} km/h for ${t} hours. How far does it travel (in km)?`;
+  } else if (diff === 'medium') {
+    // Find time = distance / speed
+    const s = randInt(30, 70);
+    const d = s * randInt(2, 5); // ensure clean answer
+    answer = d / s;
+    display = answer + ' hours';
+    prompt = `A train covers ${d} km at ${s} km/h. How long does the journey take (in hours)?`;
+  } else if (diff === 'hard') {
+    // Average speed for two-leg journey
+    const d1 = randInt(30, 80);
+    const s1 = randInt(20, 60);
+    const d2 = randInt(30, 80);
+    const s2 = randInt(20, 60);
+    const totalD = d1 + d2;
+    // time = d1/s1 + d2/s2 = (d1*s2 + d2*s1) / (s1*s2)
+    const timeNum = d1 * s2 + d2 * s1;
+    const timeDen = s1 * s2;
+    // avg speed = totalD / time = totalD * timeDen / timeNum
+    const ansNum = totalD * timeDen;
+    const ansDen = timeNum;
+    const g = gcd(Math.abs(ansNum), Math.abs(ansDen));
+    const rn = ansNum / g;
+    const rd = ansDen / g;
+    answer = rd === 1 ? rn : Math.round((rn / rd) * 100) / 100;
+    display = answer + ' km/h';
+    prompt = `A cyclist rides ${d1} km at ${s1} km/h then ${d2} km at ${s2} km/h. Find the average speed (to 2 d.p. if needed).`;
+  } else {
+    // Convert units: m/s to km/h or vice versa
+    const ms = randInt(5, 30); // m/s
+    answer = Math.round(ms * 3.6 * 100) / 100;
+    display = answer + ' km/h';
+    prompt = `Convert ${ms} m/s to km/h.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/sdt-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/[^\d.\-\/]/g, ''));
+  const correct = !isNaN(ua) && Math.abs(ua - req.body.answer) < 0.05;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * VARIATION API  /variation-api
+ * Direct, inverse, joint variation — find k, find unknowns
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/variation-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // y = kx, given y and x find k, then find y for new x
+    const k = randInt(2, 9);
+    const x1 = randInt(2, 6);
+    const y1 = k * x1;
+    const x2 = randInt(3, 8);
+    answer = k * x2;
+    display = String(answer);
+    prompt = `y is directly proportional to x. When x = ${x1}, y = ${y1}. Find y when x = ${x2}.`;
+  } else if (diff === 'medium') {
+    // y = k/x (inverse), given y and x find y for new x
+    const k = randInt(12, 60);
+    const x1 = randInt(2, 6);
+    // ensure k divisible by x1 and x2
+    const x2 = randInt(2, 6);
+    const kUse = x1 * x2 * randInt(1, 4);
+    const y1 = kUse / x1;
+    answer = kUse / x2;
+    display = String(answer);
+    prompt = `y is inversely proportional to x. When x = ${x1}, y = ${y1}. Find y when x = ${x2}.`;
+  } else if (diff === 'hard') {
+    // y = kx², given y and x find y for new x
+    const k = randInt(1, 5);
+    const x1 = randInt(2, 5);
+    const y1 = k * x1 * x1;
+    const x2 = randInt(2, 6);
+    answer = k * x2 * x2;
+    display = String(answer);
+    prompt = `y is directly proportional to x². When x = ${x1}, y = ${y1}. Find y when x = ${x2}.`;
+  } else {
+    // y = k/√x (inverse square root)
+    const x1 = [4, 9, 16, 25][randInt(0, 3)];
+    const sqrtX1 = Math.round(Math.sqrt(x1));
+    const k = sqrtX1 * randInt(2, 6);
+    const y1 = k / sqrtX1;
+    const x2 = [4, 9, 16, 25][randInt(0, 3)];
+    const sqrtX2 = Math.round(Math.sqrt(x2));
+    answer = k / sqrtX2;
+    display = String(answer);
+    prompt = `y is inversely proportional to √x. When x = ${x1}, y = ${y1}. Find y when x = ${x2}.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/variation-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/\s/g, ''));
+  const correct = !isNaN(ua) && Math.abs(ua - req.body.answer) < 0.05;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * HCF & LCM API  /hcflcm-api
+ * Find HCF/LCM of 2-3 numbers, word problems
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+function lcm(a, b) { return Math.abs(a * b) / gcd(a, b); }
+
+app.get('/hcflcm-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // HCF of two numbers
+    const g = randInt(2, 12);
+    const a = g * randInt(2, 7);
+    const b = g * randInt(2, 7);
+    answer = gcd(a, b);
+    display = String(answer);
+    prompt = `Find the HCF of ${a} and ${b}.`;
+  } else if (diff === 'medium') {
+    // LCM of two numbers
+    const a = randInt(4, 20);
+    const b = randInt(4, 20);
+    answer = lcm(a, b);
+    display = String(answer);
+    prompt = `Find the LCM of ${a} and ${b}.`;
+  } else if (diff === 'hard') {
+    // HCF and LCM of three numbers — ask for LCM
+    const a = randInt(4, 15);
+    const b = randInt(4, 15);
+    const c = randInt(4, 15);
+    answer = lcm(lcm(a, b), c);
+    display = String(answer);
+    prompt = `Find the LCM of ${a}, ${b}, and ${c}.`;
+  } else {
+    // Word problem: Two buses leave at same time, intervals A and B min, when next together?
+    const a = randInt(8, 20);
+    const b = randInt(10, 25);
+    answer = lcm(a, b);
+    display = answer + ' minutes';
+    prompt = `Bus A departs every ${a} minutes and Bus B every ${b} minutes. They both leave at 9:00. After how many minutes will they next depart together?`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/hcflcm-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/[^\d.\-]/g, ''));
+  const correct = !isNaN(ua) && ua === req.body.answer;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PROFIT & LOSS API  /profitloss-api
+ * Cost price, selling price, profit %, discount, markup
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/profitloss-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Find profit given CP and SP
+    const cp = randInt(20, 200) * 5;
+    const profit = randInt(10, 50) * 5;
+    const sp = cp + profit;
+    answer = profit;
+    display = '$' + answer;
+    prompt = `An item is bought for $${cp} and sold for $${sp}. Find the profit.`;
+  } else if (diff === 'medium') {
+    // Find profit %
+    const cp = randInt(10, 100) * 10;
+    const profitPct = randInt(5, 40);
+    const profit = cp * profitPct / 100;
+    const sp = cp + profit;
+    answer = profitPct;
+    display = answer + '%';
+    prompt = `Cost price = $${cp}, selling price = $${sp}. Find the profit percentage.`;
+  } else if (diff === 'hard') {
+    // Discount: marked price, discount %, find SP
+    const mp = randInt(20, 100) * 10;
+    const discPct = [10, 15, 20, 25, 30][randInt(0, 4)];
+    const sp = mp * (100 - discPct) / 100;
+    answer = sp;
+    display = '$' + answer;
+    prompt = `A shirt has a marked price of $${mp}. A ${discPct}% discount is applied. Find the selling price.`;
+  } else {
+    // Two successive discounts
+    const mp = randInt(20, 100) * 10;
+    const d1 = [10, 20, 25][randInt(0, 2)];
+    const d2 = [10, 15, 20][randInt(0, 2)];
+    const after1 = mp * (100 - d1) / 100;
+    const after2 = after1 * (100 - d2) / 100;
+    answer = after2;
+    display = '$' + answer;
+    prompt = `Marked price is $${mp}. Successive discounts of ${d1}% and ${d2}% are applied. Find the final price.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/profitloss-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/[$,\s%]/g, ''));
+  const correct = !isNaN(ua) && Math.abs(ua - req.body.answer) < 0.05;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ROUNDING API  /rounding-api
+ * Decimal places, significant figures, estimation
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/rounding-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Round to given dp
+    const dp = randInt(1, 2);
+    const num = (randInt(100, 9999) / 1000).toFixed(4);
+    answer = parseFloat(parseFloat(num).toFixed(dp));
+    display = parseFloat(num).toFixed(dp);
+    prompt = `Round ${num} to ${dp} decimal place${dp > 1 ? 's' : ''}.`;
+  } else if (diff === 'medium') {
+    // Round to N significant figures
+    const sf = randInt(1, 3);
+    const num = randInt(1000, 99999) / (Math.pow(10, randInt(0, 2)));
+    const rounded = parseFloat(num.toPrecision(sf));
+    answer = rounded;
+    display = String(rounded);
+    prompt = `Round ${num} to ${sf} significant figure${sf > 1 ? 's' : ''}.`;
+  } else if (diff === 'hard') {
+    // Truncate (not round) to N dp
+    const dp = randInt(1, 3);
+    const num = (randInt(10000, 99999) / 10000).toFixed(5);
+    const factor = Math.pow(10, dp);
+    answer = Math.trunc(parseFloat(num) * factor) / factor;
+    display = answer.toFixed(dp);
+    prompt = `Truncate ${num} to ${dp} decimal place${dp > 1 ? 's' : ''}.`;
+  } else {
+    // Estimation: round each to 1 sf then compute
+    const a = randInt(10, 99);
+    const b = randInt(10, 99);
+    const aRound = parseFloat(a.toPrecision(1));
+    const bRound = parseFloat(b.toPrecision(1));
+    answer = aRound * bRound;
+    display = String(answer);
+    prompt = `Estimate ${a} × ${b} by rounding each number to 1 significant figure.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/rounding-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/\s/g, ''));
+  const correct = !isNaN(ua) && Math.abs(ua - req.body.answer) < 0.005;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * BINOMIAL THEOREM API  /binomial-api
+ * Expand (a+b)^n, find specific terms, coefficient extraction
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+// nCr function
+function nCr(n, r) {
+  if (r > n || r < 0) return 0;
+  if (r === 0 || r === n) return 1;
+  let result = 1;
+  for (let i = 0; i < r; i++) { result = result * (n - i) / (i + 1); }
+  return Math.round(result);
+}
+
+app.get('/binomial-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Find nCr
+    const n = randInt(4, 10);
+    const r = randInt(1, Math.min(n - 1, 5));
+    answer = nCr(n, r);
+    display = String(answer);
+    prompt = `Evaluate ${n}C${r} (${n} choose ${r}).`;
+  } else if (diff === 'medium') {
+    // Find coefficient of x^r in (1+x)^n
+    const n = randInt(4, 10);
+    const r = randInt(2, Math.min(n - 1, 5));
+    answer = nCr(n, r);
+    display = String(answer);
+    prompt = `Find the coefficient of x^${r} in the expansion of (1 + x)^${n}.`;
+  } else if (diff === 'hard') {
+    // Find coefficient of x^r in (a+bx)^n
+    const a = randInt(1, 3);
+    const b = randInt(1, 3);
+    const n = randInt(3, 6);
+    const r = randInt(1, Math.min(n, 4));
+    // Term: nCr * a^(n-r) * (bx)^r = nCr * a^(n-r) * b^r * x^r
+    answer = nCr(n, r) * Math.pow(a, n - r) * Math.pow(b, r);
+    display = String(answer);
+    prompt = `Find the coefficient of x^${r} in (${a} + ${b}x)^${n}.`;
+  } else {
+    // Find a specific term in (1+x)^n expansion, e.g. the 4th term
+    const n = randInt(5, 10);
+    const termNum = randInt(2, Math.min(n, 5)); // the termNum-th term (1-indexed)
+    const r = termNum - 1;
+    answer = nCr(n, r);
+    display = `${answer}x^${r}`;
+    prompt = `Find the ${termNum}${termNum === 2 ? 'nd' : termNum === 3 ? 'rd' : 'th'} term in the expansion of (1 + x)^${n}. Give the coefficient only.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/binomial-api/check', express.json(), (req, res) => {
+  const ua = parseFloat((req.body.userAnswer || '').replace(/[^\d.\-]/g, ''));
+  const correct = !isNaN(ua) && ua === req.body.answer;
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * COMPLEX NUMBERS API  /complex-api
+ * Add, multiply, modulus, conjugate
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+function fmtComplex(re, im) {
+  if (im === 0) return String(re);
+  if (re === 0) return im === 1 ? 'i' : im === -1 ? '-i' : im + 'i';
+  const imPart = im === 1 ? 'i' : im === -1 ? '-i' : (im > 0 ? '+' + im + 'i' : im + 'i');
+  return re + (im > 0 && im !== 1 ? '+' : '') + (im === 1 ? '+i' : im === -1 ? '-i' : (im > 0 ? '' : '') + im + 'i');
+}
+
+app.get('/complex-api/question', (req, res) => {
+  const diff = req.query.difficulty || 'easy';
+  let prompt, answer, display;
+
+  if (diff === 'easy') {
+    // Add two complex numbers
+    const a = randInt(-5, 5), b = randInt(-5, 5);
+    const c = randInt(-5, 5), d = randInt(-5, 5);
+    const re = a + c, im = b + d;
+    answer = re + ',' + im;
+    display = fmtComplex(re, im);
+    const z1 = fmtComplex(a, b), z2 = fmtComplex(c, d);
+    prompt = `If z₁ = ${z1} and z₂ = ${z2}, find z₁ + z₂.\nGive answer as a,b for a + bi.`;
+  } else if (diff === 'medium') {
+    // Multiply two complex numbers
+    const a = randInt(-4, 4), b = randInt(-4, 4);
+    const c = randInt(-4, 4), d = randInt(-4, 4);
+    const re = a * c - b * d;
+    const im = a * d + b * c;
+    answer = re + ',' + im;
+    display = fmtComplex(re, im);
+    const z1 = fmtComplex(a, b), z2 = fmtComplex(c, d);
+    prompt = `If z₁ = ${z1} and z₂ = ${z2}, find z₁ × z₂.\nGive answer as a,b for a + bi.`;
+  } else if (diff === 'hard') {
+    // Find modulus |z| using Pythagorean triples for clean answers
+    const triples = [[3, 4, 5], [5, 12, 13], [8, 15, 17], [6, 8, 10]];
+    const [a, b, c] = triples[randInt(0, triples.length - 1)];
+    const signA = Math.random() < 0.5 ? -1 : 1;
+    const signB = Math.random() < 0.5 ? -1 : 1;
+    answer = c;
+    display = String(c);
+    prompt = `Find |z| where z = ${fmtComplex(signA * a, signB * b)}.`;
+  } else {
+    // Find z² given z = a + bi
+    const a = randInt(-4, 4), b = randInt(1, 5) * (Math.random() < 0.5 ? -1 : 1);
+    const re = a * a - b * b;
+    const im = 2 * a * b;
+    answer = re + ',' + im;
+    display = fmtComplex(re, im);
+    prompt = `If z = ${fmtComplex(a, b)}, find z².\nGive answer as a,b for a + bi.`;
+  }
+
+  res.json({ prompt, answer, display, difficulty: diff });
+});
+
+app.post('/complex-api/check', express.json(), (req, res) => {
+  const ua = (req.body.userAnswer || '').replace(/\s/g, '').replace(/i/g, '');
+  const ans = String(req.body.answer).replace(/\s/g, '');
+  // For modulus: direct numeric check
+  if (!ans.includes(',')) {
+    const correct = parseFloat(ua) === parseFloat(ans);
+    return res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+  }
+  // For complex: compare a,b pairs
+  const userParts = ua.split(',').map(Number);
+  const ansParts = ans.split(',').map(Number);
+  const correct = userParts.length === 2 && userParts[0] === ansParts[0] && userParts[1] === ansParts[1];
+  res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
 /**
  * CATCH-ALL ROUTE
  * ═══════════════════════════════════════════════════════════════════════════

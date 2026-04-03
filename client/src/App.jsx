@@ -1732,6 +1732,16 @@ function App() {
     diff: DiffApp,                 // Differentiation
     bases: BasesApp,               // Number Bases
     circleth: CircleThApp,         // Circle Theorems
+    integ: IntegApp,               // Integration
+    stdform: StdFormApp,           // Standard Form
+    bounds: BoundsApp,             // Bounds
+    sdt: SDTApp,                   // Speed, Distance, Time
+    variation: VariationApp,       // Variation
+    hcflcm: HcfLcmApp,            // HCF & LCM
+    profitloss: ProfitLossApp,     // Profit & Loss
+    rounding: RoundingApp,         // Rounding
+    binomial: BinomialApp,         // Binomial Theorem
+    complex: ComplexApp,           // Complex Numbers
     custom: CustomApp,             // Custom lesson builder
   }
 
@@ -1803,6 +1813,16 @@ function Home({ onSelect }) {
     { key: 'diff', name: 'Differentiation', subtitle: 'Power rule, turning points', color: 'blue' },
     { key: 'bases', name: 'Number Bases', subtitle: 'Binary, decimal, hexadecimal', color: 'green' },
     { key: 'circleth', name: 'Circle Theorems', subtitle: 'Angles, tangents, cyclic quads', color: 'purple' },
+    { key: 'integ', name: 'Integration', subtitle: 'Reverse differentiation & areas', color: 'blue' },
+    { key: 'stdform', name: 'Standard Form', subtitle: 'Scientific notation operations', color: 'green' },
+    { key: 'bounds', name: 'Bounds', subtitle: 'Upper & lower bounds', color: 'purple' },
+    { key: 'sdt', name: 'Speed, Distance, Time', subtitle: 'Rate problems & conversions', color: 'blue' },
+    { key: 'variation', name: 'Variation', subtitle: 'Direct & inverse proportion', color: 'green' },
+    { key: 'hcflcm', name: 'HCF & LCM', subtitle: 'Highest common factor & LCM', color: 'purple' },
+    { key: 'profitloss', name: 'Profit & Loss', subtitle: 'Cost price, discounts, markup', color: 'blue' },
+    { key: 'rounding', name: 'Rounding', subtitle: 'D.P., sig. figs, estimation', color: 'green' },
+    { key: 'binomial', name: 'Binomial Theorem', subtitle: 'Expansions & coefficients', color: 'purple' },
+    { key: 'complex', name: 'Complex Numbers', subtitle: 'Add, multiply, modulus', color: 'blue' },
     { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'green' },
   ]
 
@@ -3314,6 +3334,67 @@ const CircleThApp = makeQuizApp({
   title: 'Circle Theorems', subtitle: 'Angles, tangents, cyclic quads', apiPath: 'circle-api',
   diffLabels: { easy: 'Easy — Semicircle', medium: 'Medium — Centre/Circum', hard: 'Hard — Cyclic quad', extrahard: 'Extra Hard — Tangent' },
   placeholders: 'e.g. 45',
+})
+
+const IntegApp = makeQuizApp({
+  title: 'Integration', subtitle: 'Reverse differentiation & areas', apiPath: 'integ-api',
+  diffLabels: { easy: 'Easy — Power rule', medium: 'Medium — Definite integral', hard: 'Hard — Substitution', extrahard: 'Extra Hard — Area under curve' },
+  placeholders: 'e.g. 3/4', tip: 'Use fractions like 3/4 if needed',
+})
+
+const StdFormApp = makeQuizApp({
+  title: 'Standard Form', subtitle: 'Scientific notation operations', apiPath: 'stdform-api',
+  diffLabels: { easy: 'Easy — Convert', medium: 'Medium — Multiply', hard: 'Hard — Divide', extrahard: 'Extra Hard — Add' },
+  placeholders: 'e.g. 3.5 × 10^4', tip: 'Format: a × 10^n',
+})
+
+const BoundsApp = makeQuizApp({
+  title: 'Bounds', subtitle: 'Upper & lower bounds, error intervals', apiPath: 'bounds-api',
+  diffLabels: { easy: 'Easy — Lower bound', medium: 'Medium — Nearest 10', hard: 'Hard — Sum bounds', extrahard: 'Extra Hard — Division bounds' },
+  placeholders: 'e.g. 4.25',
+})
+
+const SDTApp = makeQuizApp({
+  title: 'Speed, Distance, Time', subtitle: 'Rate problems & conversions', apiPath: 'sdt-api',
+  diffLabels: { easy: 'Easy — Distance', medium: 'Medium — Time', hard: 'Hard — Average speed', extrahard: 'Extra Hard — Convert' },
+  placeholders: 'e.g. 120',
+})
+
+const VariationApp = makeQuizApp({
+  title: 'Variation', subtitle: 'Direct & inverse proportion equations', apiPath: 'variation-api',
+  diffLabels: { easy: 'Easy — Direct (y∝x)', medium: 'Medium — Inverse (y∝1/x)', hard: 'Hard — y∝x²', extrahard: 'Extra Hard — y∝1/√x' },
+  placeholders: 'e.g. 24',
+})
+
+const HcfLcmApp = makeQuizApp({
+  title: 'HCF & LCM', subtitle: 'Highest common factor & lowest common multiple', apiPath: 'hcflcm-api',
+  diffLabels: { easy: 'Easy — HCF', medium: 'Medium — LCM', hard: 'Hard — Three numbers', extrahard: 'Extra Hard — Word problem' },
+  placeholders: 'e.g. 60',
+})
+
+const ProfitLossApp = makeQuizApp({
+  title: 'Profit & Loss', subtitle: 'Cost price, selling price, discounts', apiPath: 'profitloss-api',
+  diffLabels: { easy: 'Easy — Find profit', medium: 'Medium — Profit %', hard: 'Hard — Discount', extrahard: 'Extra Hard — Successive discounts' },
+  placeholders: 'e.g. 150',
+})
+
+const RoundingApp = makeQuizApp({
+  title: 'Rounding', subtitle: 'Decimal places, significant figures, estimation', apiPath: 'rounding-api',
+  diffLabels: { easy: 'Easy — Decimal places', medium: 'Medium — Sig. figures', hard: 'Hard — Truncation', extrahard: 'Extra Hard — Estimation' },
+  placeholders: 'e.g. 3.14',
+})
+
+const BinomialApp = makeQuizApp({
+  title: 'Binomial Theorem', subtitle: 'Expansions, coefficients, nCr', apiPath: 'binomial-api',
+  diffLabels: { easy: 'Easy — nCr', medium: 'Medium — (1+x)^n', hard: 'Hard — (a+bx)^n', extrahard: 'Extra Hard — Specific term' },
+  placeholders: 'e.g. 210',
+})
+
+const ComplexApp = makeQuizApp({
+  title: 'Complex Numbers', subtitle: 'Add, multiply, modulus of complex numbers', apiPath: 'complex-api',
+  diffLabels: { easy: 'Easy — Addition', medium: 'Medium — Multiplication', hard: 'Hard — Modulus', extrahard: 'Extra Hard — z²' },
+  placeholders: (q, d) => d === 'hard' ? 'e.g. 13' : 'e.g. 3,-2 for 3-2i',
+  tip: 'For complex answers give a,b where z = a + bi',
 })
 
 /* ── Sets App ───────────────────────────────────────── */
@@ -6354,6 +6435,16 @@ const CUSTOM_PUZZLES = [
   { key: 'diff', name: 'Differentiation' },
   { key: 'bases', name: 'Number Bases' },
   { key: 'circleth', name: 'Circle Theorems' },
+  { key: 'integ', name: 'Integration' },
+  { key: 'stdform', name: 'Standard Form' },
+  { key: 'bounds', name: 'Bounds' },
+  { key: 'sdt', name: 'Speed, Distance, Time' },
+  { key: 'variation', name: 'Variation' },
+  { key: 'hcflcm', name: 'HCF & LCM' },
+  { key: 'profitloss', name: 'Profit & Loss' },
+  { key: 'rounding', name: 'Rounding' },
+  { key: 'binomial', name: 'Binomial Theorem' },
+  { key: 'complex', name: 'Complex Numbers' },
 ]
 
 /**
@@ -6412,6 +6503,16 @@ function fetchQuestionForType(type, difficulty) {
     diff: `${API}/diff-api/question?difficulty=${difficulty}`,
     bases: `${API}/bases-api/question?difficulty=${difficulty}`,
     circleth: `${API}/circle-api/question?difficulty=${difficulty}`,
+    integ: `${API}/integ-api/question?difficulty=${difficulty}`,
+    stdform: `${API}/stdform-api/question?difficulty=${difficulty}`,
+    bounds: `${API}/bounds-api/question?difficulty=${difficulty}`,
+    sdt: `${API}/sdt-api/question?difficulty=${difficulty}`,
+    variation: `${API}/variation-api/question?difficulty=${difficulty}`,
+    hcflcm: `${API}/hcflcm-api/question?difficulty=${difficulty}`,
+    profitloss: `${API}/profitloss-api/question?difficulty=${difficulty}`,
+    rounding: `${API}/rounding-api/question?difficulty=${difficulty}`,
+    binomial: `${API}/binomial-api/question?difficulty=${difficulty}`,
+    complex: `${API}/complex-api/question?difficulty=${difficulty}`,
   }
   return fetch(urls[type]).then(r => r.json())
 }
@@ -6455,6 +6556,8 @@ function getPromptForType(type, q) {
     case 'trig': case 'ineq': case 'coordgeom': case 'prob': case 'stats':
     case 'matrix': case 'vectors': case 'transform': case 'mensur':
     case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
+    case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
+    case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
       return q.prompt || ''
     default: return ''
   }
@@ -6862,9 +6965,11 @@ function CustomApp({ onBack }) {
       // ─────── Generic API puzzles ──────────────────────────────────
       case 'trig': case 'ineq': case 'coordgeom': case 'prob': case 'stats':
       case 'matrix': case 'vectors': case 'transform': case 'mensur':
-      case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth': {
+      case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
+      case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
+      case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex': {
         if (answer === '') return
-        const apiMap = { trig: 'trig-api', ineq: 'ineq-api', coordgeom: 'coordgeom-api', prob: 'prob-api', stats: 'stats-api', matrix: 'matrix-api', vectors: 'vectors-api', transform: 'transform-api', mensur: 'mensur-api', bearings: 'bearings-api', log: 'log-api', diff: 'diff-api', bases: 'bases-api', circleth: 'circle-api' }
+        const apiMap = { trig: 'trig-api', ineq: 'ineq-api', coordgeom: 'coordgeom-api', prob: 'prob-api', stats: 'stats-api', matrix: 'matrix-api', vectors: 'vectors-api', transform: 'transform-api', mensur: 'mensur-api', bearings: 'bearings-api', log: 'log-api', diff: 'diff-api', bases: 'bases-api', circleth: 'circle-api', integ: 'integ-api', stdform: 'stdform-api', bounds: 'bounds-api', sdt: 'sdt-api', variation: 'variation-api', hcflcm: 'hcflcm-api', profitloss: 'profitloss-api', rounding: 'rounding-api', binomial: 'binomial-api', complex: 'complex-api' }
         const genPayload = { ...question, userAnswer: answer.trim() }
         res = await fetch(`${API}/${apiMap[curType]}/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(genPayload) })
         data = await res.json()
@@ -7006,6 +7111,8 @@ function CustomApp({ onBack }) {
       case 'trig': case 'ineq': case 'coordgeom': case 'prob': case 'stats':
       case 'matrix': case 'vectors': case 'transform': case 'mensur':
       case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
+      case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
+      case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
         return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
       case 'gk': case 'vocab':
         if (!question.options) return null

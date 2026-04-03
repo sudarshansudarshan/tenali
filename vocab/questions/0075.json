@@ -1,15 +1,15 @@
 {
   "id": 75,
-  "word": "Phosphenes",
-  "question": "Phosphenes",
+  "word": "Proud",
+  "question": "Proud",
   "options": [
-    "The strange wistfulness of used bookshops",
-    "The pleasant smell of earth after rain",
-    "The lights you see when you rub your closed eyes",
-    "A feeling of melancholy about the state of the world"
+    "Protected from danger or risk",
+    "To exceed or be greater than something",
+    "Feeling deep pleasure from achievements",
+    "Causing extreme fear or suffering"
   ],
   "answerOption": "C",
-  "answerText": "The lights you see when you rub your closed eyes",
-  "difficulty": "hardest",
+  "answerText": "Feeling deep pleasure from achievements",
+  "difficulty": "easy",
   "sourceFile": "0075.json"
 }

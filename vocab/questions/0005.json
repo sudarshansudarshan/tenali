@@ -1,15 +1,15 @@
 {
   "id": 5,
-  "word": "Hesitate",
-  "question": "Hesitate",
+  "word": "Loud",
+  "question": "Loud",
   "options": [
-    "To pause before doing something",
-    "A great victory or achievement",
-    "Shiny and smooth on the surface",
-    "Easily broken or damaged"
+    "Notably large in size or amount",
+    "To examine similarities and differences",
+    "Producing much noise or sound",
+    "To shine with a bright shimmering light"
   ],
-  "answerOption": "A",
-  "answerText": "To pause before doing something",
+  "answerOption": "C",
+  "answerText": "Producing much noise or sound",
   "difficulty": "easy",
   "sourceFile": "0005.json"
 }

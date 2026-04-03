@@ -1,15 +1,15 @@
 {
   "id": 32,
-  "word": "Benevolent",
-  "question": "Benevolent",
+  "word": "Bitter",
+  "question": "Bitter",
   "options": [
-    "Having a harmful effect, especially gradually",
-    "Well-meaning and kindly toward others",
-    "A seemingly contradictory statement that may be true",
-    "Insisting on beliefs without considering evidence"
+    "To move from one region to another",
+    "To give an authoritative order",
+    "Having a sharp, unpleasant taste",
+    "Full of life and energy"
   ],
-  "answerOption": "B",
-  "answerText": "Well-meaning and kindly toward others",
-  "difficulty": "hard",
+  "answerOption": "C",
+  "answerText": "Having a sharp, unpleasant taste",
+  "difficulty": "easy",
   "sourceFile": "0032.json"
 }

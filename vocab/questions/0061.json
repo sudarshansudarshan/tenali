@@ -1,15 +1,15 @@
 {
   "id": 61,
-  "word": "Sesquipedalian",
-  "question": "Sesquipedalian",
+  "word": "Lazy",
+  "question": "Lazy",
   "options": [
-    "A feeling of melancholy about the state of the world",
-    "Characterized by the use of long words",
-    "The strange wistfulness of used bookshops",
-    "The lights you see when you rub your closed eyes"
+    "Weak and delicate in health",
+    "To cause someone to find something funny",
+    "Unwilling to work or use energy",
+    "Able to soak up liquid easily"
   ],
-  "answerOption": "B",
-  "answerText": "Characterized by the use of long words",
-  "difficulty": "hardest",
+  "answerOption": "C",
+  "answerText": "Unwilling to work or use energy",
+  "difficulty": "easy",
   "sourceFile": "0061.json"
 }

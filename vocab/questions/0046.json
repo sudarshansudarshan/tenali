@@ -1,15 +1,15 @@
 {
   "id": 46,
-  "word": "Equivocate",
-  "question": "Equivocate",
+  "word": "Gentle",
+  "question": "Gentle",
   "options": [
-    "Stubbornly resistant to authority or control",
-    "Indicating a good chance of success; favorable",
-    "Exceedingly idealistic; unrealistic and impractical",
-    "To use ambiguous language to conceal the truth"
+    "Very small; much smaller than normal",
+    "Insufficient for the demand; in short supply",
+    "Mild in temperament or behavior",
+    "Of very little importance"
   ],
-  "answerOption": "D",
-  "answerText": "To use ambiguous language to conceal the truth",
-  "difficulty": "extra-hard",
+  "answerOption": "C",
+  "answerText": "Mild in temperament or behavior",
+  "difficulty": "easy",
   "sourceFile": "0046.json"
 }

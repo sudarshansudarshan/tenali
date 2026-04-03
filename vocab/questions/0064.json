@@ -1,15 +1,15 @@
 {
   "id": 64,
-  "word": "Pusillanimous",
-  "question": "Pusillanimous",
+  "word": "Wise",
+  "question": "Wise",
   "options": [
-    "Showing a lack of courage; timid",
-    "Pleasure derived from another's misfortune",
-    "The act of throwing someone out of a window",
-    "The state of being infatuated with another person"
+    "Expecting the best possible outcome",
+    "Having experience, knowledge, and good judgment",
+    "Belonging to the very distant past",
+    "Having the ability to do something"
   ],
-  "answerOption": "A",
-  "answerText": "Showing a lack of courage; timid",
-  "difficulty": "hardest",
+  "answerOption": "B",
+  "answerText": "Having experience, knowledge, and good judgment",
+  "difficulty": "easy",
   "sourceFile": "0064.json"
 }

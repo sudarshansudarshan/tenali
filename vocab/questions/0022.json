@@ -1,15 +1,15 @@
 {
   "id": 22,
-  "word": "Meticulous",
-  "question": "Meticulous",
+  "word": "Kind",
+  "question": "Kind",
   "options": [
-    "Unwilling and hesitant to act",
-    "Existing in very large quantities",
-    "Able to recover quickly from difficulties",
-    "Showing great attention to detail"
+    "Extremely beautiful or impressive",
+    "Generous and considerate towards others",
+    "Loud and energetic",
+    "To buy something"
   ],
-  "answerOption": "D",
-  "answerText": "Showing great attention to detail",
-  "difficulty": "medium",
+  "answerOption": "B",
+  "answerText": "Generous and considerate towards others",
+  "difficulty": "easy",
   "sourceFile": "0022.json"
 }

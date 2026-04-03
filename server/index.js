@@ -44,11 +44,16 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, questions: questions.length });
 });
 
-app.get('/gk-api/question', (_req, res) => {
+app.get('/gk-api/question', (req, res) => {
+  const exclude = req.query.exclude ? req.query.exclude.split(',').map(Number) : [];
   if (!questions.length) {
     return res.status(500).json({ error: 'No questions found' });
   }
-  const q = questions[Math.floor(Math.random() * questions.length)];
+  // Filter out already-seen questions; if all exhausted, allow any
+  let pool = questions;
+  const unseen = pool.filter((q) => !exclude.includes(q.id));
+  if (unseen.length > 0) pool = unseen;
+  const q = pool[Math.floor(Math.random() * pool.length)];
   res.json({
     id: q.id,
     question: q.question,
@@ -201,10 +206,14 @@ const vocabQuestions = loadVocab();
 
 app.get('/vocab-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
-  const pool = vocabQuestions.filter((q) => q.difficulty === difficulty);
+  const exclude = req.query.exclude ? req.query.exclude.split(',').map(Number) : [];
+  let pool = vocabQuestions.filter((q) => q.difficulty === difficulty);
   if (!pool.length) {
     return res.status(404).json({ error: `No vocab questions for difficulty: ${difficulty}` });
   }
+  // Filter out already-seen questions; if all exhausted, reset and allow any
+  const unseen = pool.filter((q) => !exclude.includes(q.id));
+  if (unseen.length > 0) pool = unseen;
   const q = pool[Math.floor(Math.random() * pool.length)];
   res.json({
     id: q.id,

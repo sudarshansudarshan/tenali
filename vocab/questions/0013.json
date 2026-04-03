@@ -1,15 +1,15 @@
 {
   "id": 13,
-  "word": "Eager",
-  "question": "Eager",
+  "word": "Dirty",
+  "question": "Dirty",
   "options": [
-    "Showing aggressive or violent force",
-    "Wanting to do something very much",
-    "To pause before doing something",
-    "Not afraid of danger"
+    "Covered or marked with an unclean substance",
+    "Giving information clearly in few words",
+    "To show how something is done",
+    "Causing extreme fear or suffering"
   ],
-  "answerOption": "B",
-  "answerText": "Wanting to do something very much",
+  "answerOption": "A",
+  "answerText": "Covered or marked with an unclean substance",
   "difficulty": "easy",
   "sourceFile": "0013.json"
 }

@@ -1,15 +1,15 @@
 {
   "id": 8,
-  "word": "Fragile",
-  "question": "Fragile",
+  "word": "Big",
+  "question": "Big",
   "options": [
-    "Belonging to the very distant past",
-    "Free from pretence or deceit",
-    "Very large in size or quantity",
-    "Easily broken or damaged"
+    "Mild in temperament or behavior",
+    "Easily seen or noticed",
+    "A barren area with very little rainfall",
+    "Of considerable size or extent"
   ],
   "answerOption": "D",
-  "answerText": "Easily broken or damaged",
+  "answerText": "Of considerable size or extent",
   "difficulty": "easy",
   "sourceFile": "0008.json"
 }

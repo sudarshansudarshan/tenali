@@ -1,15 +1,15 @@
 {
   "id": 43,
-  "word": "Pernicious",
-  "question": "Pernicious",
+  "word": "Calm",
+  "question": "Calm",
   "options": [
-    "Dealing with things sensibly and realistically",
-    "Having a harmful effect, especially gradually",
-    "Insisting on beliefs without considering evidence",
-    "A person who flatters to gain advantage"
+    "Willfully causing pain to others",
+    "To freely offer to do something",
+    "To put someone at risk or in danger",
+    "Not showing or feeling nervousness or anger"
   ],
-  "answerOption": "B",
-  "answerText": "Having a harmful effect, especially gradually",
-  "difficulty": "hard",
+  "answerOption": "D",
+  "answerText": "Not showing or feeling nervousness or anger",
+  "difficulty": "easy",
   "sourceFile": "0043.json"
 }

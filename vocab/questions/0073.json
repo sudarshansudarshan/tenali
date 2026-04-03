@@ -1,15 +1,15 @@
 {
   "id": 73,
-  "word": "Sonder",
-  "question": "Sonder",
+  "word": "Curious",
+  "question": "Curious",
   "options": [
-    "Pleasure derived from another's misfortune",
-    "Realizing each passerby has a life as vivid as your own",
-    "The pleasant smell of earth after rain",
-    "A tendency to excessive and often incoherent talking"
+    "Of considerable or unusual duration",
+    "To suffer or die from lack of food",
+    "To move downward without control",
+    "Eager to know or learn something"
   ],
-  "answerOption": "B",
-  "answerText": "Realizing each passerby has a life as vivid as your own",
-  "difficulty": "hardest",
+  "answerOption": "D",
+  "answerText": "Eager to know or learn something",
+  "difficulty": "easy",
   "sourceFile": "0073.json"
 }

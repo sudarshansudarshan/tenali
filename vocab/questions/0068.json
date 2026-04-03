@@ -1,15 +1,15 @@
 {
   "id": 68,
-  "word": "Petrichor",
-  "question": "Petrichor",
+  "word": "Greedy",
+  "question": "Greedy",
   "options": [
-    "The act of throwing someone out of a window",
-    "The state of being infatuated with another person",
-    "Inability to identify and describe one's emotions",
-    "The pleasant smell of earth after rain"
+    "Not found in large numbers; uncommon",
+    "Brief or using few words",
+    "Having an intense desire for food or wealth",
+    "Very fine in texture or structure"
   ],
-  "answerOption": "D",
-  "answerText": "The pleasant smell of earth after rain",
-  "difficulty": "hardest",
+  "answerOption": "C",
+  "answerText": "Having an intense desire for food or wealth",
+  "difficulty": "easy",
   "sourceFile": "0068.json"
 }

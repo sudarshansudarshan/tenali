@@ -1,15 +1,15 @@
 {
   "id": 33,
-  "word": "Cacophony",
-  "question": "Cacophony",
+  "word": "Hungry",
+  "question": "Hungry",
   "options": [
-    "A harsh mixture of discordant sounds",
-    "Lasting for a very short time",
-    "A person who flatters to gain advantage",
-    "Well-meaning and kindly toward others"
+    "Greatly pleased or entertained",
+    "Feeling or showing the need for food",
+    "Large and comfortable with plenty of space",
+    "Easily seen or noticed"
   ],
-  "answerOption": "A",
-  "answerText": "A harsh mixture of discordant sounds",
-  "difficulty": "hard",
+  "answerOption": "B",
+  "answerText": "Feeling or showing the need for food",
+  "difficulty": "easy",
   "sourceFile": "0033.json"
 }

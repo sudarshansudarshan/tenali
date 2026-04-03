@@ -1,15 +1,15 @@
 {
   "id": 6,
-  "word": "Ancient",
-  "question": "Ancient",
+  "word": "Fast",
+  "question": "Fast",
   "options": [
-    "Shiny and smooth on the surface",
-    "Belonging to the very distant past",
-    "A great victory or achievement",
-    "To throw in various random directions"
+    "To assign responsibility for a fault",
+    "To estimate something without full information",
+    "Moving or capable of moving at high speed",
+    "To examine similarities and differences"
   ],
-  "answerOption": "B",
-  "answerText": "Belonging to the very distant past",
+  "answerOption": "C",
+  "answerText": "Moving or capable of moving at high speed",
   "difficulty": "easy",
   "sourceFile": "0006.json"
 }

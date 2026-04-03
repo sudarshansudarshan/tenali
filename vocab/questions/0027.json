@@ -1,15 +1,15 @@
 {
   "id": 27,
-  "word": "Serene",
-  "question": "Serene",
+  "word": "Young",
+  "question": "Young",
   "options": [
-    "Fluent and persuasive in speaking or writing",
-    "Producing no useful result; pointless",
-    "Existing in very large quantities",
-    "Calm, peaceful, and untroubled"
+    "Existing at the beginning",
+    "Too small to be seen by the eye",
+    "Having lived or existed for only a short time",
+    "To work together on an activity"
   ],
-  "answerOption": "D",
-  "answerText": "Calm, peaceful, and untroubled",
-  "difficulty": "medium",
+  "answerOption": "C",
+  "answerText": "Having lived or existed for only a short time",
+  "difficulty": "easy",
   "sourceFile": "0027.json"
 }

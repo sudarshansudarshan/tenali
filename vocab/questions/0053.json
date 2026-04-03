@@ -1,15 +1,15 @@
 {
   "id": 53,
-  "word": "Recalcitrant",
-  "question": "Recalcitrant",
+  "word": "Near",
+  "question": "Near",
   "options": [
-    "Stubbornly resistant to authority or control",
-    "Proceeding in a harmful way that is hard to notice",
-    "Eager or quick to argue or fight",
-    "Very generous or forgiving toward rivals"
+    "To do physical harm or damage to someone",
+    "Bringing or worthy of honor",
+    "Without seriousness or importance",
+    "Not far away in distance"
   ],
-  "answerOption": "A",
-  "answerText": "Stubbornly resistant to authority or control",
-  "difficulty": "extra-hard",
+  "answerOption": "D",
+  "answerText": "Not far away in distance",
+  "difficulty": "easy",
   "sourceFile": "0053.json"
 }

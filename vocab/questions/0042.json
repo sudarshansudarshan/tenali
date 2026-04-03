@@ -1,15 +1,15 @@
 {
   "id": 42,
-  "word": "Dogmatic",
-  "question": "Dogmatic",
+  "word": "Ugly",
+  "question": "Ugly",
   "options": [
-    "Lacking energy; sluggish and apathetic",
-    "Insisting on beliefs without considering evidence",
-    "Present, appearing, or found everywhere",
-    "Lasting for a very short time"
+    "Not easily bent or moved",
+    "Feeling fear or anxiety",
+    "Unpleasant or repulsive in appearance",
+    "To save someone from a dangerous situation"
   ],
-  "answerOption": "B",
-  "answerText": "Insisting on beliefs without considering evidence",
-  "difficulty": "hard",
+  "answerOption": "C",
+  "answerText": "Unpleasant or repulsive in appearance",
+  "difficulty": "easy",
   "sourceFile": "0042.json"
 }

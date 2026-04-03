@@ -1,15 +1,15 @@
 {
   "id": 59,
-  "word": "Propitious",
-  "question": "Propitious",
+  "word": "Simple",
+  "question": "Simple",
   "options": [
-    "To use ambiguous language to conceal the truth",
-    "Indicating a good chance of success; favorable",
-    "Expressing a strong opinion, especially controversial",
-    "Stubbornly resistant to authority or control"
+    "Easy to understand or do",
+    "To recognize the full worth of something",
+    "Slightly wet or damp",
+    "Unfriendly and opposed to something"
   ],
-  "answerOption": "B",
-  "answerText": "Indicating a good chance of success; favorable",
-  "difficulty": "extra-hard",
+  "answerOption": "A",
+  "answerText": "Easy to understand or do",
+  "difficulty": "easy",
   "sourceFile": "0059.json"
 }

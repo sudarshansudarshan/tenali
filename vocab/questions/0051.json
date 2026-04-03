@@ -1,15 +1,15 @@
 {
   "id": 51,
-  "word": "Perfunctory",
-  "question": "Perfunctory",
+  "word": "Open",
+  "question": "Open",
   "options": [
-    "Indicating a good chance of success; favorable",
-    "Proceeding in a harmful way that is hard to notice",
-    "Carried out with minimum effort or care",
-    "Stubbornly resistant to authority or control"
+    "To move about freely without a destination",
+    "To make available for someone to use",
+    "To make sounds showing amusement",
+    "Allowing access; not closed or blocked"
   ],
-  "answerOption": "C",
-  "answerText": "Carried out with minimum effort or care",
-  "difficulty": "extra-hard",
+  "answerOption": "D",
+  "answerText": "Allowing access; not closed or blocked",
+  "difficulty": "easy",
   "sourceFile": "0051.json"
 }

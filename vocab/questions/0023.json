@@ -1,15 +1,15 @@
 {
   "id": 23,
-  "word": "Vivid",
-  "question": "Vivid",
+  "word": "Mean",
+  "question": "Mean",
   "options": [
-    "Producing powerful feelings or clear images",
-    "Able to recover quickly from difficulties",
-    "Producing no useful result; pointless",
-    "Showing great attention to detail"
+    "To have one's permanent home somewhere",
+    "Causing great enthusiasm and eagerness",
+    "Unwilling to give or share; unkind",
+    "To conduct the affairs of a state or organization"
   ],
-  "answerOption": "A",
-  "answerText": "Producing powerful feelings or clear images",
-  "difficulty": "medium",
+  "answerOption": "C",
+  "answerText": "Unwilling to give or share; unkind",
+  "difficulty": "easy",
   "sourceFile": "0023.json"
 }

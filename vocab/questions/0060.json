@@ -1,15 +1,15 @@
 {
   "id": 60,
-  "word": "Tendentious",
-  "question": "Tendentious",
+  "word": "Difficult",
+  "question": "Difficult",
   "options": [
-    "A change of circumstances, typically unwelcome",
-    "Exceedingly idealistic; unrealistic and impractical",
-    "To use ambiguous language to conceal the truth",
-    "Expressing a strong opinion, especially controversial"
+    "Needing much effort or skill to accomplish",
+    "Required to explain actions or decisions",
+    "Of great extent from side to side",
+    "To fit together the parts of something"
   ],
-  "answerOption": "D",
-  "answerText": "Expressing a strong opinion, especially controversial",
-  "difficulty": "extra-hard",
+  "answerOption": "A",
+  "answerText": "Needing much effort or skill to accomplish",
+  "difficulty": "easy",
   "sourceFile": "0060.json"
 }

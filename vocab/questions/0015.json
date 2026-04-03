@@ -1,15 +1,15 @@
 {
   "id": 15,
-  "word": "Glossy",
-  "question": "Glossy",
+  "word": "Dark",
+  "question": "Dark",
   "options": [
-    "Very large in size or quantity",
-    "Shiny and smooth on the surface",
-    "To pause before doing something",
-    "Easily broken or damaged"
+    "To be defeated in a contest",
+    "With little or no light",
+    "Keeping careful watch for dangers",
+    "Giving information clearly in few words"
   ],
   "answerOption": "B",
-  "answerText": "Shiny and smooth on the surface",
+  "answerText": "With little or no light",
   "difficulty": "easy",
   "sourceFile": "0015.json"
 }

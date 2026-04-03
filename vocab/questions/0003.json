@@ -1,15 +1,15 @@
 {
   "id": 3,
-  "word": "Enormous",
-  "question": "Enormous",
+  "word": "Angry",
+  "question": "Angry",
   "options": [
-    "Shiny and smooth on the surface",
-    "Mild and kind in manner",
-    "Showing aggressive or violent force",
-    "Very large in size or quantity"
+    "Feeling strong displeasure or hostility",
+    "Not making or accompanied by any sound",
+    "Feeling a need to drink something",
+    "Having a sharp, unpleasant taste"
   ],
-  "answerOption": "D",
-  "answerText": "Very large in size or quantity",
+  "answerOption": "A",
+  "answerText": "Feeling strong displeasure or hostility",
   "difficulty": "easy",
   "sourceFile": "0003.json"
 }

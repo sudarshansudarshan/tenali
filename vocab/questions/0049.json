@@ -1,15 +1,15 @@
 {
   "id": 49,
-  "word": "Magnanimous",
-  "question": "Magnanimous",
+  "word": "Empty",
+  "question": "Empty",
   "options": [
-    "Stubbornly resistant to authority or control",
-    "Translucently clear in style or meaning",
-    "Very generous or forgiving toward rivals",
-    "Proceeding in a harmful way that is hard to notice"
+    "To go out of or leave a place",
+    "Containing nothing; not filled",
+    "To convey thoughts or feelings in words",
+    "To carefully choose as being the best"
   ],
-  "answerOption": "C",
-  "answerText": "Very generous or forgiving toward rivals",
-  "difficulty": "extra-hard",
+  "answerOption": "B",
+  "answerText": "Containing nothing; not filled",
+  "difficulty": "easy",
   "sourceFile": "0049.json"
 }

@@ -1,15 +1,15 @@
 {
   "id": 17,
-  "word": "Eloquent",
-  "question": "Eloquent",
+  "word": "Cold",
+  "question": "Cold",
   "options": [
-    "Fluent and persuasive in speaking or writing",
-    "A feeling that something is worthless",
-    "Truthful and straightforward; frank",
-    "Acting with care and thought for the future"
+    "Not able to cause damage or injury",
+    "Not supporting either side in a conflict",
+    "Of or at a low temperature",
+    "Strikingly unusual or different"
   ],
-  "answerOption": "A",
-  "answerText": "Fluent and persuasive in speaking or writing",
-  "difficulty": "medium",
+  "answerOption": "C",
+  "answerText": "Of or at a low temperature",
+  "difficulty": "easy",
   "sourceFile": "0017.json"
 }

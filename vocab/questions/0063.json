@@ -1,15 +1,15 @@
 {
   "id": 63,
-  "word": "Perspicacious",
-  "question": "Perspicacious",
+  "word": "Silly",
+  "question": "Silly",
   "options": [
-    "Having a ready insight into things; shrewd",
-    "The strange wistfulness of used bookshops",
-    "Pleasure derived from another's misfortune",
-    "A feeling of melancholy about the state of the world"
+    "Suggested or understood indirectly",
+    "Required by law or rule; mandatory",
+    "Having or showing a lack of common sense",
+    "Elaborately or highly decorated"
   ],
-  "answerOption": "A",
-  "answerText": "Having a ready insight into things; shrewd",
-  "difficulty": "hardest",
+  "answerOption": "C",
+  "answerText": "Having or showing a lack of common sense",
+  "difficulty": "easy",
   "sourceFile": "0063.json"
 }

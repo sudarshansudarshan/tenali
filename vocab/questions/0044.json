@@ -1,15 +1,15 @@
 {
   "id": 44,
-  "word": "Sycophant",
-  "question": "Sycophant",
+  "word": "Wild",
+  "question": "Wild",
   "options": [
-    "A person who flatters to gain advantage",
-    "Lacking energy; sluggish and apathetic",
-    "Fond of company; sociable",
-    "Something that deviates from what is standard"
+    "To combine different things together",
+    "To make available for someone to use",
+    "Living in a natural state; not tamed",
+    "Easily seen or noticed"
   ],
-  "answerOption": "A",
-  "answerText": "A person who flatters to gain advantage",
-  "difficulty": "hard",
+  "answerOption": "C",
+  "answerText": "Living in a natural state; not tamed",
+  "difficulty": "easy",
   "sourceFile": "0044.json"
 }

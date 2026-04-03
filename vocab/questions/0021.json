@@ -1,15 +1,15 @@
 {
   "id": 21,
-  "word": "Contempt",
-  "question": "Contempt",
+  "word": "Weak",
+  "question": "Weak",
   "options": [
-    "Truthful and straightforward; frank",
-    "A feeling that something is worthless",
-    "Existing in very large quantities",
-    "Producing powerful feelings or clear images"
+    "Awkward in movement or handling things",
+    "To go or come up a slope or stairs",
+    "Lacking the power to perform demanding tasks",
+    "Done according to a fixed plan"
   ],
-  "answerOption": "B",
-  "answerText": "A feeling that something is worthless",
-  "difficulty": "medium",
+  "answerOption": "C",
+  "answerText": "Lacking the power to perform demanding tasks",
+  "difficulty": "easy",
   "sourceFile": "0021.json"
 }

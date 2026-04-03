@@ -1,15 +1,15 @@
 {
   "id": 26,
-  "word": "Candid",
-  "question": "Candid",
+  "word": "Old",
+  "question": "Old",
   "options": [
-    "Strange or unusual in character",
-    "Showing careful and persistent effort",
-    "Truthful and straightforward; frank",
-    "Giving the impression that something bad will happen"
+    "To arouse the curiosity of someone",
+    "Having lived for a long time; no longer young",
+    "Stretched tight or under strain",
+    "Decaying or decomposing"
   ],
-  "answerOption": "C",
-  "answerText": "Truthful and straightforward; frank",
-  "difficulty": "medium",
+  "answerOption": "B",
+  "answerText": "Having lived for a long time; no longer young",
+  "difficulty": "easy",
   "sourceFile": "0026.json"
 }

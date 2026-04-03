@@ -1,15 +1,15 @@
 {
   "id": 39,
-  "word": "Pragmatic",
-  "question": "Pragmatic",
+  "word": "Funny",
+  "question": "Funny",
   "options": [
-    "Dealing with things sensibly and realistically",
-    "Something that deviates from what is standard",
-    "Insisting on beliefs without considering evidence",
-    "A person who flatters to gain advantage"
+    "To believe in the reliability of someone",
+    "Causing laughter or amusement",
+    "To move downward from a higher point",
+    "A person who lacks courage"
   ],
-  "answerOption": "A",
-  "answerText": "Dealing with things sensibly and realistically",
-  "difficulty": "hard",
+  "answerOption": "B",
+  "answerText": "Causing laughter or amusement",
+  "difficulty": "easy",
   "sourceFile": "0039.json"
 }

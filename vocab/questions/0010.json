@@ -1,15 +1,15 @@
 {
   "id": 10,
-  "word": "Sincere",
-  "question": "Sincere",
+  "word": "Tall",
+  "question": "Tall",
   "options": [
-    "Eager to know or learn something",
-    "Free from pretence or deceit",
-    "Shiny and smooth on the surface",
-    "Belonging to the very distant past"
+    "Well informed about many subjects",
+    "In a state of great discomfort or unhappiness",
+    "Of great or more than average height",
+    "Able to be relied on as honest"
   ],
-  "answerOption": "B",
-  "answerText": "Free from pretence or deceit",
+  "answerOption": "C",
+  "answerText": "Of great or more than average height",
   "difficulty": "easy",
   "sourceFile": "0010.json"
 }

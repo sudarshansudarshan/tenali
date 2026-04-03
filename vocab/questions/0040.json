@@ -1,15 +1,15 @@
 {
   "id": 40,
-  "word": "Ubiquitous",
-  "question": "Ubiquitous",
+  "word": "Sad",
+  "question": "Sad",
   "options": [
-    "Present, appearing, or found everywhere",
-    "A person who flatters to gain advantage",
-    "Open to more than one interpretation",
-    "A harsh mixture of discordant sounds"
+    "Feeling sorrow or unhappiness",
+    "To make someone feel bewildered",
+    "To shine brightly with reflected light",
+    "To attract and hold the attention of someone"
   ],
   "answerOption": "A",
-  "answerText": "Present, appearing, or found everywhere",
-  "difficulty": "hard",
+  "answerText": "Feeling sorrow or unhappiness",
+  "difficulty": "easy",
   "sourceFile": "0040.json"
 }

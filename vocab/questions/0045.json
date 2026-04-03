@@ -1,15 +1,15 @@
 {
   "id": 45,
-  "word": "Taciturn",
-  "question": "Taciturn",
+  "word": "Tame",
+  "question": "Tame",
   "options": [
-    "Reserved or uncommunicative in speech",
-    "Well-meaning and kindly toward others",
-    "Something that deviates from what is standard",
-    "Lacking energy; sluggish and apathetic"
+    "To fasten with string or rope",
+    "To have something inside",
+    "To take the place of something",
+    "Domesticated and not dangerous to people"
   ],
-  "answerOption": "A",
-  "answerText": "Reserved or uncommunicative in speech",
-  "difficulty": "hard",
+  "answerOption": "D",
+  "answerText": "Domesticated and not dangerous to people",
+  "difficulty": "easy",
   "sourceFile": "0045.json"
 }

@@ -1,15 +1,15 @@
 {
   "id": 12,
-  "word": "Dazzle",
-  "question": "Dazzle",
+  "word": "Clean",
+  "question": "Clean",
   "options": [
-    "Showing aggressive or violent force",
-    "Eager to know or learn something",
-    "Not afraid of danger",
-    "To blind temporarily with bright light"
+    "Free from dirt or impurities",
+    "Not arranged in a neat way",
+    "To ask someone to come to an event",
+    "Late or delayed in occurring"
   ],
-  "answerOption": "D",
-  "answerText": "To blind temporarily with bright light",
+  "answerOption": "A",
+  "answerText": "Free from dirt or impurities",
   "difficulty": "easy",
   "sourceFile": "0012.json"
 }

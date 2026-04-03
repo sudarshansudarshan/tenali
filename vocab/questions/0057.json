@@ -1,15 +1,15 @@
 {
   "id": 57,
-  "word": "Insidious",
-  "question": "Insidious",
+  "word": "True",
+  "question": "True",
   "options": [
-    "Expressing a strong opinion, especially controversial",
-    "Excessively obedient or attentive to please",
-    "Proceeding in a harmful way that is hard to notice",
-    "Using very few words to express meaning"
+    "In accordance with fact or reality",
+    "Made to happen later than expected",
+    "To arrive at a judgment after reasoning",
+    "Lacking flavor or interest"
   ],
-  "answerOption": "C",
-  "answerText": "Proceeding in a harmful way that is hard to notice",
-  "difficulty": "extra-hard",
+  "answerOption": "A",
+  "answerText": "In accordance with fact or reality",
+  "difficulty": "easy",
   "sourceFile": "0057.json"
 }

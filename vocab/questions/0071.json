@@ -1,15 +1,15 @@
 {
   "id": 71,
-  "word": "Limerence",
-  "question": "Limerence",
+  "word": "Careful",
+  "question": "Careful",
   "options": [
-    "Having well-shaped or attractive buttocks",
-    "Characterized by the use of long words",
-    "Pleasure derived from another's misfortune",
-    "The state of being infatuated with another person"
+    "To go from one place to another",
+    "To move from one region to another",
+    "Making sure to avoid danger or mistakes",
+    "To be in charge of running something"
   ],
-  "answerOption": "D",
-  "answerText": "The state of being infatuated with another person",
-  "difficulty": "hardest",
+  "answerOption": "C",
+  "answerText": "Making sure to avoid danger or mistakes",
+  "difficulty": "easy",
   "sourceFile": "0071.json"
 }

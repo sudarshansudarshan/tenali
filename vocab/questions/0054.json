@@ -1,15 +1,15 @@
 {
   "id": 54,
-  "word": "Surreptitious",
-  "question": "Surreptitious",
+  "word": "Far",
+  "question": "Far",
   "options": [
-    "To use ambiguous language to conceal the truth",
-    "Using very few words to express meaning",
-    "Indicating a good chance of success; favorable",
-    "Kept secret because it would not be approved"
+    "Liable to change rapidly and unpredictably",
+    "Producing abundant vegetation or crops",
+    "Far away in space or time",
+    "At a great distance in space or time"
   ],
   "answerOption": "D",
-  "answerText": "Kept secret because it would not be approved",
-  "difficulty": "extra-hard",
+  "answerText": "At a great distance in space or time",
+  "difficulty": "easy",
   "sourceFile": "0054.json"
 }

@@ -1,15 +1,15 @@
 {
   "id": 66,
-  "word": "Callipygian",
-  "question": "Callipygian",
+  "word": "Rude",
+  "question": "Rude",
   "options": [
-    "A feeling of melancholy about the state of the world",
-    "Having well-shaped or attractive buttocks",
-    "Having a ready insight into things; shrewd",
-    "Pleasure derived from another's misfortune"
+    "To move smoothly along a surface",
+    "To stop briefly before continuing",
+    "To create difficulties for someone",
+    "Offensively impolite or bad-mannered"
   ],
-  "answerOption": "B",
-  "answerText": "Having well-shaped or attractive buttocks",
-  "difficulty": "hardest",
+  "answerOption": "D",
+  "answerText": "Offensively impolite or bad-mannered",
+  "difficulty": "easy",
   "sourceFile": "0066.json"
 }

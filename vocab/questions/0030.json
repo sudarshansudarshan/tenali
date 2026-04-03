@@ -1,15 +1,15 @@
 {
   "id": 30,
-  "word": "Prudent",
-  "question": "Prudent",
+  "word": "Sweet",
+  "question": "Sweet",
   "options": [
-    "A feeling that something is worthless",
-    "Acting with care and thought for the future",
-    "Fluent and persuasive in speaking or writing",
-    "Truthful and straightforward; frank"
+    "Too long and therefore boring",
+    "To manage or guide the operations of something",
+    "Having the pleasant taste of sugar",
+    "Extending in one direction without curves"
   ],
-  "answerOption": "B",
-  "answerText": "Acting with care and thought for the future",
-  "difficulty": "medium",
+  "answerOption": "C",
+  "answerText": "Having the pleasant taste of sugar",
+  "difficulty": "easy",
   "sourceFile": "0030.json"
 }

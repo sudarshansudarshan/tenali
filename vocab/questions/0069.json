@@ -1,15 +1,15 @@
 {
   "id": 69,
-  "word": "Weltschmerz",
-  "question": "Weltschmerz",
+  "word": "Selfish",
+  "question": "Selfish",
   "options": [
-    "A feeling of melancholy about the state of the world",
-    "Having a ready insight into things; shrewd",
-    "Having well-shaped or attractive buttocks",
-    "The state of being infatuated with another person"
+    "Extremely gloomy or bleak",
+    "In a state of complete confusion",
+    "Lacking consideration for other people",
+    "Bent or twisted out of shape"
   ],
-  "answerOption": "A",
-  "answerText": "A feeling of melancholy about the state of the world",
-  "difficulty": "hardest",
+  "answerOption": "C",
+  "answerText": "Lacking consideration for other people",
+  "difficulty": "easy",
   "sourceFile": "0069.json"
 }

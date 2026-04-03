@@ -1,15 +1,15 @@
 {
   "id": 38,
-  "word": "Paradox",
-  "question": "Paradox",
+  "word": "Scary",
+  "question": "Scary",
   "options": [
-    "A seemingly contradictory statement that may be true",
-    "Something that deviates from what is standard",
-    "Present, appearing, or found everywhere",
-    "Reserved or uncommunicative in speech"
+    "To buy something",
+    "Causing feelings of fear or alarm",
+    "Having great power or strength",
+    "Closely and neatly packed together"
   ],
-  "answerOption": "A",
-  "answerText": "A seemingly contradictory statement that may be true",
-  "difficulty": "hard",
+  "answerOption": "B",
+  "answerText": "Causing feelings of fear or alarm",
+  "difficulty": "easy",
   "sourceFile": "0038.json"
 }

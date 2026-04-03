@@ -1,15 +1,15 @@
 {
   "id": 18,
-  "word": "Peculiar",
-  "question": "Peculiar",
+  "word": "Wet",
+  "question": "Wet",
   "options": [
-    "Giving the impression that something bad will happen",
-    "A feeling that something is worthless",
-    "Strange or unusual in character",
-    "Acting with care and thought for the future"
+    "To give facts or information to someone",
+    "Covered or saturated with water",
+    "Standing out so as to be clearly visible",
+    "To be the property of someone"
   ],
-  "answerOption": "C",
-  "answerText": "Strange or unusual in character",
-  "difficulty": "medium",
+  "answerOption": "B",
+  "answerText": "Covered or saturated with water",
+  "difficulty": "easy",
   "sourceFile": "0018.json"
 }

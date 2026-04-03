@@ -1,15 +1,15 @@
 {
   "id": 72,
-  "word": "Alexithymia",
-  "question": "Alexithymia",
+  "word": "Careless",
+  "question": "Careless",
   "options": [
-    "Realizing each passerby has a life as vivid as your own",
-    "Showing a lack of courage; timid",
-    "The lights you see when you rub your closed eyes",
-    "Inability to identify and describe one's emotions"
+    "Mild in temperament or behavior",
+    "Not giving enough attention to avoid harm",
+    "To determine the total number of items",
+    "In a state of great discomfort or unhappiness"
   ],
-  "answerOption": "D",
-  "answerText": "Inability to identify and describe one's emotions",
-  "difficulty": "hardest",
+  "answerOption": "B",
+  "answerText": "Not giving enough attention to avoid harm",
+  "difficulty": "easy",
   "sourceFile": "0072.json"
 }

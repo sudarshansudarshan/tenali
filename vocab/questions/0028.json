@@ -1,15 +1,15 @@
 {
   "id": 28,
-  "word": "Novice",
-  "question": "Novice",
+  "word": "Soft",
+  "question": "Soft",
   "options": [
-    "Acting with care and thought for the future",
-    "Fluent and persuasive in speaking or writing",
-    "Showing careful and persistent effort",
-    "A person new to a field or activity"
+    "To rub out or remove written marks",
+    "Strongly wanting to do or have something",
+    "Easy to mold, cut, or fold; not hard",
+    "To feel curious about something"
   ],
-  "answerOption": "D",
-  "answerText": "A person new to a field or activity",
-  "difficulty": "medium",
+  "answerOption": "C",
+  "answerText": "Easy to mold, cut, or fold; not hard",
+  "difficulty": "easy",
   "sourceFile": "0028.json"
 }

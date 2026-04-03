@@ -1,15 +1,15 @@
 {
   "id": 7,
-  "word": "Vanish",
-  "question": "Vanish",
+  "word": "Slow",
+  "question": "Slow",
   "options": [
-    "Easily broken or damaged",
-    "To pause before doing something",
-    "To disappear suddenly and completely",
-    "Shiny and smooth on the surface"
+    "Making or given to making a lot of noise",
+    "Moving at a low speed",
+    "To become limp through heat or lack of water",
+    "Not fulfilling the intended purpose"
   ],
-  "answerOption": "C",
-  "answerText": "To disappear suddenly and completely",
+  "answerOption": "B",
+  "answerText": "Moving at a low speed",
   "difficulty": "easy",
   "sourceFile": "0007.json"
 }

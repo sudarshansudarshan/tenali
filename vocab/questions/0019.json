@@ -1,15 +1,15 @@
 {
   "id": 19,
-  "word": "Reluctant",
-  "question": "Reluctant",
+  "word": "Dry",
+  "question": "Dry",
   "options": [
-    "Calm, peaceful, and untroubled",
-    "Showing great attention to detail",
-    "Able to recover quickly from difficulties",
-    "Unwilling and hesitant to act"
+    "Free from moisture or liquid",
+    "Very dry or thirsty",
+    "Causing excitement and fear",
+    "Having a strong desire for success"
   ],
-  "answerOption": "D",
-  "answerText": "Unwilling and hesitant to act",
-  "difficulty": "medium",
+  "answerOption": "A",
+  "answerText": "Free from moisture or liquid",
+  "difficulty": "easy",
   "sourceFile": "0019.json"
 }

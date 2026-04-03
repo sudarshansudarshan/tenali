@@ -591,24 +591,28 @@ function GKApp({ onBack }) {
   const [revealed, setRevealed] = useState(false)
   const [questionNumber, setQuestionNumber] = useState(0)
   const [results, setResults] = useState([])
+  const [seenIds, setSeenIds] = useState([])
   const timer = useTimer()
 
-  const loadQuestion = async () => {
+  const loadQuestion = async (excludeIds) => {
     setLoading(true)
     setSelected('')
     setFeedback('')
     setIsCorrect(null)
     setRevealed(false)
-    const res = await fetch(`${API}/gk-api/question`)
+    const ids = excludeIds || seenIds
+    const excludeParam = ids.length ? `?exclude=${ids.join(',')}` : ''
+    const res = await fetch(`${API}/gk-api/question${excludeParam}`)
     const data = await res.json()
     setQuestion(data)
+    setSeenIds(prev => [...prev, data.id])
     setQuestionNumber((n) => n + 1)
     setLoading(false)
     timer.start()
   }
 
   useEffect(() => {
-    loadQuestion()
+    loadQuestion([])
   }, [])
 
   const submitGK = async (option) => {
@@ -1312,17 +1316,21 @@ function VocabApp({ onBack }) {
   const [questionNumber, setQuestionNumber] = useState(0)
   const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
   const [results, setResults] = useState([])
+  const [seenIds, setSeenIds] = useState([])
   const timer = useTimer()
 
-  const loadQuestion = async () => {
+  const loadQuestion = async (excludeIds) => {
     setLoading(true)
     setSelected('')
     setFeedback('')
     setIsCorrect(null)
     setRevealed(false)
-    const res = await fetch(`${API}/vocab-api/question?difficulty=${difficulty}`)
+    const ids = excludeIds || seenIds
+    const excludeParam = ids.length ? `&exclude=${ids.join(',')}` : ''
+    const res = await fetch(`${API}/vocab-api/question?difficulty=${difficulty}${excludeParam}`)
     const data = await res.json()
     setQuestion(data)
+    setSeenIds(prev => [...prev, data.id])
     setLoading(false)
     timer.start()
   }
@@ -1335,7 +1343,8 @@ function VocabApp({ onBack }) {
     setScore(0)
     setQuestionNumber(1)
     setResults([])
-    await loadQuestion()
+    setSeenIds([])
+    await loadQuestion([])
   }
 
   const submitVocab = async (option) => {

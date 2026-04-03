@@ -1,15 +1,15 @@
 {
   "id": 36,
-  "word": "Juxtapose",
-  "question": "Juxtapose",
+  "word": "Awake",
+  "question": "Awake",
   "options": [
-    "Fond of company; sociable",
-    "To place side by side for comparison",
-    "A seemingly contradictory statement that may be true",
-    "Something that deviates from what is standard"
+    "Luxuriously rich and expensive",
+    "To greatly surprise someone",
+    "Not asleep; fully conscious",
+    "To make a displeased facial expression"
   ],
-  "answerOption": "B",
-  "answerText": "To place side by side for comparison",
-  "difficulty": "hard",
+  "answerOption": "C",
+  "answerText": "Not asleep; fully conscious",
+  "difficulty": "easy",
   "sourceFile": "0036.json"
 }

@@ -1,15 +1,15 @@
 {
   "id": 16,
-  "word": "Diligent",
-  "question": "Diligent",
+  "word": "Warm",
+  "question": "Warm",
   "options": [
-    "Giving the impression that something bad will happen",
-    "Showing careful and persistent effort",
-    "Fluent and persuasive in speaking or writing",
-    "Strange or unusual in character"
+    "To produce flowers; to flourish",
+    "Of or at a fairly high temperature",
+    "Sad or abandoned in appearance",
+    "A response to a question"
   ],
   "answerOption": "B",
-  "answerText": "Showing careful and persistent effort",
-  "difficulty": "medium",
+  "answerText": "Of or at a fairly high temperature",
+  "difficulty": "easy",
   "sourceFile": "0016.json"
 }

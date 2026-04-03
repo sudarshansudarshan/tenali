@@ -1,15 +1,15 @@
 {
   "id": 48,
-  "word": "Laconic",
-  "question": "Laconic",
+  "word": "Smooth",
+  "question": "Smooth",
   "options": [
-    "Exceedingly idealistic; unrealistic and impractical",
-    "Proceeding in a harmful way that is hard to notice",
-    "To use ambiguous language to conceal the truth",
-    "Using very few words to express meaning"
+    "To successfully reach a desired goal",
+    "To combine different things together",
+    "Having an even and regular surface",
+    "To work together on an activity"
   ],
-  "answerOption": "D",
-  "answerText": "Using very few words to express meaning",
-  "difficulty": "extra-hard",
+  "answerOption": "C",
+  "answerText": "Having an even and regular surface",
+  "difficulty": "easy",
   "sourceFile": "0048.json"
 }

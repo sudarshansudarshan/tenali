@@ -3,12 +3,12 @@
   "word": "Brave",
   "question": "Brave",
   "options": [
-    "Free from pretence or deceit",
-    "Mild and kind in manner",
+    "Strongly wanting to do or have something",
     "Not afraid of danger",
-    "Shiny and smooth on the surface"
+    "Lasting for a limited time only",
+    "Having lived or existed for only a short time"
   ],
-  "answerOption": "C",
+  "answerOption": "B",
   "answerText": "Not afraid of danger",
   "difficulty": "easy",
   "sourceFile": "0001.json"

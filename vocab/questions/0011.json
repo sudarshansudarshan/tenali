@@ -1,15 +1,15 @@
 {
   "id": 11,
-  "word": "Scatter",
-  "question": "Scatter",
+  "word": "Short",
+  "question": "Short",
   "options": [
-    "Wanting to do something very much",
-    "To throw in various random directions",
-    "Belonging to the very distant past",
-    "A great victory or achievement"
+    "Having an even and regular surface",
+    "Going straight up and down",
+    "Measuring a small distance from end to end",
+    "Eager to know or learn something"
   ],
-  "answerOption": "B",
-  "answerText": "To throw in various random directions",
+  "answerOption": "C",
+  "answerText": "Measuring a small distance from end to end",
   "difficulty": "easy",
   "sourceFile": "0011.json"
 }

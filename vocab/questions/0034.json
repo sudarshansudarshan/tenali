@@ -1,15 +1,15 @@
 {
   "id": 34,
-  "word": "Ephemeral",
-  "question": "Ephemeral",
+  "word": "Thirsty",
+  "question": "Thirsty",
   "options": [
-    "A person who flatters to gain advantage",
-    "Lacking energy; sluggish and apathetic",
-    "Lasting for a very short time",
-    "Something that deviates from what is standard"
+    "Having a strong desire for success",
+    "Large and comfortable with plenty of space",
+    "Feeling a need to drink something",
+    "To pick out something from alternatives"
   ],
   "answerOption": "C",
-  "answerText": "Lasting for a very short time",
-  "difficulty": "hard",
+  "answerText": "Feeling a need to drink something",
+  "difficulty": "easy",
   "sourceFile": "0034.json"
 }

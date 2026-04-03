@@ -1,15 +1,15 @@
 {
   "id": 52,
-  "word": "Quixotic",
-  "question": "Quixotic",
+  "word": "Closed",
+  "question": "Closed",
   "options": [
-    "Excessively obedient or attentive to please",
-    "Exceedingly idealistic; unrealistic and impractical",
-    "Proceeding in a harmful way that is hard to notice",
-    "Kept secret because it would not be approved"
+    "To form a pleased expression with the mouth",
+    "Having a great deal to do",
+    "Thick and full of foliage",
+    "Not open; shut or fastened"
   ],
-  "answerOption": "B",
-  "answerText": "Exceedingly idealistic; unrealistic and impractical",
-  "difficulty": "extra-hard",
+  "answerOption": "D",
+  "answerText": "Not open; shut or fastened",
+  "difficulty": "easy",
   "sourceFile": "0052.json"
 }

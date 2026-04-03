@@ -1,15 +1,15 @@
 {
   "id": 37,
-  "word": "Lethargic",
-  "question": "Lethargic",
+  "word": "Safe",
+  "question": "Safe",
   "options": [
-    "A seemingly contradictory statement that may be true",
-    "Lacking energy; sluggish and apathetic",
-    "Something that deviates from what is standard",
-    "A person who flatters to gain advantage"
+    "Lacking energy or enthusiasm",
+    "Protected from danger or risk",
+    "Elaborately or highly decorated",
+    "To take delight or pleasure in something"
   ],
   "answerOption": "B",
-  "answerText": "Lacking energy; sluggish and apathetic",
-  "difficulty": "hard",
+  "answerText": "Protected from danger or risk",
+  "difficulty": "easy",
   "sourceFile": "0037.json"
 }

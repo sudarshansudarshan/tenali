@@ -1,15 +1,15 @@
 {
   "id": 35,
-  "word": "Gregarious",
-  "question": "Gregarious",
+  "word": "Tired",
+  "question": "Tired",
   "options": [
-    "Having a harmful effect, especially gradually",
-    "Fond of company; sociable",
-    "To place side by side for comparison",
-    "Lacking energy; sluggish and apathetic"
+    "Made by human skill; not natural",
+    "In need of sleep or rest",
+    "Having four equal sides and right angles",
+    "Not giving enough attention to avoid harm"
   ],
   "answerOption": "B",
-  "answerText": "Fond of company; sociable",
-  "difficulty": "hard",
+  "answerText": "In need of sleep or rest",
+  "difficulty": "easy",
   "sourceFile": "0035.json"
 }

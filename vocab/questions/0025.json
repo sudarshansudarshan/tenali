@@ -1,15 +1,15 @@
 {
   "id": 25,
-  "word": "Futile",
-  "question": "Futile",
+  "word": "Poor",
+  "question": "Poor",
   "options": [
-    "A feeling that something is worthless",
-    "Producing no useful result; pointless",
-    "Truthful and straightforward; frank",
-    "Fluent and persuasive in speaking or writing"
+    "To dry out and shrivel up",
+    "To begin to grow; to produce shoots",
+    "Full of energy and enthusiasm",
+    "Lacking sufficient money to live comfortably"
   ],
-  "answerOption": "B",
-  "answerText": "Producing no useful result; pointless",
-  "difficulty": "medium",
+  "answerOption": "D",
+  "answerText": "Lacking sufficient money to live comfortably",
+  "difficulty": "easy",
   "sourceFile": "0025.json"
 }

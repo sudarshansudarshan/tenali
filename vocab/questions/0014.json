@@ -1,15 +1,15 @@
 {
   "id": 14,
-  "word": "Fierce",
-  "question": "Fierce",
+  "word": "Bright",
+  "question": "Bright",
   "options": [
-    "To pause before doing something",
-    "Showing aggressive or violent force",
-    "Belonging to the very distant past",
-    "Very large in size or quantity"
+    "To find something for the first time",
+    "To cause a liquid to flow over the edge",
+    "Giving out or reflecting much light",
+    "Possessing great power or strength"
   ],
-  "answerOption": "B",
-  "answerText": "Showing aggressive or violent force",
+  "answerOption": "C",
+  "answerText": "Giving out or reflecting much light",
   "difficulty": "easy",
   "sourceFile": "0014.json"
 }

@@ -1,15 +1,15 @@
 {
   "id": 62,
-  "word": "Defenestration",
-  "question": "Defenestration",
+  "word": "Busy",
+  "question": "Busy",
   "options": [
-    "The state of being infatuated with another person",
-    "Inability to identify and describe one's emotions",
-    "To change one's loyalties; to be evasive",
-    "The act of throwing someone out of a window"
+    "Unusual or surprising; hard to explain",
+    "Having a great deal to do",
+    "Having great power or strength",
+    "Extremely large or huge"
   ],
-  "answerOption": "D",
-  "answerText": "The act of throwing someone out of a window",
-  "difficulty": "hardest",
+  "answerOption": "B",
+  "answerText": "Having a great deal to do",
+  "difficulty": "easy",
   "sourceFile": "0062.json"
 }

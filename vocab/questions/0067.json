@@ -1,15 +1,15 @@
 {
   "id": 67,
-  "word": "Logorrhea",
-  "question": "Logorrhea",
+  "word": "Honest",
+  "question": "Honest",
   "options": [
-    "The act of throwing someone out of a window",
-    "Showing a lack of courage; timid",
-    "Realizing each passerby has a life as vivid as your own",
-    "A tendency to excessive and often incoherent talking"
+    "Free of deceit; truthful",
+    "Easily seen or noticed",
+    "Insufficient for the demand; in short supply",
+    "Done with good judgment; practical"
   ],
-  "answerOption": "D",
-  "answerText": "A tendency to excessive and often incoherent talking",
-  "difficulty": "hardest",
+  "answerOption": "A",
+  "answerText": "Free of deceit; truthful",
+  "difficulty": "easy",
   "sourceFile": "0067.json"
 }

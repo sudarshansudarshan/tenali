@@ -1,15 +1,15 @@
 {
   "id": 55,
-  "word": "Truculent",
-  "question": "Truculent",
+  "word": "Early",
+  "question": "Early",
   "options": [
-    "Kept secret because it would not be approved",
-    "Expressing a strong opinion, especially controversial",
-    "Very generous or forgiving toward rivals",
-    "Eager or quick to argue or fight"
+    "To give assistance or encouragement to",
+    "Before the usual or expected time",
+    "Having a sharp taste",
+    "To feel admiration for someone's qualities"
   ],
-  "answerOption": "D",
-  "answerText": "Eager or quick to argue or fight",
-  "difficulty": "extra-hard",
+  "answerOption": "B",
+  "answerText": "Before the usual or expected time",
+  "difficulty": "easy",
   "sourceFile": "0055.json"
 }

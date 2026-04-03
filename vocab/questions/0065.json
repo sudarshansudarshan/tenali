@@ -1,15 +1,15 @@
 {
   "id": 65,
-  "word": "Tergiversate",
-  "question": "Tergiversate",
+  "word": "Polite",
+  "question": "Polite",
   "options": [
-    "To change one's loyalties; to be evasive",
-    "Having a ready insight into things; shrewd",
-    "The lights you see when you rub your closed eyes",
-    "Pleasure derived from another's misfortune"
+    "To do physical harm or damage to someone",
+    "Having good manners and showing respect",
+    "To have power over something's behavior",
+    "Willfully causing pain to others"
   ],
-  "answerOption": "A",
-  "answerText": "To change one's loyalties; to be evasive",
-  "difficulty": "hardest",
+  "answerOption": "B",
+  "answerText": "Having good manners and showing respect",
+  "difficulty": "easy",
   "sourceFile": "0065.json"
 }

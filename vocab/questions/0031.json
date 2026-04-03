@@ -1,15 +1,15 @@
 {
   "id": 31,
-  "word": "Ambiguous",
-  "question": "Ambiguous",
+  "word": "Sour",
+  "question": "Sour",
   "options": [
-    "A harsh mixture of discordant sounds",
-    "A person who flatters to gain advantage",
-    "Open to more than one interpretation",
-    "Lacking energy; sluggish and apathetic"
+    "Having a sharp acidic taste",
+    "To reach a destination",
+    "Existing in or caused by nature",
+    "To let liquid fall in small drops"
   ],
-  "answerOption": "C",
-  "answerText": "Open to more than one interpretation",
-  "difficulty": "hard",
+  "answerOption": "A",
+  "answerText": "Having a sharp acidic taste",
+  "difficulty": "easy",
   "sourceFile": "0031.json"
 }

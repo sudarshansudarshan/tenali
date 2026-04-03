@@ -1,15 +1,15 @@
 {
   "id": 24,
-  "word": "Ominous",
-  "question": "Ominous",
+  "word": "Rich",
+  "question": "Rich",
   "options": [
-    "Giving the impression that something bad will happen",
-    "Truthful and straightforward; frank",
-    "A feeling that something is worthless",
-    "A person new to a field or activity"
+    "To cause to move apart",
+    "Having the ability to learn and understand",
+    "Correct in all details; exact",
+    "Having a great deal of money or assets"
   ],
-  "answerOption": "A",
-  "answerText": "Giving the impression that something bad will happen",
-  "difficulty": "medium",
+  "answerOption": "D",
+  "answerText": "Having a great deal of money or assets",
+  "difficulty": "easy",
   "sourceFile": "0024.json"
 }

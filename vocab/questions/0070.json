@@ -1,15 +1,15 @@
 {
   "id": 70,
-  "word": "Schadenfreude",
-  "question": "Schadenfreude",
+  "word": "Generous",
+  "question": "Generous",
   "options": [
-    "Having a ready insight into things; shrewd",
-    "Pleasure derived from another's misfortune",
-    "Having well-shaped or attractive buttocks",
-    "The act of throwing someone out of a window"
+    "Willing to give more than is expected",
+    "To refuse to take notice of something",
+    "Feeling dedication to a cause or activity",
+    "Not allowing water to pass through"
   ],
-  "answerOption": "B",
-  "answerText": "Pleasure derived from another's misfortune",
-  "difficulty": "hardest",
+  "answerOption": "A",
+  "answerText": "Willing to give more than is expected",
+  "difficulty": "easy",
   "sourceFile": "0070.json"
 }

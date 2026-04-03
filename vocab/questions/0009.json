@@ -1,15 +1,15 @@
 {
   "id": 9,
-  "word": "Triumph",
-  "question": "Triumph",
+  "word": "Small",
+  "question": "Small",
   "options": [
-    "Eager to know or learn something",
-    "To pause before doing something",
-    "To throw in various random directions",
-    "A great victory or achievement"
+    "Of a size that is less than normal",
+    "Careful to avoid attracting attention",
+    "To gradually grow faint and disappear",
+    "Smelling extremely unpleasant"
   ],
-  "answerOption": "D",
-  "answerText": "A great victory or achievement",
+  "answerOption": "A",
+  "answerText": "Of a size that is less than normal",
   "difficulty": "easy",
   "sourceFile": "0009.json"
 }

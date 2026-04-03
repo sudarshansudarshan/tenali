@@ -1,15 +1,15 @@
 {
   "id": 29,
-  "word": "Resilient",
-  "question": "Resilient",
+  "word": "Hard",
+  "question": "Hard",
   "options": [
-    "Able to recover quickly from difficulties",
-    "Strange or unusual in character",
-    "A person new to a field or activity",
-    "Calm, peaceful, and untroubled"
+    "Relating to or powered by electricity",
+    "Given to sudden changes of mood",
+    "Solid, firm, and rigid; not easily broken",
+    "In use or inhabited"
   ],
-  "answerOption": "A",
-  "answerText": "Able to recover quickly from difficulties",
-  "difficulty": "medium",
+  "answerOption": "C",
+  "answerText": "Solid, firm, and rigid; not easily broken",
+  "difficulty": "easy",
   "sourceFile": "0029.json"
 }

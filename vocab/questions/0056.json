@@ -1,15 +1,15 @@
 {
   "id": 56,
-  "word": "Vicissitude",
-  "question": "Vicissitude",
+  "word": "Late",
+  "question": "Late",
   "options": [
-    "Proceeding in a harmful way that is hard to notice",
-    "Stubbornly resistant to authority or control",
-    "A change of circumstances, typically unwelcome",
-    "Carried out with minimum effort or care"
+    "After the expected or usual time",
+    "To cause someone to find something funny",
+    "Needing much effort or skill to accomplish",
+    "Happening by chance; unintentional"
   ],
-  "answerOption": "C",
-  "answerText": "A change of circumstances, typically unwelcome",
-  "difficulty": "extra-hard",
+  "answerOption": "A",
+  "answerText": "After the expected or usual time",
+  "difficulty": "easy",
   "sourceFile": "0056.json"
 }

@@ -1748,6 +1748,7 @@ function App() {
     pythag: PythagApp,             // Pythagoras' Theorem
     polygons: PolygonsApp,         // Polygons
     similarity: SimilarityApp,     // Similarity
+    randommix: RandomMixApp,       // Random Mix (adaptive)
     custom: CustomApp,             // Custom lesson builder
   }
 
@@ -1835,6 +1836,7 @@ function Home({ onSelect }) {
     { key: 'pythag', name: "Pythagoras' Theorem", subtitle: 'Hypotenuse, legs, 3D', color: 'green' },
     { key: 'polygons', name: 'Polygons', subtitle: 'Interior & exterior angles', color: 'purple' },
     { key: 'similarity', name: 'Similarity', subtitle: 'Scale factor, area & volume ratios', color: 'blue' },
+    { key: 'randommix', name: 'Random Mix', subtitle: 'Adaptive cross-topic quiz', color: 'green' },
     { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'green' },
   ]
 
@@ -3444,6 +3446,398 @@ const SimilarityApp = makeQuizApp({
   diffLabels: { easy: 'Easy — Missing side', medium: 'Medium — Scale factor', hard: 'Hard — Area ratio', extrahard: 'Extra Hard — Volume ratio' },
   placeholders: 'e.g. 24',
 })
+
+/* ── Random Mix App ─────────────────────────────────── */
+// Adaptive cross-topic quiz: random topics, progressive difficulty, skip topics
+const RANDOM_MIX_TOPICS = [
+  { key: 'basicarith', name: 'Basic Arithmetic', api: 'basicarith-api' },
+  { key: 'addition', name: 'Addition', api: 'addition-api' },
+  { key: 'quadratic', name: 'Quadratic', api: 'quadratic-api' },
+  { key: 'multiply', name: 'Multiplication', api: 'multiply-api' },
+  { key: 'sqrt', name: 'Square Root', api: 'sqrt-api' },
+  { key: 'polymul', name: 'Poly Multiply', api: 'polymul-api' },
+  { key: 'polyfactor', name: 'Poly Factor', api: 'polyfactor-api' },
+  { key: 'primefactor', name: 'Prime Factors', api: 'primefactor-api' },
+  { key: 'qformula', name: 'Quadratic Formula', api: 'qformula-api' },
+  { key: 'simul', name: 'Simultaneous Eq.', api: 'simul-api' },
+  { key: 'funceval', name: 'Functions', api: 'funceval-api' },
+  { key: 'lineq', name: 'Line Equation', api: 'lineq-api' },
+  { key: 'fractionadd', name: 'Fractions', api: 'fractionadd-api' },
+  { key: 'surds', name: 'Surds', api: 'surds-api' },
+  { key: 'indices', name: 'Indices', api: 'indices-api' },
+  { key: 'sequences', name: 'Sequences', api: 'sequences-api' },
+  { key: 'ratio', name: 'Ratio', api: 'ratio-api' },
+  { key: 'percent', name: 'Percentages', api: 'percent-api' },
+  { key: 'sets', name: 'Sets', api: 'sets-api' },
+  { key: 'trig', name: 'Trigonometry', api: 'trig-api' },
+  { key: 'ineq', name: 'Inequalities', api: 'ineq-api' },
+  { key: 'coordgeom', name: 'Coord. Geometry', api: 'coordgeom-api' },
+  { key: 'prob', name: 'Probability', api: 'prob-api' },
+  { key: 'stats', name: 'Statistics', api: 'stats-api' },
+  { key: 'matrix', name: 'Matrices', api: 'matrix-api' },
+  { key: 'vectors', name: 'Vectors', api: 'vectors-api' },
+  { key: 'transform', name: 'Transformations', api: 'transform-api' },
+  { key: 'mensur', name: 'Mensuration', api: 'mensur-api' },
+  { key: 'bearings', name: 'Bearings', api: 'bearings-api' },
+  { key: 'log', name: 'Logarithms', api: 'log-api' },
+  { key: 'diff', name: 'Differentiation', api: 'diff-api' },
+  { key: 'bases', name: 'Number Bases', api: 'bases-api' },
+  { key: 'circleth', name: 'Circle Theorems', api: 'circle-api' },
+  { key: 'integ', name: 'Integration', api: 'integ-api' },
+  { key: 'stdform', name: 'Standard Form', api: 'stdform-api' },
+  { key: 'bounds', name: 'Bounds', api: 'bounds-api' },
+  { key: 'sdt', name: 'Speed/Distance/Time', api: 'sdt-api' },
+  { key: 'variation', name: 'Variation', api: 'variation-api' },
+  { key: 'hcflcm', name: 'HCF & LCM', api: 'hcflcm-api' },
+  { key: 'profitloss', name: 'Profit & Loss', api: 'profitloss-api' },
+  { key: 'rounding', name: 'Rounding', api: 'rounding-api' },
+  { key: 'binomial', name: 'Binomial Theorem', api: 'binomial-api' },
+  { key: 'complex', name: 'Complex Numbers', api: 'complex-api' },
+  { key: 'angles', name: 'Angles', api: 'angles-api' },
+  { key: 'triangles', name: 'Triangles', api: 'triangles-api' },
+  { key: 'congruence', name: 'Congruence', api: 'congruence-api' },
+  { key: 'pythag', name: "Pythagoras' Theorem", api: 'pythag-api' },
+  { key: 'polygons', name: 'Polygons', api: 'polygons-api' },
+  { key: 'similarity', name: 'Similarity', api: 'similarity-api' },
+]
+
+const DIFF_LEVELS = ['easy', 'medium', 'hard', 'extrahard']
+const DIFF_LABELS = { easy: 'Easy', medium: 'Medium', hard: 'Hard', extrahard: 'Extra Hard' }
+const DIFF_COLORS = { easy: '#4caf50', medium: '#ff9800', hard: '#f44336', extrahard: '#9c27b0' }
+
+function RandomMixApp({ onBack }) {
+  const [phase, setPhase] = useState('setup') // setup | playing | finished
+  const [skippedTopics, setSkippedTopics] = useState(new Set())
+  const [diffIndex, setDiffIndex] = useState(0) // index into DIFF_LEVELS
+  const [streak, setStreak] = useState(0) // positive = correct streak, negative = wrong streak
+  const [question, setQuestion] = useState(null)
+  const [currentTopic, setCurrentTopic] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [revealed, setRevealed] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [score, setScore] = useState(0)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [results, setResults] = useState([])
+  const [totalQuestions, setTotalQuestions] = useState(20)
+  const [numQInput, setNumQInput] = useState('20')
+  const timer = useTimer()
+  const advanceFnRef = useRef(null)
+  // Track topic stats for the summary
+  const [topicStats, setTopicStats] = useState({})
+
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  const availableTopics = () => RANDOM_MIX_TOPICS.filter(t => !skippedTopics.has(t.key))
+
+  const pickRandomTopic = () => {
+    const pool = availableTopics()
+    if (pool.length === 0) return null
+    return pool[Math.floor(Math.random() * pool.length)]
+  }
+
+  const currentDifficulty = () => DIFF_LEVELS[Math.min(diffIndex, DIFF_LEVELS.length - 1)]
+
+  const loadQuestion = async () => {
+    const topic = pickRandomTopic()
+    if (!topic) {
+      setFeedback('No topics left! Un-skip some topics or finish.')
+      return
+    }
+    setLoading(true)
+    setCurrentTopic(topic)
+    try {
+      const diff = currentDifficulty()
+      const r = await fetch(`${API}/${topic.api}/question?difficulty=${diff}`)
+      const data = await r.json()
+      setQuestion(data)
+      setAnswer('')
+      setFeedback('')
+      setIsCorrect(null)
+      setRevealed(false)
+      setQuestionNumber(n => n + 1)
+      timer.reset()
+      timer.start()
+    } catch {
+      setFeedback('Failed to load question. Trying another topic...')
+      // Try again with a different topic
+      setTimeout(loadQuestion, 300)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!question || revealed || answer.trim() === '') return
+    timer.stop()
+    const elapsed = timer.elapsed()
+    try {
+      const payload = { ...question, userAnswer: answer.trim() }
+      const r = await fetch(`${API}/${currentTopic.api}/check`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const data = await r.json()
+      const correct = data.correct
+      setIsCorrect(correct)
+      setRevealed(true)
+      setFeedback(correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
+
+      if (correct) {
+        setScore(s => s + 1)
+        const newStreak = streak >= 0 ? streak + 1 : 1
+        setStreak(newStreak)
+        // Level up after 3 correct in a row
+        if (newStreak >= 3 && diffIndex < DIFF_LEVELS.length - 1) {
+          setDiffIndex(d => d + 1)
+          setStreak(0)
+        }
+      } else {
+        const newStreak = streak <= 0 ? streak - 1 : -1
+        setStreak(newStreak)
+        // Level down after 2 wrong in a row
+        if (newStreak <= -2 && diffIndex > 0) {
+          setDiffIndex(d => d - 1)
+          setStreak(0)
+        }
+      }
+
+      // Track per-topic stats
+      setTopicStats(prev => {
+        const s = prev[currentTopic.key] || { name: currentTopic.name, correct: 0, total: 0 }
+        return { ...prev, [currentTopic.key]: { name: s.name, correct: s.correct + (correct ? 1 : 0), total: s.total + 1 } }
+      })
+
+      setResults(prev => [...prev, {
+        question: `[${currentTopic.name}] ${getPromptForType(currentTopic.key, question) || question.prompt || '?'}`,
+        userAnswer: answer.trim(),
+        correctAnswer: data.display,
+        correct,
+        time: elapsed
+      }])
+    } catch {
+      setFeedback('Error checking answer.')
+    }
+  }
+
+  const advance = () => {
+    if (questionNumber >= totalQuestions) {
+      setPhase('finished')
+    } else {
+      loadQuestion()
+    }
+  }
+  advanceFnRef.current = advance
+
+  // Enter key handler for wrong answers
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Enter' && revealed && !isCorrect) advance()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  })
+
+  const skipTopic = () => {
+    if (!currentTopic) return
+    setSkippedTopics(prev => new Set([...prev, currentTopic.key]))
+    // Don't count this as a question — decrement and load next
+    setQuestionNumber(n => n - 1)
+    loadQuestion()
+  }
+
+  const unskipTopic = (key) => {
+    setSkippedTopics(prev => {
+      const s = new Set(prev)
+      s.delete(key)
+      return s
+    })
+  }
+
+  const startQuiz = () => {
+    const n = parseInt(numQInput) || 20
+    setTotalQuestions(Math.max(5, Math.min(100, n)))
+    setPhase('playing')
+    setScore(0)
+    setQuestionNumber(0)
+    setResults([])
+    setDiffIndex(0)
+    setStreak(0)
+    setSkippedTopics(new Set())
+    setTopicStats({})
+    setTimeout(loadQuestion, 0)
+  }
+
+  // ─── Setup Phase ─────────────────────────────────
+  if (phase === 'setup') {
+    return (
+      <div className="app-card" style={{ maxWidth: 520, margin: '0 auto' }}>
+        <button className="back-button" onClick={onBack}>← Back</button>
+        <h2 style={{ margin: '0.5rem 0' }}>Random Mix</h2>
+        <p style={{ color: 'var(--color-text-dim)', margin: '0.3rem 0 1rem' }}>
+          Adaptive cross-topic quiz. Questions come from random topics and difficulty adjusts to your level.
+          You can skip any topic you don't want to see.
+        </p>
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ fontWeight: 600 }}>Number of questions: </label>
+          <input type="number" value={numQInput} onChange={e => setNumQInput(e.target.value)}
+            style={{ width: 70, padding: '0.3rem 0.5rem', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+            min={5} max={100} />
+        </div>
+        <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+          Starts at <strong style={{ color: DIFF_COLORS.easy }}>Easy</strong>.
+          3 correct in a row → level up.
+          2 wrong in a row → level down.
+          Topics drawn randomly from all {RANDOM_MIX_TOPICS.length} puzzles.
+        </p>
+        <button className="submit-btn" onClick={startQuiz} style={{ width: '100%', fontSize: '1.1rem' }}>
+          Start Random Mix
+        </button>
+      </div>
+    )
+  }
+
+  // ─── Finished Phase ──────────────────────────────
+  if (phase === 'finished') {
+    const pct = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0
+    const topicEntries = Object.values(topicStats).sort((a, b) => b.total - a.total)
+    return (
+      <div className="app-card" style={{ maxWidth: 620, margin: '0 auto' }}>
+        <button className="back-button" onClick={onBack}>← Back</button>
+        <h2>Random Mix — Results</h2>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', margin: '1rem 0' }}>
+          <div className="stat-pill">{score}/{totalQuestions} correct ({pct}%)</div>
+          <div className="stat-pill">Ended at {DIFF_LABELS[currentDifficulty()]} level</div>
+          <div className="stat-pill">{Object.keys(topicStats).length} topics covered</div>
+        </div>
+        {topicEntries.length > 0 && (
+          <div style={{ margin: '1rem 0' }}>
+            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Topic Breakdown</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+              {topicEntries.map(t => (
+                <span key={t.name} style={{
+                  padding: '0.25rem 0.6rem', borderRadius: 12, fontSize: '0.82rem',
+                  background: t.correct === t.total ? 'var(--color-correct-bg)' : t.correct === 0 ? 'var(--color-wrong-bg)' : 'var(--color-surface-alt)',
+                  color: 'var(--color-text)'
+                }}>
+                  {t.name}: {t.correct}/{t.total}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        <ResultsTable results={results} />
+        <button className="submit-btn" onClick={() => setPhase('setup')} style={{ width: '100%', marginTop: '1rem' }}>
+          Play Again
+        </button>
+      </div>
+    )
+  }
+
+  // ─── Playing Phase ───────────────────────────────
+  const diff = currentDifficulty()
+  return (
+    <div className="app-card" style={{ maxWidth: 620, margin: '0 auto' }}>
+      <button className="back-button" onClick={onBack}>← Back</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.5rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Random Mix</h2>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <span className="stat-pill">Q{questionNumber}/{totalQuestions}</span>
+          <span className="stat-pill" style={{ background: DIFF_COLORS[diff], color: '#fff' }}>{DIFF_LABELS[diff]}</span>
+          <span className="stat-pill">{score} correct</span>
+        </div>
+      </div>
+
+      {currentTopic && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+          <span style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.95rem' }}>
+            Topic: {currentTopic.name}
+          </span>
+          {!revealed && (
+            <button onClick={skipTopic} style={{
+              background: 'none', border: '1px solid var(--color-border)', borderRadius: 8,
+              padding: '0.2rem 0.6rem', fontSize: '0.78rem', color: 'var(--color-text-dim)',
+              cursor: 'pointer'
+            }}>
+              Skip this topic
+            </button>
+          )}
+        </div>
+      )}
+
+      {skippedTopics.size > 0 && (
+        <div style={{ marginBottom: '0.6rem', fontSize: '0.78rem', color: 'var(--color-text-dim)' }}>
+          Skipped: {[...skippedTopics].map(k => {
+            const t = RANDOM_MIX_TOPICS.find(x => x.key === k)
+            return (
+              <span key={k} onClick={() => unskipTopic(k)} style={{
+                display: 'inline-block', padding: '0.1rem 0.45rem', margin: '0.1rem', borderRadius: 8,
+                background: 'var(--color-surface-alt)', cursor: 'pointer', textDecoration: 'line-through'
+              }}>
+                {t ? t.name : k} ✕
+              </span>
+            )
+          })}
+        </div>
+      )}
+
+      {loading && <p style={{ textAlign: 'center', padding: '2rem 0' }}>Loading…</p>}
+
+      {!loading && question && (
+        <>
+          <div className="question-prompt" style={{ whiteSpace: 'pre-wrap', margin: '0.5rem 0 1rem', fontSize: '1.1rem', lineHeight: 1.5 }}>
+            {getPromptForType(currentTopic.key, question) || question.prompt || ''}
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <input
+              className="answer-input"
+              type="text"
+              value={answer}
+              onChange={e => { if (!revealed) setAnswer(e.target.value) }}
+              disabled={revealed}
+              placeholder="Type your answer"
+              onKeyDown={e => { if (e.key === 'Enter') revealed ? advance() : handleSubmit() }}
+              style={{ flex: 1 }}
+              autoFocus
+            />
+            {!revealed && (
+              <button className="submit-btn" onClick={handleSubmit} disabled={answer.trim() === ''}>
+                Submit
+              </button>
+            )}
+            {revealed && (
+              <button className="submit-btn" onClick={advance}>
+                {questionNumber >= totalQuestions ? 'Finish' : 'Next'}
+              </button>
+            )}
+          </div>
+
+          {feedback && (
+            <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false ? 'wrong' : ''}`}>
+              {feedback}
+            </div>
+          )}
+
+          {revealed && isCorrect !== null && (
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', marginTop: '0.3rem' }}>
+              {isCorrect ? (
+                streak >= 2 && diffIndex < DIFF_LEVELS.length - 1
+                  ? `🔥 ${streak} in a row! Levelling up next…`
+                  : `✓ Streak: ${streak}`
+              ) : (
+                streak <= -1 && diffIndex > 0
+                  ? `Levelling down next…`
+                  : ''
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
 
 /* ── Sets App ───────────────────────────────────────── */
 function SetsApp({ onBack }) {

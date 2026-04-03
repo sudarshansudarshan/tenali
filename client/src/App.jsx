@@ -3151,10 +3151,19 @@ function VocabApp({ onBack }) {
  * All share the same state machine: setup → playing → finished.
  * Differences are: title, subtitle, API path, difficulty labels, placeholders, field name for answer.
  */
+// Adaptive difficulty helpers shared by all quiz apps
+const ADAPT_DIFFS = ['easy', 'medium', 'hard', 'extrahard']
+const ADAPT_LABELS = { easy: 'Easy', medium: 'Medium', hard: 'Hard', extrahard: 'Extra Hard' }
+const ADAPT_COLORS = { easy: '#4caf50', medium: '#ff9800', hard: '#f44336', extrahard: '#9c27b0' }
+function adaptiveLevel(score) { return ADAPT_DIFFS[Math.min(Math.max(Math.round(score), 0), 3)] }
+function adaptivePct(score) { return Math.min(100, Math.max(0, (score / 3) * 100)) }
+
 function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, answerField }) {
   return function GeneratedQuizApp({ onBack }) {
     const diffs = Object.keys(diffLabels)
     const [difficulty, setDifficulty] = useState(diffs[0])
+    const [isAdaptive, setIsAdaptive] = useState(false)
+    const [adaptScore, setAdaptScore] = useState(0) // 0.0 (easy) → 3.0 (extrahard)
     const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
     const [started, setStarted] = useState(false)
     const [finished, setFinished] = useState(false)
@@ -3170,11 +3179,16 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
     const [results, setResults] = useState([])
     const timer = useTimer()
     const advanceFnRef = useRef(null)
+    // Keep a ref for adaptive score so loadQuestion always sees latest
+    const adaptScoreRef = useRef(0)
+
+    const effectiveDifficulty = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
     const loadQuestion = async () => {
       setLoading(true)
       try {
-        const r = await fetch(`${API}/${apiPath}/question?difficulty=${difficulty}`)
+        const diff = effectiveDifficulty()
+        const r = await fetch(`${API}/${apiPath}/question?difficulty=${diff}`)
         const data = await r.json()
         setQuestion(data)
         setAnswer('')
@@ -3188,6 +3202,7 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
     const startQuiz = () => {
       const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
       setTotalQ(t); setScore(0); setQuestionNumber(1); setResults([]); setStarted(true); setFinished(false)
+      setAdaptScore(0); adaptScoreRef.current = 0
     }
     useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
     const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
@@ -3211,14 +3226,26 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
         if (data.correct) setScore(s => s + 1)
         setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
         setResults(prev => [...prev, { prompt: question.prompt, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+        // Smooth adaptive adjustment
+        if (isAdaptive) {
+          setAdaptScore(prev => {
+            const next = data.correct
+              ? Math.min(3, prev + 0.25)  // gentle climb on correct
+              : Math.max(0, prev - 0.35)  // slightly steeper drop on wrong
+            adaptScoreRef.current = next
+            return next
+          })
+        }
       } catch (e) { console.error(`Failed to check ${title} answer:`, e) }
     }
     const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
     const getPlaceholder = () => {
       if (typeof placeholders === 'string') return placeholders
-      if (typeof placeholders === 'function') return placeholders(question, difficulty)
-      return placeholders?.[difficulty] || 'Type your answer'
+      if (typeof placeholders === 'function') return placeholders(question, isAdaptive ? effectiveDifficulty() : difficulty)
+      return placeholders?.[isAdaptive ? effectiveDifficulty() : difficulty] || 'Type your answer'
     }
+
+    const curAdaptLevel = adaptiveLevel(adaptScore)
 
     return (
       <QuizLayout title={title} subtitle={subtitle} onBack={onBack} timer={started && !finished ? timer : null}>
@@ -3227,12 +3254,19 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
           {tip && <p style={{ fontSize: '0.85rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>{tip}</p>}
           <div className="checkbox-group" style={{ marginBottom: '12px' }}>
             {diffs.map(d => (
-              <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
-                <input type="radio" name={`${apiPath}-diff`} checked={difficulty === d} onChange={() => setDifficulty(d)} />
+              <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+                <input type="radio" name={`${apiPath}-diff`} checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
                 {diffLabels[d]}
               </label>
             ))}
+            <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+              <input type="radio" name={`${apiPath}-diff`} checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+              Adaptive
+            </label>
           </div>
+          {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>
+            Starts easy and smoothly adjusts to your level as you answer.
+          </p>}
           <div className="question-count-row">
             <label className="question-count-label">How many questions?</label>
             <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -3240,7 +3274,19 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
           <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
         </div>}
         {started && !finished && <>
-          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+            <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+            {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+          </div>
+          {isAdaptive && (
+            <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}>
+              <div style={{
+                width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3,
+                background: `linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)`,
+                transition: 'width 0.5s ease'
+              }} />
+            </div>
+          )}
           {question && <div style={{ textAlign: 'center' }}>
             <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '20px 0', lineHeight: '1.6' }}>{question.prompt}</div>
             <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={getPlaceholder()} onKeyDown={handleKeyDown} autoFocus />
@@ -3255,6 +3301,7 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
         {finished && <div className="welcome-box">
           <p className="welcome-text">Quiz complete!</p>
           <p className="final-score">Final score: {score}/{totalQ}</p>
+          {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
           <ResultsTable results={results} />
           <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
         </div>}
@@ -3842,6 +3889,9 @@ function RandomMixApp({ onBack }) {
 /* ── Sets App ───────────────────────────────────────── */
 function SetsApp({ onBack }) {
   const [difficulty, setDifficulty] = useState('easy')
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -3858,10 +3908,12 @@ function SetsApp({ onBack }) {
   const timer = useTimer()
   const advanceFnRef = useRef(null)
 
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
+
   const loadQuestion = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`${API}/sets-api/question?difficulty=${difficulty}`)
+      const r = await fetch(`${API}/sets-api/question?difficulty=${effectiveDiff()}`)
       const data = await r.json()
       setQuestion(data)
       setAnswer('')
@@ -3875,12 +3927,8 @@ function SetsApp({ onBack }) {
 
   const startQuiz = () => {
     const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
-    setTotalQ(t)
-    setScore(0)
-    setQuestionNumber(1)
-    setResults([])
-    setStarted(true)
-    setFinished(false)
+    setTotalQ(t); setScore(0); setQuestionNumber(1); setResults([]); setStarted(true); setFinished(false)
+    setAdaptScore(0); adaptScoreRef.current = 0
   }
 
   useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
@@ -3901,16 +3949,19 @@ function SetsApp({ onBack }) {
     try {
       const r = await fetch(`${API}/sets-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await r.json()
-      setIsCorrect(data.correct)
-      setRevealed(true)
+      setIsCorrect(data.correct); setRevealed(true)
       if (data.correct) setScore(s => s + 1)
       setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
       setResults(prev => [...prev, { prompt: question.prompt, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
     } catch (e) { console.error('Failed to check sets answer:', e) }
   }
 
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
   const diffLabels = { easy: 'Easy — List elements', medium: 'Medium — Cardinality', hard: 'Hard — 2-set Venn', extrahard: 'Extra Hard — 3-set Venn' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
 
   return (
     <QuizLayout title="Sets" subtitle="Union, intersection, Venn diagrams" onBack={onBack} timer={started && !finished ? timer : null}>
@@ -3919,12 +3970,17 @@ function SetsApp({ onBack }) {
         <p style={{ fontSize: '0.85rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>For listing elements, type like: 1, 3, 5 or {'{'}1, 3, 5{'}'}</p>
         <div className="checkbox-group" style={{ marginBottom: '12px' }}>
           {['easy', 'medium', 'hard', 'extrahard'].map(d => (
-            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
-              <input type="radio" name="sets-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="sets-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
               {diffLabels[d]}
             </label>
           ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="sets-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
         </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -3932,7 +3988,11 @@ function SetsApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && <div style={{ textAlign: 'center' }}>
           <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '20px 0', lineHeight: '1.6' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={question.type === 'list' ? 'e.g. {1, 3, 5} or empty' : 'e.g. 12'} onKeyDown={handleKeyDown} autoFocus />
@@ -3947,6 +4007,7 @@ function SetsApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -3957,6 +4018,9 @@ function SetsApp({ onBack }) {
 /* ── Sequences & Series App ─────────────────────────── */
 function SequencesApp({ onBack }) {
   const [difficulty, setDifficulty] = useState('easy')
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -3973,33 +4037,25 @@ function SequencesApp({ onBack }) {
   const timer = useTimer()
   const advanceFnRef = useRef(null)
 
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
+
   const loadQuestion = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`${API}/sequences-api/question?difficulty=${difficulty}`)
+      const r = await fetch(`${API}/sequences-api/question?difficulty=${effectiveDiff()}`)
       const data = await r.json()
-      setQuestion(data)
-      setAnswer('')
-      setFeedback('')
-      setIsCorrect(null)
-      setRevealed(false)
-      timer.start()
+      setQuestion(data); setAnswer(''); setFeedback(''); setIsCorrect(null); setRevealed(false); timer.start()
     } catch (e) { console.error('Failed to load sequences question:', e) }
     setLoading(false)
   }
 
   const startQuiz = () => {
     const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
-    setTotalQ(t)
-    setScore(0)
-    setQuestionNumber(1)
-    setResults([])
-    setStarted(true)
-    setFinished(false)
+    setTotalQ(t); setScore(0); setQuestionNumber(1); setResults([]); setStarted(true); setFinished(false)
+    setAdaptScore(0); adaptScoreRef.current = 0
   }
 
   useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
-
   const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
   advanceFnRef.current = advance
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
@@ -4017,16 +4073,19 @@ function SequencesApp({ onBack }) {
     try {
       const r = await fetch(`${API}/sequences-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await r.json()
-      setIsCorrect(data.correct)
-      setRevealed(true)
+      setIsCorrect(data.correct); setRevealed(true)
       if (data.correct) setScore(s => s + 1)
       setFeedback(data.correct ? `Correct! Answer: ${data.display}` : `Incorrect. Answer: ${data.display}`)
       setResults(prev => [...prev, { prompt: question.prompt, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
     } catch (e) { console.error('Failed to check sequences answer:', e) }
   }
 
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
   const diffLabels = { easy: 'Easy — Arith. nth term', medium: 'Medium — Arith. sum', hard: 'Hard — Geom. nth term', extrahard: 'Extra Hard — Geom. sum' }
+  const curAdaptLevel = adaptiveLevel(adaptScore)
 
   return (
     <QuizLayout title="Sequences & Series" subtitle="Arithmetic & geometric" onBack={onBack} timer={started && !finished ? timer : null}>
@@ -4034,12 +4093,17 @@ function SequencesApp({ onBack }) {
         <p className="welcome-text">Practice sequences and series!</p>
         <div className="checkbox-group" style={{ marginBottom: '12px' }}>
           {['easy', 'medium', 'hard', 'extrahard'].map(d => (
-            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
-              <input type="radio" name="seq-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="seq-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
               {diffLabels[d]}
             </label>
           ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="seq-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
         </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -4047,7 +4111,11 @@ function SequencesApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && <div style={{ textAlign: 'center' }}>
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="e.g. 42 or 3/4" onKeyDown={handleKeyDown} autoFocus />
@@ -4062,6 +4130,7 @@ function SequencesApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -4072,6 +4141,9 @@ function SequencesApp({ onBack }) {
 /* ── Ratio & Proportion App ────────────────────────── */
 function RatioApp({ onBack }) {
   const [difficulty, setDifficulty] = useState('easy')
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -4088,10 +4160,12 @@ function RatioApp({ onBack }) {
   const timer = useTimer()
   const advanceFnRef = useRef(null)
 
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
+
   const loadQuestion = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`${API}/ratio-api/question?difficulty=${difficulty}`)
+      const r = await fetch(`${API}/ratio-api/question?difficulty=${effectiveDiff()}`)
       const data = await r.json()
       setQuestion(data)
       setAnswer('')
@@ -4111,6 +4185,8 @@ function RatioApp({ onBack }) {
     setResults([])
     setStarted(true)
     setFinished(false)
+    setAdaptScore(0)
+    adaptScoreRef.current = 0
   }
 
   useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
@@ -4136,6 +4212,9 @@ function RatioApp({ onBack }) {
       if (data.correct) setScore(s => s + 1)
       setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
       setResults(prev => [...prev, { prompt: question.prompt, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
     } catch (e) { console.error('Failed to check ratio answer:', e) }
   }
 
@@ -4143,18 +4222,25 @@ function RatioApp({ onBack }) {
   const diffLabels = { easy: 'Easy — Simplify', medium: 'Medium — Divide', hard: 'Hard — Direct', extrahard: 'Extra Hard — Inverse' }
   const placeholders = { easy: 'e.g. 3:2', medium: 'e.g. 72, 48', hard: 'e.g. 32', extrahard: 'e.g. 8 or 8/3' }
 
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
   return (
     <QuizLayout title="Ratio & Proportion" subtitle="Simplify, divide, direct & inverse" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
         <p className="welcome-text">Practice ratio and proportion!</p>
         <div className="checkbox-group" style={{ marginBottom: '12px' }}>
           {['easy', 'medium', 'hard', 'extrahard'].map(d => (
-            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
-              <input type="radio" name="ratio-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="ratio-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
               {diffLabels[d]}
             </label>
           ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="ratio-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
         </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -4162,10 +4248,14 @@ function RatioApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && <div style={{ textAlign: 'center' }}>
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
-          <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={placeholders[difficulty] || 'Type your answer'} onKeyDown={handleKeyDown} autoFocus />
+          <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={placeholders[isAdaptive ? adaptiveLevel(adaptScore) : difficulty] || 'Type your answer'} onKeyDown={handleKeyDown} autoFocus />
         </div>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
@@ -4177,6 +4267,7 @@ function RatioApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -4187,6 +4278,9 @@ function RatioApp({ onBack }) {
 /* ── Percentages App ────────────────────────────────── */
 function PercentApp({ onBack }) {
   const [difficulty, setDifficulty] = useState('easy')
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -4203,10 +4297,12 @@ function PercentApp({ onBack }) {
   const timer = useTimer()
   const advanceFnRef = useRef(null)
 
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
+
   const loadQuestion = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`${API}/percent-api/question?difficulty=${difficulty}`)
+      const r = await fetch(`${API}/percent-api/question?difficulty=${effectiveDiff()}`)
       const data = await r.json()
       setQuestion(data)
       setAnswer('')
@@ -4226,6 +4322,8 @@ function PercentApp({ onBack }) {
     setResults([])
     setStarted(true)
     setFinished(false)
+    setAdaptScore(0)
+    adaptScoreRef.current = 0
   }
 
   useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
@@ -4251,11 +4349,16 @@ function PercentApp({ onBack }) {
       if (data.correct) setScore(s => s + 1)
       setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
       setResults(prev => [...prev, { prompt: question.prompt, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
     } catch (e) { console.error('Failed to check percent answer:', e) }
   }
 
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
   const diffLabels = { easy: 'Easy — Find %', medium: 'Medium — Increase/Decrease', hard: 'Hard — Reverse %', extrahard: 'Extra Hard — Compound' }
+
+  const curAdaptLevel = adaptiveLevel(adaptScore)
 
   return (
     <QuizLayout title="Percentages" subtitle="Find, increase, reverse, compound" onBack={onBack} timer={started && !finished ? timer : null}>
@@ -4263,12 +4366,17 @@ function PercentApp({ onBack }) {
         <p className="welcome-text">Practice percentages!</p>
         <div className="checkbox-group" style={{ marginBottom: '12px' }}>
           {['easy', 'medium', 'hard', 'extrahard'].map(d => (
-            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
-              <input type="radio" name="pct-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="pct-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
               {diffLabels[d]}
             </label>
           ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="pct-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
         </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -4276,7 +4384,11 @@ function PercentApp({ onBack }) {
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && <div style={{ textAlign: 'center' }}>
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={handleKeyDown} autoFocus />
@@ -4291,6 +4403,7 @@ function PercentApp({ onBack }) {
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
@@ -4312,6 +4425,9 @@ function PercentApp({ onBack }) {
  */
 function IndicesApp({ onBack }) {
   const [difficulty, setDifficulty] = useState('easy')
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -4328,10 +4444,12 @@ function IndicesApp({ onBack }) {
   const timer = useTimer()
   const advanceFnRef = useRef(null)
 
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
+
   const loadQuestion = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`${API}/indices-api/question?difficulty=${difficulty}`)
+      const r = await fetch(`${API}/indices-api/question?difficulty=${effectiveDiff()}`)
       const data = await r.json()
       setQuestion(data)
       setAnswer('')
@@ -4351,6 +4469,8 @@ function IndicesApp({ onBack }) {
     setResults([])
     setStarted(true)
     setFinished(false)
+    setAdaptScore(0)
+    adaptScoreRef.current = 0
   }
 
   useEffect(() => {
@@ -4399,6 +4519,9 @@ function IndicesApp({ onBack }) {
         correct: data.correct,
         time: timeTaken
       }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
     } catch (e) { console.error('Failed to check indices answer:', e) }
   }
 
@@ -4413,18 +4536,25 @@ function IndicesApp({ onBack }) {
   const diffLabels = { easy: 'Easy — Basic Laws', medium: 'Medium — Negative/Zero', hard: 'Hard — Fractional', extrahard: 'Extra Hard — Mixed' }
   const placeholders = { easy: 'Enter the exponent, e.g. 7', medium: 'e.g. 1 or 1/8', hard: 'e.g. 8 or 9', extrahard: 'e.g. 1/4 or 9/4' }
 
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
   return (
     <QuizLayout title="Indices" subtitle="Laws of exponents" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
         <p className="welcome-text">Practice laws of indices!</p>
         <div className="checkbox-group" style={{ marginBottom: '12px' }}>
           {['easy', 'medium', 'hard', 'extrahard'].map(d => (
-            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
-              <input type="radio" name="indices-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="idx-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
               {diffLabels[d]}
             </label>
           ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="idx-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
         </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -4433,7 +4563,11 @@ function IndicesApp({ onBack }) {
       </div>}
 
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && (
           <div style={{ textAlign: 'center' }}>
             <div className="question-prompt" style={{ fontSize: '1.6rem', margin: '20px 0' }}>{question.prompt} = ?</div>
@@ -4444,7 +4578,7 @@ function IndicesApp({ onBack }) {
               value={answer}
               onChange={e => { if (!revealed) setAnswer(e.target.value) }}
               disabled={revealed}
-              placeholder={placeholders[difficulty] || 'Type your answer'}
+              placeholder={placeholders[isAdaptive ? adaptiveLevel(adaptScore) : difficulty] || 'Type your answer'}
               onKeyDown={handleKeyDown}
               autoFocus
             />
@@ -4465,6 +4599,7 @@ function IndicesApp({ onBack }) {
         <div className="welcome-box">
           <p className="welcome-text">Quiz complete!</p>
           <p className="final-score">Final score: {score}/{totalQ}</p>
+          {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
           <ResultsTable results={results} />
           <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
         </div>
@@ -4488,6 +4623,9 @@ function IndicesApp({ onBack }) {
  */
 function SurdsApp({ onBack }) {
   const [difficulty, setDifficulty] = useState('easy')
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -4504,10 +4642,12 @@ function SurdsApp({ onBack }) {
   const timer = useTimer()
   const advanceFnRef = useRef(null)
 
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
+
   const loadQuestion = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`${API}/surds-api/question?difficulty=${difficulty}`)
+      const r = await fetch(`${API}/surds-api/question?difficulty=${effectiveDiff()}`)
       const data = await r.json()
       setQuestion(data)
       setAnswer('')
@@ -4527,6 +4667,8 @@ function SurdsApp({ onBack }) {
     setResults([])
     setStarted(true)
     setFinished(false)
+    setAdaptScore(0)
+    adaptScoreRef.current = 0
   }
 
   useEffect(() => {
@@ -4608,6 +4750,9 @@ function SurdsApp({ onBack }) {
         correct: data.correct,
         time: timeTaken
       }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
     } catch (e) { console.error('Failed to check surds answer:', e) }
   }
 
@@ -4621,6 +4766,8 @@ function SurdsApp({ onBack }) {
 
   const diffLabels = { easy: 'Easy — Simplify', medium: 'Medium — Add/Sub', hard: 'Hard — Multiply', extrahard: 'Extra Hard — Rationalise' }
 
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
   return (
     <QuizLayout title="Surds" subtitle="Simplify, add, multiply, rationalise" onBack={onBack} timer={started && !finished ? timer : null}>
       {!started && !finished && <div className="welcome-box">
@@ -4628,12 +4775,17 @@ function SurdsApp({ onBack }) {
         <p style={{ fontSize: '0.85rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Tip: type √ using "sqrt" or copy-paste √</p>
         <div className="checkbox-group" style={{ marginBottom: '12px' }}>
           {['easy', 'medium', 'hard', 'extrahard'].map(d => (
-            <label key={d} className={`checkbox-pill${difficulty === d ? ' active' : ''}`}>
-              <input type="radio" name="surds-diff" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="surds-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
               {diffLabels[d]}
             </label>
           ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="surds-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
         </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
         <div className="question-count-row">
           <label className="question-count-label">How many questions?</label>
           <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
@@ -4642,7 +4794,11 @@ function SurdsApp({ onBack }) {
       </div>}
 
       {started && !finished && <>
-        <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
         {question && (
           <div style={{ textAlign: 'center' }}>
             <div className="question-prompt" style={{ fontSize: '1.6rem', margin: '20px 0' }}>{getPrompt(question)}</div>
@@ -4673,6 +4829,7 @@ function SurdsApp({ onBack }) {
         <div className="welcome-box">
           <p className="welcome-text">Quiz complete!</p>
           <p className="final-score">Final score: {score}/{totalQ}</p>
+          {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
           <ResultsTable results={results} />
           <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
         </div>

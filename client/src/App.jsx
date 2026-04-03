@@ -3624,6 +3624,9 @@ function DotProdApp({ onBack }) {
   const [finished, setFinished] = useState(false)
   const [question, setQuestion] = useState(null)
   const [answer, setAnswer] = useState('')
+  // Grid answer for matrix input (2D array of strings)
+  const [gridAnswer, setGridAnswer] = useState([])
+  const gridRefs = useRef([])
   const [score, setScore] = useState(0)
   const [questionNumber, setQuestionNumber] = useState(0)
   const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
@@ -3649,6 +3652,24 @@ function DotProdApp({ onBack }) {
       setFeedback('')
       setIsCorrect(null)
       setRevealed(false)
+      // Initialize grid for all answer types
+      if (data.type === 'dot2d' || data.type === 'dot3d') {
+        // 1×1 grid for scalar dot product answer
+        setGridAnswer([['']])
+        gridRefs.current = [[null]]
+      } else if (data.type === 'matmul') {
+        const n = data.size
+        setGridAnswer(Array.from({ length: n }, () => Array(n).fill('')))
+        gridRefs.current = Array.from({ length: n }, () => Array(n).fill(null))
+      } else if (data.type === 'matfill') {
+        // Pre-fill known cells, leave blanks empty
+        const blanksSet = new Set(data.blanks.map(([r, c]) => `${r},${c}`))
+        const grid = data.matC.map((row, i) => row.map((val, j) => blanksSet.has(`${i},${j}`) ? '' : String(val)))
+        setGridAnswer(grid)
+        gridRefs.current = Array.from({ length: 4 }, () => Array(4).fill(null))
+      } else {
+        setGridAnswer([])
+      }
       timer.start()
     } catch (e) { console.error('Failed to load Dot Products question:', e) }
     setLoading(false)
@@ -3673,17 +3694,37 @@ function DotProdApp({ onBack }) {
     return () => window.removeEventListener('keydown', h)
   }, [revealed, isCorrect, questionNumber])
 
+  // All question types now use grid input
+  const isGridComplete = () => {
+    if (!question) return false
+    if (question.type === 'dot2d' || question.type === 'dot3d') return gridAnswer[0]?.[0]?.trim() !== ''
+    if (question.type === 'matmul') return gridAnswer.every(row => row.every(v => v.trim() !== ''))
+    if (question.type === 'matfill') return question.blanks.every(([r, c]) => gridAnswer[r]?.[c]?.trim() !== '')
+    return answer.trim() !== ''
+  }
+
   const handleSubmit = async () => {
-    if (!question || revealed || !answer.trim()) return
+    if (!question || revealed || !isGridComplete()) return
+    // Build userAnswer string from grid
+    let userAnswer
+    if (question.type === 'dot2d' || question.type === 'dot3d') {
+      userAnswer = gridAnswer[0][0].trim()
+    } else if (question.type === 'matmul') {
+      userAnswer = '[' + gridAnswer.map(row => row.join(',')).join(';') + ']'
+    } else if (question.type === 'matfill') {
+      userAnswer = question.blanks.map(([r, c]) => gridAnswer[r][c].trim()).join(',')
+    } else {
+      userAnswer = answer.trim()
+    }
     const timeTaken = timer.stop()
-    const payload = { ...question, userAnswer: answer.trim() }
+    const payload = { ...question, userAnswer }
     try {
       const r = await fetch(`${API}/dotprod-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await r.json()
       setIsCorrect(data.correct); setRevealed(true)
       if (data.correct) setScore(s => s + 1)
       setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
-      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer, correctAnswer: data.display, correct: data.correct, time: timeTaken }])
       if (isAdaptive) {
         setAdaptScore(prev => {
           const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35)
@@ -3696,33 +3737,111 @@ function DotProdApp({ onBack }) {
 
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
 
-  const getPlaceholder = () => {
-    const d = effectiveDiff()
-    if (d === 'easy' || d === 'medium') return 'e.g. 42'
-    if (d === 'hard') return 'e.g. [10,13;22,29]'
-    return 'e.g. 120, 85, 44, 97'
+  // Grid cell change handler with auto-tab to next cell
+  const handleGridChange = (row, col, val, editableCells) => {
+    if (revealed) return
+    if (val !== '' && val !== '-' && !/^-?\d+$/.test(val)) return
+    const newGrid = gridAnswer.map(r => [...r])
+    newGrid[row][col] = val
+    setGridAnswer(newGrid)
+    // Auto-tab to next editable cell when a value is entered
+    if (val !== '' && val !== '-' && editableCells) {
+      const curIdx = editableCells.findIndex(([r, c]) => r === row && c === col)
+      if (curIdx >= 0 && curIdx < editableCells.length - 1) {
+        const [nr, nc] = editableCells[curIdx + 1]
+        setTimeout(() => gridRefs.current[nr]?.[nc]?.focus(), 0)
+      }
+    }
   }
 
-  // ── Rich prompt rendering ──────────────────────────
+  // ── Editable matrix grid input component ──────────────────────────
+  const MatrixInput = ({ rows, cols, editableCells, label }) => {
+    const allEditable = !editableCells
+    const editSet = editableCells ? new Set(editableCells.map(([r, c]) => `${r},${c}`)) : null
+    const cellList = editableCells || []
+    // For auto-tab ordering: row-major order of editable cells
+    const orderedEditable = allEditable
+      ? Array.from({ length: rows }, (_, i) => Array.from({ length: cols }, (_, j) => [i, j])).flat()
+      : cellList
+
+    return (
+      <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', margin: '0 6px' }}>
+        {label && <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--clr-accent)', marginBottom: 4 }}>{label}</div>}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', position: 'relative',
+          padding: '6px 10px', borderLeft: '2.5px solid var(--clr-text)', borderRight: '2.5px solid var(--clr-text)',
+        }}>
+          <span style={{ position: 'absolute', top: 0, left: 0, width: 8, height: '2.5px', background: 'var(--clr-text)' }} />
+          <span style={{ position: 'absolute', bottom: 0, left: 0, width: 8, height: '2.5px', background: 'var(--clr-text)' }} />
+          <span style={{ position: 'absolute', top: 0, right: 0, width: 8, height: '2.5px', background: 'var(--clr-text)' }} />
+          <span style={{ position: 'absolute', bottom: 0, right: 0, width: 8, height: '2.5px', background: 'var(--clr-text)' }} />
+          <table style={{ borderCollapse: 'collapse' }}>
+            <tbody>
+              {Array.from({ length: rows }, (_, i) => (
+                <tr key={i}>
+                  {Array.from({ length: cols }, (_, j) => {
+                    const isEditable = allEditable || editSet.has(`${i},${j}`)
+                    const val = gridAnswer[i]?.[j] ?? ''
+                    if (isEditable) {
+                      return (
+                        <td key={j} style={{ padding: '3px' }}>
+                          <input
+                            ref={el => { if (!gridRefs.current[i]) gridRefs.current[i] = []; gridRefs.current[i][j] = el }}
+                            type="text"
+                            value={val}
+                            onChange={e => handleGridChange(i, j, e.target.value, orderedEditable)}
+                            onKeyDown={handleKeyDown}
+                            disabled={revealed}
+                            style={{
+                              width: cols <= 3 ? 48 : 40, height: cols <= 3 ? 40 : 34,
+                              textAlign: 'center', fontFamily: 'monospace', fontSize: cols <= 3 ? '1.1rem' : '0.95rem',
+                              fontWeight: 600, border: `2px solid ${revealed ? (isCorrect ? '#4caf50' : '#f44336') : 'var(--clr-accent)'}`,
+                              borderRadius: 6, background: revealed ? (isCorrect ? 'rgba(76,175,80,0.08)' : 'rgba(244,67,54,0.08)') : 'var(--clr-card)',
+                              color: 'var(--clr-text)', outline: 'none',
+                            }}
+                          />
+                        </td>
+                      )
+                    }
+                    return (
+                      <td key={j} style={{
+                        padding: '4px 10px', textAlign: 'center', fontFamily: 'monospace',
+                        fontSize: '1.1rem', color: 'var(--clr-text)',
+                      }}>{val}</td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Rich prompt + input rendering ──────────────────────────
   const renderQuestion = () => {
     if (!question) return null
     const { type } = question
 
     if (type === 'dot2d' || type === 'dot3d') {
+      const dim = question.vecA.length
       return (
         <div style={{ textAlign: 'center', margin: '18px 0' }}>
           <div style={{ fontSize: '0.95rem', color: 'var(--clr-dim)', marginBottom: 10 }}>Find the dot product</div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <VectorBox vec={question.vecA} />
+            <MatrixBox matrix={question.vecA.map(v => [v])} label="A" />
             <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)' }}>·</span>
-            <VectorBox vec={question.vecB} />
-            <span style={{ fontSize: '1.3rem', fontWeight: 500, marginLeft: 4 }}>=  ?</span>
+            <MatrixBox matrix={question.vecB.map(v => [v])} label="B" />
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)', margin: '0 4px' }}>=</span>
+            <MatrixInput rows={1} cols={1} label="A·B" />
           </div>
         </div>
       )
     }
 
     if (type === 'matmul') {
+      const n = question.size
       return (
         <div style={{ textAlign: 'center', margin: '18px 0' }}>
           <div style={{ fontSize: '0.95rem', color: 'var(--clr-dim)', marginBottom: 12 }}>Compute the matrix product A × B</div>
@@ -3730,14 +3849,15 @@ function DotProdApp({ onBack }) {
             <MatrixBox matrix={question.matA} label="A" />
             <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)', margin: '0 4px' }}>×</span>
             <MatrixBox matrix={question.matB} label="B" />
-            <span style={{ fontSize: '1.3rem', fontWeight: 500, margin: '0 4px' }}>=  ?</span>
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)', margin: '0 4px' }}>=</span>
+            <MatrixInput rows={n} cols={n} label="A×B" />
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--clr-dim)', marginTop: 10 }}>Enter as [a,b;c,d] — semicolons separate rows</div>
         </div>
       )
     }
 
     if (type === 'matfill') {
+      const editableCells = question.blanks
       return (
         <div style={{ textAlign: 'center', margin: '18px 0' }}>
           <div style={{ fontSize: '0.95rem', color: 'var(--clr-dim)', marginBottom: 12 }}>Find the missing values in C = A × B</div>
@@ -3746,9 +3866,8 @@ function DotProdApp({ onBack }) {
             <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)', margin: '0 4px' }}>×</span>
             <MatrixBox matrix={question.matB} label="B" />
             <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--clr-accent)', margin: '0 4px' }}>=</span>
-            <MatrixBox matrix={question.matC} label="C" />
+            <MatrixInput rows={4} cols={4} editableCells={editableCells} label="C" />
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--clr-dim)', marginTop: 10 }}>Enter missing values separated by commas, e.g. 120, 85, 44, 97</div>
         </div>
       )
     }
@@ -3793,11 +3912,10 @@ function DotProdApp({ onBack }) {
         )}
         <div style={{ textAlign: 'center' }}>
           {renderQuestion()}
-          <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={getPlaceholder()} onKeyDown={handleKeyDown} autoFocus style={{ maxWidth: 320 }} />
         </div>
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
-          {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+          {!revealed ? <button onClick={handleSubmit} disabled={loading || !isGridComplete()}>Submit</button>
             : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
         {results.length > 0 && <ResultsTable results={results} />}

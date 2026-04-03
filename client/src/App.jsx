@@ -680,6 +680,974 @@ function AdaptiveTablesApp({ studentName }) {
   )
 }
 
+/* ── Scaffolded Tables App (Taittiriya) ──────────────────── */
+/**
+ * ScaffoldedTablesApp Component
+ * A scaffolded multiplication quiz designed for a specific student.
+ *
+ * KEY DESIGN:
+ *   - Starts by displaying 3 reference multiplication tables alongside the quiz
+ *   - As the student answers faster, tables are removed one at a time
+ *   - If the student makes errors after table removal, tables are restored
+ *   - Fixed 30 questions per session with progress tracking
+ *   - Remembers performance across sessions via localStorage
+ *   - Shows average time, score, and per-question results at the end
+ *
+ * Scaffolding Logic:
+ *   - 3 tables shown initially (current table + two neighbors)
+ *   - After 5 consecutive fast+correct answers → remove one table
+ *   - After 3 errors in the rolling window of 8 → restore one table
+ *   - Tables are removed from the outside in (neighbors first, then current)
+ *   - Tables are restored from inside out (current first, then neighbors)
+ *
+ * @param {Object} props
+ * @param {string} props.studentName - Student's display name
+ */
+function ScaffoldedTablesApp({ studentName }) {
+  // localStorage key for persisting this student's scaffolding state
+  const storageKey = `tenali-scaffold-${studentName}`
+
+  // ── Constants ────────────────────────────────────────────────────────
+  const TOTAL_QUESTIONS = 30          // Fixed questions per session
+  const SCAFFOLD_WINDOW = 8           // Rolling window size for error tracking
+  const FAST_MS = 4000                // "Fast" answer threshold (ms)
+  const CONSECUTIVE_FAST_TO_REMOVE = 5 // Fast+correct streak needed to remove a table
+  const ERRORS_TO_RESTORE = 3         // Errors in window to trigger table restoration
+
+  // ── Phase State ──────────────────────────────────────────────────────
+  // 'setup' → 'playing' → 'finished'
+  const [phase, setPhase] = useState('setup')
+
+  // ── Persisted State: which table to practice, restored from localStorage ──
+  const [currentTable, setCurrentTable] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey))
+      if (saved && saved.currentTable >= 2) return saved.currentTable
+    } catch {}
+    return 2
+  })
+  const [startTable, setStartTable] = useState(currentTable)
+
+  // ── Quiz Runtime State ───────────────────────────────────────────────
+  const [question, setQuestion] = useState(null)       // Current {table, multiplier, answer}
+  const [answer, setAnswer] = useState('')              // User's typed answer
+  const [feedback, setFeedback] = useState('')          // Feedback message
+  const [isCorrect, setIsCorrect] = useState(null)      // Correctness of last answer
+  const [revealed, setRevealed] = useState(false)        // Whether answer has been shown
+  const [questionNum, setQuestionNum] = useState(0)      // Current question (1-based)
+  const [score, setScore] = useState(0)                  // Correct answers count
+  const [startTime, setStartTime] = useState(null)       // Timestamp when question appeared
+  const [results, setResults] = useState([])             // Per-question results log
+
+  // ── Scaffolding State ────────────────────────────────────────────────
+  // Number of visible reference tables: 3 (all), 2, 1, or 0 (none)
+  const [visibleTables, setVisibleTables] = useState(3)
+  // Consecutive fast+correct answers (resets on slow or wrong)
+  const [fastStreak, setFastStreak] = useState(0)
+  // Rolling window of recent answers for error tracking
+  const [recentWindow, setRecentWindow] = useState([])
+  // Status message shown below header
+  const [statusMsg, setStatusMsg] = useState('')
+
+  // ── Refs ──────────────────────────────────────────────────────────────
+  const inputRef = useRef(null)
+  const advanceFnRef = useRef(null)
+
+  /**
+   * save(tbl): Persist current table and visible tables count to localStorage
+   */
+  const save = (tbl, visTables) => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        currentTable: tbl,
+        visibleTables: visTables ?? visibleTables
+      }))
+    } catch {}
+  }
+
+  /**
+   * generateQuestion(tbl): Create a random multiplication question
+   * Returns {table, multiplier, answer}
+   */
+  const generateQuestion = (tbl) => {
+    const multiplier = Math.floor(Math.random() * 10) + 1
+    return { table: tbl, multiplier, answer: tbl * multiplier }
+  }
+
+  /**
+   * beginPractice(): Start a new 30-question session
+   * Resets all quiz state, generates first question
+   */
+  const beginPractice = () => {
+    const tbl = startTable
+    setCurrentTable(tbl)
+    setPhase('playing')
+    setQuestionNum(0)
+    setScore(0)
+    setResults([])
+    setRecentWindow([])
+    setVisibleTables(3)       // Start with all 3 tables visible
+    setFastStreak(0)
+    setStatusMsg('3 reference tables shown — let\'s begin!')
+    save(tbl, 3)
+
+    const q = generateQuestion(tbl)
+    setQuestion(q)
+    setAnswer('')
+    setFeedback('')
+    setIsCorrect(null)
+    setRevealed(false)
+    setStartTime(Date.now())
+    setQuestionNum(1)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
+
+  /**
+   * nextQuestion(): Advance to the next question or finish the quiz
+   */
+  const nextQuestion = () => {
+    if (questionNum >= TOTAL_QUESTIONS) {
+      setPhase('finished')
+      return
+    }
+    const q = generateQuestion(currentTable)
+    setQuestion(q)
+    setAnswer('')
+    setFeedback('')
+    setIsCorrect(null)
+    setRevealed(false)
+    setStartTime(Date.now())
+    setQuestionNum(n => n + 1)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
+
+  // Update advance ref for useAutoAdvance hook
+  advanceFnRef.current = () => nextQuestion()
+
+  // Auto-advance after correct answer (1.5s delay)
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  // Enter key to advance after wrong answer
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const handleKey = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); nextQuestion() }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [revealed, isCorrect, questionNum])
+
+  /**
+   * handleSubmit(e): Process answer submission with scaffolding logic
+   *
+   * Scaffolding adaptation:
+   *   1. If answer is correct AND fast (< FAST_MS): increment fastStreak
+   *   2. If fastStreak reaches CONSECUTIVE_FAST_TO_REMOVE: remove one table
+   *   3. If errors in rolling window reach ERRORS_TO_RESTORE: add one table back
+   *   4. Wrong or slow answers reset fastStreak
+   */
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (revealed || !question) return
+
+    const userAns = parseInt(answer, 10)
+    const correct = userAns === question.answer
+    const elapsed = Date.now() - startTime
+
+    setIsCorrect(correct)
+    setRevealed(true)
+    if (correct) setScore(s => s + 1)
+
+    // Feedback with timing
+    const fb = correct
+      ? `Correct! ${question.table} × ${question.multiplier} = ${question.answer} (${(elapsed / 1000).toFixed(1)}s)`
+      : `${question.table} × ${question.multiplier} = ${question.answer} (you said ${userAns || '?'})`
+    setFeedback(fb)
+
+    // Record result
+    setResults(r => [...r, {
+      prompt: `${question.table} × ${question.multiplier}`,
+      userAnswer: answer || '?',
+      correctAnswer: String(question.answer),
+      correct,
+      time: (elapsed / 1000).toFixed(1)
+    }])
+
+    // ── SCAFFOLDING LOGIC ──────────────────────────────────────────────
+    // Update rolling window
+    const newWindow = [...recentWindow, { correct, timeMs: elapsed }].slice(-SCAFFOLD_WINDOW)
+    setRecentWindow(newWindow)
+
+    // Count errors in rolling window
+    const errorsInWindow = newWindow.filter(r => !r.correct).length
+
+    if (correct && elapsed < FAST_MS) {
+      // Fast + correct → build streak
+      const newStreak = fastStreak + 1
+      setFastStreak(newStreak)
+
+      if (newStreak >= CONSECUTIVE_FAST_TO_REMOVE && visibleTables > 0) {
+        // Remove one table
+        const newVis = visibleTables - 1
+        setVisibleTables(newVis)
+        setFastStreak(0) // Reset streak after removal
+        save(currentTable, newVis)
+        if (newVis === 0) {
+          setStatusMsg('All tables hidden — you\'re on your own!')
+        } else {
+          setStatusMsg(`Nice! Removed a table. ${newVis} table${newVis > 1 ? 's' : ''} remaining.`)
+        }
+        return
+      }
+
+      // Show streak progress toward next removal
+      if (visibleTables > 0) {
+        setStatusMsg(`Streak: ${newStreak}/${CONSECUTIVE_FAST_TO_REMOVE} fast answers to hide a table`)
+      } else {
+        setStatusMsg(`Excellent — no tables needed! (${(elapsed / 1000).toFixed(1)}s)`)
+      }
+    } else {
+      // Wrong or slow → reset streak
+      setFastStreak(0)
+
+      // Check if we need to restore a table
+      if (errorsInWindow >= ERRORS_TO_RESTORE && visibleTables < 3) {
+        const newVis = Math.min(visibleTables + 1, 3)
+        setVisibleTables(newVis)
+        setRecentWindow([]) // Clear window after restoration to give fresh start
+        save(currentTable, newVis)
+        setStatusMsg(`Table restored — ${newVis} table${newVis > 1 ? 's' : ''} shown. Take your time!`)
+      } else if (!correct) {
+        setStatusMsg(`Keep trying! ${visibleTables > 0 ? 'Use the tables to help.' : ''}`)
+      } else {
+        // Correct but slow
+        setStatusMsg(`Correct but a bit slow (${(elapsed / 1000).toFixed(1)}s). Try to be faster!`)
+      }
+    }
+  }
+
+  /**
+   * getTableNumbers(): Determine which table numbers to display
+   * Returns array of up to `visibleTables` table numbers centered around currentTable
+   *
+   * Strategy: show currentTable first, then neighbors (current-1, current+1)
+   * Clamp to valid range (2-20)
+   */
+  const getTableNumbers = () => {
+    if (visibleTables <= 0) return []
+    const tables = [currentTable]
+    if (visibleTables >= 2 && currentTable > 2) tables.unshift(currentTable - 1)
+    else if (visibleTables >= 2 && currentTable <= 2) tables.push(currentTable + 1)
+    if (visibleTables >= 3) {
+      // Add one more neighbor
+      const hasLower = tables.includes(currentTable - 1)
+      const hasHigher = tables.includes(currentTable + 1)
+      if (!hasHigher && currentTable + 1 <= 20) tables.push(currentTable + 1)
+      else if (!hasLower && currentTable - 1 >= 2) tables.unshift(currentTable - 1)
+      else if (currentTable + 2 <= 20) tables.push(currentTable + 2)
+    }
+    return tables.sort((a, b) => a - b)
+  }
+
+  /**
+   * renderRefTable(tbl): Render a single reference multiplication table
+   */
+  const renderRefTable = (tbl) => (
+    <div className="ref-table" key={tbl}>
+      <div className="ref-table-title">{tbl} × Table</div>
+      <div className="ref-table-rows">
+        {Array.from({ length: 10 }, (_, i) => i + 1).map(m => (
+          <div key={m} className="ref-table-row">
+            <span>{tbl} × {m}</span>
+            <span>= {tbl * m}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+
+  /**
+   * computeAvgTime(): Calculate average time per question from results
+   */
+  const computeAvgTime = () => {
+    if (results.length === 0) return '0.0'
+    const totalTime = results.reduce((sum, r) => sum + parseFloat(r.time), 0)
+    return (totalTime / results.length).toFixed(1)
+  }
+
+  // ══════════ RENDER: SETUP PHASE ══════════
+  if (phase === 'setup') {
+    return (
+      <div className="app-shell">
+        <div className="card">
+          <h1>{studentName}'s Tables</h1>
+          <div className="welcome-box">
+            <p className="welcome-text">Choose a table to practice ({TOTAL_QUESTIONS} questions)</p>
+            <p style={{ opacity: 0.7, fontSize: '0.9rem', margin: '0.5rem 0' }}>
+              You'll start with 3 reference tables. They'll disappear as you get faster!
+            </p>
+            <div className="checkbox-group" style={{ marginBottom: '24px' }}>
+              {Array.from({ length: 19 }, (_, i) => i + 2).map(n => (
+                <label key={n} className={`checkbox-pill${startTable === n ? ' active' : ''}`}>
+                  <input type="radio" name="startTable" checked={startTable === n}
+                    onChange={() => setStartTable(n)} />
+                  {n}×
+                </label>
+              ))}
+            </div>
+            <button onClick={beginPractice}>Start Practice</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ══════════ RENDER: FINISHED PHASE ══════════
+  if (phase === 'finished') {
+    return (
+      <div className="app-shell">
+        <div className="card">
+          <h1>{studentName}'s Results</h1>
+          <div className="welcome-box">
+            <p className="welcome-text">Session complete!</p>
+            <p className="final-score">Score: {score}/{TOTAL_QUESTIONS}</p>
+            <p style={{ fontSize: '1.1rem', margin: '0.5rem 0', color: 'var(--clr-accent)' }}>
+              Average time: {computeAvgTime()}s per question
+            </p>
+            <p style={{ opacity: 0.7, fontSize: '0.9rem' }}>
+              Tables visible at end: {visibleTables} of 3
+            </p>
+            {/* Results table */}
+            <div className="results-table" style={{ marginTop: '1rem' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Question</th>
+                    <th>Your Answer</th>
+                    <th>Correct</th>
+                    <th>Time</th>
+                    <th>Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((r, i) => (
+                    <tr key={i} className={r.correct ? 'result-correct' : 'result-wrong'}>
+                      <td>{i + 1}</td>
+                      <td>{r.prompt}</td>
+                      <td>{r.userAnswer}</td>
+                      <td>{r.correctAnswer}</td>
+                      <td>{r.time}s</td>
+                      <td>{r.correct ? '✓' : '✗'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button onClick={() => setPhase('setup')} style={{ marginTop: '1rem' }}>Play Again</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ══════════ RENDER: PLAYING PHASE ══════════
+  const tablesToShow = getTableNumbers()
+
+  return (
+    <div className="app-shell">
+      <div className="card">
+        <div className="header-row">
+          <button className="back-button" onClick={() => setPhase('setup')}>← Change Table</button>
+        </div>
+        <h1>{studentName}'s Tables</h1>
+        <div className="top-mini-row">
+          <span className="score-pill">Score {score}</span>
+          <span className="progress-pill">Q {questionNum}/{TOTAL_QUESTIONS}</span>
+          <span className="timer-pill">{currentTable}× table</span>
+          <span className="score-pill">{visibleTables}/3 tables</span>
+        </div>
+        {statusMsg && (
+          <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--clr-text-soft)', margin: '4px 0 8px', fontWeight: 500 }}>
+            {statusMsg}
+          </p>
+        )}
+
+        <div className={tablesToShow.length > 0 ? 'scaffold-layout' : ''}>
+          {/* Reference tables */}
+          {tablesToShow.length > 0 && (
+            <div className="scaffold-tables">
+              {tablesToShow.map(tbl => renderRefTable(tbl))}
+            </div>
+          )}
+
+          {/* Quiz area */}
+          <div className="tables-quiz-area">
+            {question && (
+              <>
+                <div className="question-box">
+                  {question.table} × {question.multiplier} = ?
+                </div>
+                <form onSubmit={handleSubmit}>
+                  <input
+                    ref={inputRef}
+                    className="answer-input"
+                    type="text"
+                    inputMode="numeric"
+                    value={answer}
+                    onChange={e => { if (/^-?\d*$/.test(e.target.value)) setAnswer(e.target.value) }}
+                    placeholder="?"
+                    disabled={revealed}
+                    autoFocus
+                  />
+                  {!revealed && (
+                    <div className="button-row">
+                      <button type="submit" disabled={!answer}>Check</button>
+                    </div>
+                  )}
+                </form>
+                {feedback && (
+                  <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>
+                )}
+                {revealed && (
+                  <div className="button-row">
+                    <button onClick={() => nextQuestion()}>
+                      {questionNum >= TOTAL_QUESTIONS ? 'Finish' : 'Next'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Adaptive Mixed Quiz App (Tatsavit) ──────────────────── */
+/**
+ * AdaptiveMixedApp Component
+ * An adaptive mixed-topic quiz for a specific student.
+ *
+ * Topics mixed randomly:
+ *   1. Fraction Addition:    a/b + c/d (answer as simplified fraction)
+ *   2. Fraction Multiplication: a/b × c/d (answer as simplified fraction)
+ *   3. Monomial Addition:    ax^n + bx^n = (a+b)x^n
+ *   4. Monomial Multiplication: ax^m × bx^n = (a*b)x^(m+n)
+ *   5. Simple Addition:      a + b where a,b can be positive or negative
+ *
+ * Adaptive Difficulty:
+ *   - Starts at level 1 (easiest), max level 5
+ *   - Rolling window of 8 answers tracks speed and accuracy
+ *   - Level increases when: accuracy >= 90% AND avgTime < 4s
+ *   - Level decreases when: accuracy < 60% OR avgTime > 8s
+ *   - Higher levels = larger numbers, bigger denominators, higher exponents
+ *
+ * Persists difficulty level in localStorage across sessions.
+ *
+ * @param {Object} props
+ * @param {string} props.studentName - Student's display name
+ */
+function AdaptiveMixedApp({ studentName }) {
+  // localStorage key for persisting adaptive state
+  const storageKey = `tenali-mixed-${studentName}`
+
+  // ── Constants ────────────────────────────────────────────────────────
+  const TOTAL_QUESTIONS = 30
+  const ADAPT_WINDOW = 8
+  const FAST_THRESH_MS = 4000
+  const SLOW_THRESH_MS = 8000
+  const MAX_LEVEL = 5
+
+  // ── Client-side GCD utility ──────────────────────────────────────────
+  const clientGcd = (a, b) => {
+    a = Math.abs(a); b = Math.abs(b)
+    while (b) { [a, b] = [b, a % b] }
+    return a
+  }
+
+  // ── Phase & Persisted State ──────────────────────────────────────────
+  const [phase, setPhase] = useState('setup') // 'setup' | 'playing' | 'finished'
+  const [diffLevel, setDiffLevel] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey))
+      if (saved && saved.diffLevel >= 1 && saved.diffLevel <= MAX_LEVEL) return saved.diffLevel
+    } catch {}
+    return 1
+  })
+
+  // ── Quiz Runtime State ───────────────────────────────────────────────
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNum, setQuestionNum] = useState(0)
+  const [score, setScore] = useState(0)
+  const [startTime, setStartTime] = useState(null)
+  const [results, setResults] = useState([])
+  const [recentWindow, setRecentWindow] = useState([])
+  const [statusMsg, setStatusMsg] = useState('')
+
+  const inputRef = useRef(null)
+  const advanceFnRef = useRef(null)
+
+  /**
+   * save(level): Persist difficulty level to localStorage
+   */
+  const save = (level) => {
+    try { localStorage.setItem(storageKey, JSON.stringify({ diffLevel: level })) } catch {}
+  }
+
+  // ── Question Generators ──────────────────────────────────────────────
+  // Each returns {type, prompt, correctAnswer, explanation}
+
+  /**
+   * genFractionAdd(level): Generate a fraction addition question
+   * Level controls denominator range: level 1→2-5, level 5→2-20
+   */
+  const genFractionAdd = (level) => {
+    const maxDen = 3 + level * 3 // 6, 9, 12, 15, 18
+    const d1 = Math.floor(Math.random() * (maxDen - 1)) + 2
+    let d2 = Math.floor(Math.random() * (maxDen - 1)) + 2
+    if (level >= 2) while (d2 === d1) d2 = Math.floor(Math.random() * (maxDen - 1)) + 2
+    else d2 = d1 // Easy: same denominator
+    const n1 = Math.floor(Math.random() * (d1 - 1)) + 1
+    const n2 = Math.floor(Math.random() * (d2 - 1)) + 1
+    // Compute correct answer
+    const resNum = n1 * d2 + n2 * d1
+    const resDen = d1 * d2
+    const g = clientGcd(resNum, resDen)
+    const ansNum = resNum / g
+    const ansDen = resDen / g
+    const display = ansDen === 1 ? `${ansNum}` : `${ansNum}/${ansDen}`
+    return {
+      type: 'fraction-add',
+      prompt: `${n1}/${d1} + ${n2}/${d2}`,
+      correctAnswer: display,
+      explanation: `${n1}/${d1} + ${n2}/${d2} = ${display}`
+    }
+  }
+
+  /**
+   * genFractionMul(level): Generate a fraction multiplication question
+   * Level controls denominator range
+   */
+  const genFractionMul = (level) => {
+    const maxDen = 3 + level * 3
+    const d1 = Math.floor(Math.random() * (maxDen - 1)) + 2
+    const d2 = Math.floor(Math.random() * (maxDen - 1)) + 2
+    const n1 = Math.floor(Math.random() * (d1 - 1)) + 1
+    const n2 = Math.floor(Math.random() * (d2 - 1)) + 1
+    const resNum = n1 * n2
+    const resDen = d1 * d2
+    const g = clientGcd(resNum, resDen)
+    const ansNum = resNum / g
+    const ansDen = resDen / g
+    const display = ansDen === 1 ? `${ansNum}` : `${ansNum}/${ansDen}`
+    return {
+      type: 'fraction-mul',
+      prompt: `${n1}/${d1} × ${n2}/${d2}`,
+      correctAnswer: display,
+      explanation: `${n1}/${d1} × ${n2}/${d2} = ${display}`
+    }
+  }
+
+  /**
+   * genMonomialAdd(level): Generate a monomial addition question
+   * e.g., 3x² + 5x² = 8x²
+   * Level controls coefficient range and exponent range
+   */
+  const genMonomialAdd = (level) => {
+    const maxCoeff = 3 + level * 3 // 6, 9, 12, 15, 18
+    const maxExp = Math.min(level + 1, 5) // 2, 3, 4, 5, 5
+    const exp = Math.floor(Math.random() * maxExp) + 1
+    let a = Math.floor(Math.random() * maxCoeff) + 1
+    let b = Math.floor(Math.random() * maxCoeff) + 1
+    // At higher levels, sometimes negate a coefficient
+    if (level >= 3 && Math.random() < 0.4) a = -a
+    if (level >= 3 && Math.random() < 0.4) b = -b
+    const sum = a + b
+    const sup = (n) => String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('')
+    const expStr = exp === 1 ? '' : sup(exp)
+    const fmtTerm = (c, showPlus) => {
+      if (c === 1) return `${showPlus ? '+ ' : ''}x${expStr}`
+      if (c === -1) return `- x${expStr}`
+      if (c < 0) return `- ${Math.abs(c)}x${expStr}`
+      return `${showPlus ? '+ ' : ''}${c}x${expStr}`
+    }
+    const prompt = `${fmtTerm(a, false)} ${b >= 0 ? '+' : ''} ${fmtTerm(b, b >= 0)}`
+    const ansStr = sum === 0 ? '0' : sum === 1 ? `x${expStr}` : sum === -1 ? `-x${expStr}` : `${sum}x${expStr}`
+    return {
+      type: 'monomial-add',
+      prompt: prompt.replace(/\s+/g, ' ').trim(),
+      correctAnswer: ansStr,
+      explanation: `${prompt.replace(/\s+/g, ' ').trim()} = ${ansStr}`
+    }
+  }
+
+  /**
+   * genMonomialMul(level): Generate a monomial multiplication question
+   * e.g., 3x² × 5x³ = 15x⁵
+   * Level controls coefficient range and exponent range
+   */
+  const genMonomialMul = (level) => {
+    const maxCoeff = 2 + level * 2 // 4, 6, 8, 10, 12
+    const maxExp = Math.min(level + 1, 5)
+    const exp1 = Math.floor(Math.random() * maxExp) + 1
+    const exp2 = Math.floor(Math.random() * maxExp) + 1
+    let a = Math.floor(Math.random() * maxCoeff) + 1
+    let b = Math.floor(Math.random() * maxCoeff) + 1
+    if (level >= 3 && Math.random() < 0.3) a = -a
+    if (level >= 3 && Math.random() < 0.3) b = -b
+    const product = a * b
+    const expSum = exp1 + exp2
+    const sup = (n) => String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('')
+    const fmtTerm = (c, e) => {
+      const eStr = e === 1 ? '' : sup(e)
+      if (c === 1) return `x${eStr}`
+      if (c === -1) return `-x${eStr}`
+      return `${c}x${eStr}`
+    }
+    const prompt = `(${fmtTerm(a, exp1)}) × (${fmtTerm(b, exp2)})`
+    const ansStr = product === 1 ? `x${sup(expSum)}` : product === -1 ? `-x${sup(expSum)}` : `${product}x${expSum === 1 ? '' : sup(expSum)}`
+    return {
+      type: 'monomial-mul',
+      prompt,
+      correctAnswer: ansStr,
+      explanation: `${prompt} = ${ansStr}`
+    }
+  }
+
+  /**
+   * genSimpleAdd(level): Generate a simple addition question with +/- numbers
+   * Level controls number range: level 1→1-10, level 5→1-100
+   */
+  const genSimpleAdd = (level) => {
+    const maxNum = 5 + level * 15 // 20, 35, 50, 65, 80
+    let a = Math.floor(Math.random() * maxNum) + 1
+    let b = Math.floor(Math.random() * maxNum) + 1
+    // Randomly negate
+    if (Math.random() < 0.5) a = -a
+    if (Math.random() < 0.5) b = -b
+    const sum = a + b
+    const prompt = b >= 0 ? `${a} + ${b}` : `${a} + (${b})`
+    return {
+      type: 'simple-add',
+      prompt,
+      correctAnswer: String(sum),
+      explanation: `${prompt} = ${sum}`
+    }
+  }
+
+  /**
+   * generateQuestion(level): Pick a random topic and generate a question
+   */
+  const generateRandomQuestion = (level) => {
+    const generators = [genFractionAdd, genFractionMul, genMonomialAdd, genMonomialMul, genSimpleAdd]
+    const gen = generators[Math.floor(Math.random() * generators.length)]
+    return gen(level)
+  }
+
+  /**
+   * beginPractice(): Start a new session
+   */
+  const beginPractice = () => {
+    setPhase('playing')
+    setQuestionNum(0)
+    setScore(0)
+    setResults([])
+    setRecentWindow([])
+    setStatusMsg(`Level ${diffLevel} — Let's go!`)
+    const q = generateRandomQuestion(diffLevel)
+    setQuestion(q)
+    setAnswer('')
+    setFeedback('')
+    setIsCorrect(null)
+    setRevealed(false)
+    setStartTime(Date.now())
+    setQuestionNum(1)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
+
+  /**
+   * nextQuestion(): Advance to next question or finish
+   */
+  const nextQuestion = () => {
+    if (questionNum >= TOTAL_QUESTIONS) {
+      setPhase('finished')
+      return
+    }
+    const q = generateRandomQuestion(diffLevel)
+    setQuestion(q)
+    setAnswer('')
+    setFeedback('')
+    setIsCorrect(null)
+    setRevealed(false)
+    setStartTime(Date.now())
+    setQuestionNum(n => n + 1)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
+
+  advanceFnRef.current = () => nextQuestion()
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  // Enter key after wrong answer
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const handleKey = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); nextQuestion() }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [revealed, isCorrect, questionNum])
+
+  /**
+   * normalizeAnswer(str): Normalize an answer string for comparison
+   * Removes spaces, handles x^ notation, normalizes superscripts
+   */
+  const normalizeAnswer = (str) => {
+    let s = str.trim().replace(/\s+/g, '')
+    // Convert x^ notation to superscript: x^2 → x², x^10 → x¹⁰
+    s = s.replace(/x\^(\d+)/g, (_, digits) => {
+      const sup = digits.split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('')
+      return `x${sup}`
+    })
+    return s
+  }
+
+  /**
+   * handleSubmit(e): Check user's answer and adapt difficulty
+   */
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (revealed || !question) return
+    if (answer.trim() === '') return
+
+    const elapsed = Date.now() - startTime
+    // Normalize both answers for comparison
+    const userNorm = normalizeAnswer(answer)
+    const correctNorm = normalizeAnswer(question.correctAnswer)
+    const correct = userNorm === correctNorm
+
+    setIsCorrect(correct)
+    setRevealed(true)
+    if (correct) setScore(s => s + 1)
+
+    const fb = correct
+      ? `Correct! ${question.explanation} (${(elapsed / 1000).toFixed(1)}s)`
+      : `Incorrect. ${question.explanation}`
+    setFeedback(fb)
+
+    // Topic label for results
+    const typeLabels = {
+      'fraction-add': 'Frac +',
+      'fraction-mul': 'Frac ×',
+      'monomial-add': 'Mono +',
+      'monomial-mul': 'Mono ×',
+      'simple-add': 'Add ±'
+    }
+
+    setResults(r => [...r, {
+      prompt: `[${typeLabels[question.type] || question.type}] ${question.prompt}`,
+      userAnswer: answer,
+      correctAnswer: question.correctAnswer,
+      correct,
+      time: (elapsed / 1000).toFixed(1)
+    }])
+
+    // ── ADAPTIVE DIFFICULTY ────────────────────────────────────────────
+    const newWindow = [...recentWindow, { correct, timeMs: elapsed }].slice(-ADAPT_WINDOW)
+    setRecentWindow(newWindow)
+
+    if (newWindow.length >= 4) {
+      const accuracy = newWindow.filter(r => r.correct).length / newWindow.length
+      const avgTime = newWindow.reduce((s, r) => s + r.timeMs, 0) / newWindow.length
+
+      if (accuracy >= 0.9 && avgTime < FAST_THRESH_MS && diffLevel < MAX_LEVEL) {
+        // Level up!
+        const newLevel = diffLevel + 1
+        setDiffLevel(newLevel)
+        save(newLevel)
+        setStatusMsg(`Level up! Now at Level ${newLevel}`)
+      } else if ((accuracy < 0.6 || avgTime > SLOW_THRESH_MS) && diffLevel > 1) {
+        // Level down
+        const newLevel = diffLevel - 1
+        setDiffLevel(newLevel)
+        save(newLevel)
+        setStatusMsg(`Easing down to Level ${newLevel}. Take your time!`)
+      } else {
+        setStatusMsg(`Level ${diffLevel} — ${Math.round(accuracy * 100)}% correct, avg ${(avgTime / 1000).toFixed(1)}s`)
+      }
+    }
+  }
+
+  // Keyboard input for global key events (digits, minus, backspace, slash, x, ^)
+  useEffect(() => {
+    if (phase !== 'playing' || revealed) return
+    const handleKey = (e) => {
+      // Don't interfere if focused on the input already
+      if (e.target === inputRef.current) return
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault(); setAnswer(prev => prev + e.key)
+      } else if (e.key === '-') {
+        e.preventDefault(); setAnswer(prev => prev + '-')
+      } else if (e.key === '/') {
+        e.preventDefault(); setAnswer(prev => prev + '/')
+      } else if (e.key === 'x' || e.key === 'X') {
+        e.preventDefault(); setAnswer(prev => prev + 'x')
+      } else if (e.key === '^') {
+        e.preventDefault(); setAnswer(prev => prev + '^')
+      } else if (e.key === 'Backspace') {
+        e.preventDefault(); setAnswer(prev => prev.slice(0, -1))
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [phase, revealed])
+
+  const computeAvgTime = () => {
+    if (results.length === 0) return '0.0'
+    const total = results.reduce((sum, r) => sum + parseFloat(r.time), 0)
+    return (total / results.length).toFixed(1)
+  }
+
+  // ══════════ RENDER: SETUP ══════════
+  if (phase === 'setup') {
+    return (
+      <div className="app-shell">
+        <div className="card">
+          <h1>{studentName}'s Practice</h1>
+          <div className="welcome-box">
+            <p className="welcome-text">Mixed Math Practice ({TOTAL_QUESTIONS} questions)</p>
+            <p style={{ opacity: 0.7, fontSize: '0.9rem', margin: '0.5rem 0' }}>
+              Fractions, monomials, and arithmetic — all mixed up!<br />
+              Difficulty adapts as you go. Currently at Level {diffLevel}.
+            </p>
+            <div style={{ fontSize: '0.85rem', opacity: 0.6, margin: '0.5rem 0' }}>
+              Topics: Fraction +, Fraction ×, Monomial +, Monomial ×, Addition ±
+            </div>
+            <button onClick={beginPractice}>Start Practice</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ══════════ RENDER: FINISHED ══════════
+  if (phase === 'finished') {
+    return (
+      <div className="app-shell">
+        <div className="card">
+          <h1>{studentName}'s Results</h1>
+          <div className="welcome-box">
+            <p className="welcome-text">Session complete!</p>
+            <p className="final-score">Score: {score}/{TOTAL_QUESTIONS}</p>
+            <p style={{ fontSize: '1.1rem', margin: '0.5rem 0', color: 'var(--clr-accent)' }}>
+              Average time: {computeAvgTime()}s per question
+            </p>
+            <p style={{ opacity: 0.7, fontSize: '0.9rem' }}>
+              Final difficulty: Level {diffLevel} of {MAX_LEVEL}
+            </p>
+            <div className="results-table" style={{ marginTop: '1rem' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Question</th>
+                    <th>Your Answer</th>
+                    <th>Correct</th>
+                    <th>Time</th>
+                    <th>Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((r, i) => (
+                    <tr key={i} className={r.correct ? 'result-correct' : 'result-wrong'}>
+                      <td>{i + 1}</td>
+                      <td>{r.prompt}</td>
+                      <td>{r.userAnswer}</td>
+                      <td>{r.correctAnswer}</td>
+                      <td>{r.time}s</td>
+                      <td>{r.correct ? '✓' : '✗'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button onClick={() => setPhase('setup')} style={{ marginTop: '1rem' }}>Play Again</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ══════════ RENDER: PLAYING ══════════
+  return (
+    <div className="app-shell">
+      <div className="card">
+        <div className="header-row">
+          <button className="back-button" onClick={() => setPhase('setup')}>← Back</button>
+        </div>
+        <h1>{studentName}'s Practice</h1>
+        <div className="top-mini-row">
+          <span className="score-pill">Score {score}</span>
+          <span className="progress-pill">Q {questionNum}/{TOTAL_QUESTIONS}</span>
+          <span className="timer-pill">Level {diffLevel}</span>
+        </div>
+        {statusMsg && (
+          <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--clr-text-soft)', margin: '4px 0 8px', fontWeight: 500 }}>
+            {statusMsg}
+          </p>
+        )}
+
+        <div className="tables-quiz-area">
+          {question && (
+            <>
+              <div className="question-box" style={{ fontSize: '1.4rem' }}>
+                {question.prompt} = ?
+              </div>
+              <p style={{ fontSize: '0.75rem', opacity: 0.5, textAlign: 'center', margin: '0.25rem 0' }}>
+                {question.type === 'fraction-add' || question.type === 'fraction-mul' ? 'Answer as simplified fraction (e.g., 3/4)' :
+                 question.type === 'monomial-add' || question.type === 'monomial-mul' ? 'Answer with x (e.g., 8x^3 or -2x^2)' :
+                 'Enter a number'}
+              </p>
+              <form onSubmit={handleSubmit}>
+                <input
+                  ref={inputRef}
+                  className="answer-input"
+                  type="text"
+                  value={answer}
+                  onChange={e => { if (!revealed) setAnswer(e.target.value) }}
+                  placeholder="Type your answer"
+                  disabled={revealed}
+                  autoFocus
+                />
+                {!revealed && (
+                  <div className="button-row">
+                    <button type="submit" disabled={!answer.trim()}>Check</button>
+                  </div>
+                )}
+              </form>
+              {feedback && (
+                <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>
+              )}
+              {revealed && (
+                <div className="button-row">
+                  <button onClick={() => nextQuestion()}>
+                    {questionNum >= TOTAL_QUESTIONS ? 'Finish' : 'Next'}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /**
  * App Component (Main Shell)
  * Root component that handles:
@@ -730,26 +1698,28 @@ function App() {
   // Check if current URL matches a specific student page
   const pathname = window.location.pathname.replace(/\/$/, '').toLowerCase()
 
-  // Route: /taittiriya → Taittiriya's adaptive tables app
+  // Route: /taittiriya → Taittiriya's scaffolded tables app
+  // Uses ScaffoldedTablesApp: 30 questions, 3 reference tables that disappear as student improves
   if (pathname === '/taittiriya') {
     return (
       <>
         <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
-        <AdaptiveTablesApp studentName="Taittiriya" />
+        <ScaffoldedTablesApp studentName="Taittiriya" />
       </>
     )
   }
 
-  // Route: /tatsavit → Tatsavit's adaptive tables app
+  // Route: /tatsavit → Tatsavit's adaptive mixed quiz
+  // Uses AdaptiveMixedApp: fractions, monomials, arithmetic with adaptive difficulty
   if (pathname === '/tatsavit') {
     return (
       <>
         <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
-        <AdaptiveTablesApp studentName="Tatsavit" />
+        <AdaptiveMixedApp studentName="Tatsavit" />
       </>
     )
   }
@@ -782,6 +1752,7 @@ function App() {
     funceval: FuncEvalApp,         // Function evaluation
     lineq: LineEqApp,              // Line equation
     basicarith: BasicArithApp,     // Basic arithmetic (+, −, ×)
+    fractionadd: FractionAddApp,   // Fraction addition
     custom: CustomApp,             // Custom lesson builder
   }
 
@@ -832,6 +1803,7 @@ function Home({ onSelect }) {
     { key: 'funceval', name: 'Functions', subtitle: 'Evaluate f(x), f(x,y), f(x,y,z)', color: 'blue' },
     { key: 'lineq', name: 'Line Equation', subtitle: 'Find m and c from two points', color: 'green' },
     { key: 'basicarith', name: 'Arithmetic', subtitle: '+, −, × with positive & negative', color: 'purple' },
+    { key: 'fractionadd', name: 'Fractions (Add)', subtitle: 'Add fractions and simplify', color: 'blue' },
     { key: 'custom', name: 'Custom Lesson', subtitle: 'Build your own mixed quiz', color: 'green' },
   ]
 
@@ -2115,6 +3087,347 @@ function VocabApp({ onBack }) {
         <ResultsTable results={results} />
         <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
       </div>}
+    </QuizLayout>
+  )
+}
+
+/* ── Fraction Addition App ────────────────────────────────────── */
+/**
+ * FractionAddApp Component
+ * Fraction addition quiz with three difficulty levels.
+ *
+ * Difficulty Levels:
+ *   - Easy:   Same-denominator fractions (e.g., 2/5 + 1/5), denominators 2-10
+ *   - Medium: Different denominators requiring LCD (e.g., 1/3 + 1/4), denominators 2-12
+ *   - Hard:   Mixed numbers (e.g., 1⅔ + 2¼), denominators 2-15
+ *
+ * Features:
+ *   - Custom fraction input UI with stacked numerator/denominator fields
+ *   - Mixed number input (whole + fraction) for hard mode
+ *   - All answers must be simplified to lowest terms
+ *   - Auto-advance on correct answers, Enter key to advance on wrong
+ *   - Keyboard: Tab between fields, Enter to submit
+ *
+ * State Machine: setup → playing → finished
+ *
+ * @param {Object} props
+ * @param {Function} props.onBack - Callback to return to home menu
+ */
+function FractionAddApp({ onBack }) {
+  // ── State variables ──────────────────────────────────────────────────
+  // Difficulty: 'easy' | 'medium' | 'hard'
+  const [difficulty, setDifficulty] = useState('easy')
+  // Number of questions (user-configurable, stored as string for input)
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  // Quiz phase flags
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  // Current question object from API
+  const [question, setQuestion] = useState(null)
+  // User's answer fields: numerator and denominator
+  const [ansNum, setAnsNum] = useState('')
+  const [ansDen, setAnsDen] = useState('')
+  // Whole part for mixed number answers (hard mode)
+  const [ansWhole, setAnsWhole] = useState('')
+  // Score tracking
+  const [score, setScore] = useState(0)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  // Feedback after submission
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  // Loading flag for API calls
+  const [loading, setLoading] = useState(false)
+  // Whether answer has been revealed (submitted)
+  const [revealed, setRevealed] = useState(false)
+  // Results log for ResultsTable
+  const [results, setResults] = useState([])
+  // Timer for per-question timing
+  const timer = useTimer()
+
+  // ── Refs for auto-advance ────────────────────────────────────────────
+  const advanceFnRef = useRef(null)
+
+  /**
+   * loadQuestion(): Fetch a new fraction-add question from the API.
+   * Updates question state and resets answer fields.
+   */
+  const loadQuestion = async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(`${API}/fractionadd-api/question?difficulty=${difficulty}`)
+      const data = await r.json()
+      setQuestion(data)
+      setAnsNum('')
+      setAnsDen('')
+      setAnsWhole('')
+      setFeedback('')
+      setIsCorrect(null)
+      setRevealed(false)
+      timer.start()
+    } catch (e) {
+      console.error('Failed to load fraction question:', e)
+    }
+    setLoading(false)
+  }
+
+  /**
+   * startQuiz(): Initialize quiz with chosen settings.
+   * Sets total questions, resets score and results, loads first question.
+   */
+  const startQuiz = () => {
+    const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
+    setTotalQ(t)
+    setScore(0)
+    setQuestionNumber(1)
+    setResults([])
+    setStarted(true)
+    setFinished(false)
+  }
+
+  // Load question when quiz starts or question number changes
+  useEffect(() => {
+    if (started && !finished && questionNumber > 0) loadQuestion()
+  }, [started, questionNumber])
+
+  /**
+   * advance(): Move to the next question or finish the quiz.
+   * Called by auto-advance (correct) or Next button (wrong).
+   */
+  const advance = () => {
+    if (questionNumber >= totalQ) {
+      setFinished(true)
+    } else {
+      setQuestionNumber(n => n + 1)
+    }
+  }
+
+  // Keep advanceFnRef updated for useAutoAdvance hook
+  advanceFnRef.current = advance
+
+  // Auto-advance after correct answer (1500ms delay)
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  // Enter key to advance after wrong answer
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const handleKey = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); advance() }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [revealed, isCorrect, questionNumber])
+
+  /**
+   * handleSubmit(): Validate and submit the user's answer.
+   * POSTs to /fractionadd-api/check, updates score and feedback.
+   */
+  const handleSubmit = async () => {
+    if (!question || revealed) return
+    // Require at least numerator and denominator
+    if (ansNum === '' || ansDen === '' || Number(ansDen) === 0) return
+
+    const timeTaken = timer.stop()
+    const payload = {
+      n1: question.n1, d1: question.d1,
+      n2: question.n2, d2: question.d2,
+      ansNum: Number(ansNum),
+      ansDen: Number(ansDen),
+      mixed: question.mixed || false,
+    }
+    // Add mixed number fields for hard mode
+    if (question.mixed) {
+      payload.w1 = question.w1
+      payload.w2 = question.w2
+      payload.ansWhole = Number(ansWhole) || 0
+    }
+
+    try {
+      const r = await fetch(`${API}/fractionadd-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const data = await r.json()
+
+      setIsCorrect(data.correct)
+      setRevealed(true)
+      if (data.correct) setScore(s => s + 1)
+
+      // Build the prompt string for results table
+      const prompt = question.mixed
+        ? `${question.w1} ${question.n1}/${question.d1} + ${question.w2} ${question.n2}/${question.d2}`
+        : `${question.n1}/${question.d1} + ${question.n2}/${question.d2}`
+
+      // Build user answer display
+      const userDisplay = question.mixed
+        ? `${ansWhole || 0} ${ansNum}/${ansDen}`
+        : `${ansNum}/${ansDen}`
+
+      setFeedback(data.correct
+        ? `Correct! ${prompt} = ${data.display}`
+        : `Incorrect. ${prompt} = ${data.display}`)
+
+      setResults(prev => [...prev, {
+        prompt,
+        userAnswer: userDisplay,
+        correctAnswer: data.display,
+        correct: data.correct,
+        time: timeTaken
+      }])
+    } catch (e) {
+      console.error('Failed to check fraction answer:', e)
+    }
+  }
+
+  /**
+   * handleKeyDown(e): Handle Enter key to submit or advance.
+   * Attached to the fraction input fields.
+   */
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (revealed) advance()
+      else handleSubmit()
+    }
+  }
+
+  /**
+   * formatFraction(n, d): Render a fraction as a React element with
+   * stacked numerator/denominator layout using CSS classes.
+   */
+  const formatFraction = (n, d) => (
+    <span className="fraction-display">
+      <span className="frac-num">{n}</span>
+      <span className="frac-bar"></span>
+      <span className="frac-den">{d}</span>
+    </span>
+  )
+
+  /**
+   * formatMixed(w, n, d): Render a mixed number as whole + fraction.
+   */
+  const formatMixed = (w, n, d) => (
+    <span className="mixed-number">
+      <span className="mixed-whole">{w}</span>
+      {formatFraction(n, d)}
+    </span>
+  )
+
+  // ── Render ─────────────────────────────────────────────────────────────
+  return (
+    <QuizLayout title="Fractions (Add)" subtitle="Add fractions and simplify" onBack={onBack} timer={started && !finished ? timer : null}>
+      {/* ── Setup Phase ── */}
+      {!started && !finished && (
+        <div className="welcome-box">
+          <p className="welcome-text">Practice adding fractions!</p>
+          <p style={{ opacity: 0.8, margin: '0.5rem 0' }}>
+            {difficulty === 'easy' && 'Same denominators — add and simplify.'}
+            {difficulty === 'medium' && 'Different denominators — find LCD, add, and simplify.'}
+            {difficulty === 'hard' && 'Mixed numbers — convert, add, and simplify.'}
+          </p>
+          <div className="setup-row">
+            <label>Difficulty</label>
+            <select value={difficulty} onChange={e => setDifficulty(e.target.value)}>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+          <div className="setup-row">
+            <label>Questions</label>
+            <input type="number" min="1" max="100" value={numQuestions} onChange={e => setNumQuestions(e.target.value)} />
+          </div>
+          <button onClick={startQuiz}>Start Quiz</button>
+        </div>
+      )}
+
+      {/* ── Playing Phase ── */}
+      {started && !finished && <>
+        <p className="progress-text">Question {questionNumber} of {totalQ} | Score: {score}</p>
+        {question && (
+          <div className="fraction-problem">
+            {/* Render the problem: n1/d1 + n2/d2 or mixed numbers */}
+            {question.mixed ? (
+              <div className="fraction-expression">
+                {formatMixed(question.w1, question.n1, question.d1)}
+                <span className="frac-operator">+</span>
+                {formatMixed(question.w2, question.n2, question.d2)}
+                <span className="frac-operator">=</span>
+              </div>
+            ) : (
+              <div className="fraction-expression">
+                {formatFraction(question.n1, question.d1)}
+                <span className="frac-operator">+</span>
+                {formatFraction(question.n2, question.d2)}
+                <span className="frac-operator">=</span>
+              </div>
+            )}
+
+            {/* Answer input area */}
+            <div className="fraction-answer-area">
+              {/* Whole part input for mixed mode */}
+              {question.mixed && (
+                <input
+                  className="fraction-whole-input"
+                  type="text"
+                  value={ansWhole}
+                  onChange={e => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d*$/.test(v)) setAnsWhole(v) } }}
+                  disabled={revealed}
+                  placeholder="W"
+                  onKeyDown={handleKeyDown}
+                  autoFocus
+                />
+              )}
+              {/* Fraction input: numerator over denominator */}
+              <div className="fraction-input-stack">
+                <input
+                  className="fraction-field frac-num-input"
+                  type="text"
+                  value={ansNum}
+                  onChange={e => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d*$/.test(v)) setAnsNum(v) } }}
+                  disabled={revealed}
+                  placeholder="num"
+                  onKeyDown={handleKeyDown}
+                  autoFocus={!question.mixed}
+                />
+                <div className="fraction-input-bar"></div>
+                <input
+                  className="fraction-field frac-den-input"
+                  type="text"
+                  value={ansDen}
+                  onChange={e => { if (!revealed) { const v = e.target.value; if (v === '' || /^\d*$/.test(v)) setAnsDen(v) } }}
+                  disabled={revealed}
+                  placeholder="den"
+                  onKeyDown={handleKeyDown}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+
+        <div className="button-row">
+          {!revealed ? (
+            <button onClick={handleSubmit} disabled={loading || ansNum === '' || ansDen === '' || Number(ansDen) === 0}>Submit</button>
+          ) : (
+            <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>
+          )}
+        </div>
+
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+
+      {/* ── Finished Phase ── */}
+      {finished && (
+        <div className="welcome-box">
+          <p className="welcome-text">Quiz complete!</p>
+          <p className="final-score">Final score: {score}/{totalQ}</p>
+          <ResultsTable results={results} />
+          <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+        </div>
+      )}
     </QuizLayout>
   )
 }
@@ -4002,6 +5315,7 @@ const CUSTOM_PUZZLES = [
   { key: 'lineq', name: 'Line Equation' },
   { key: 'gk', name: 'General Knowledge' },
   { key: 'vocab', name: 'Vocab Builder' },
+  { key: 'fractionadd', name: 'Fractions (Add)' },
 ]
 
 /**
@@ -4032,6 +5346,8 @@ function fetchQuestionForType(type, difficulty) {
     // Trivia puzzles without difficulty (use defaults or random)
     gk: `${API}/gk-api/question`,
     vocab: `${API}/vocab-api/question?difficulty=${difficulty}`,
+    // Fraction addition puzzle
+    fractionadd: `${API}/fractionadd-api/question?difficulty=${difficulty}`,
   }
   return fetch(urls[type]).then(r => r.json())
 }
@@ -4058,6 +5374,7 @@ function getPromptForType(type, q) {
     case 'lineq': return `Find slope (m) and intercept (c) for the line through (${q.x1}, ${q.y1}) and (${q.x2}, ${q.y2})`
     case 'gk': return q.question
     case 'vocab': return `What does "${q.question}" mean?`
+    case 'fractionadd': return q.mixed ? `${q.w1} ${q.n1}/${q.d1} + ${q.w2} ${q.n2}/${q.d2} = ?` : `${q.n1}/${q.d1} + ${q.n2}/${q.d2} = ?`
     default: return ''
   }
 }
@@ -4377,6 +5694,29 @@ function CustomApp({ onBack }) {
         setFeedback(data.correct ? `Correct! ${correctDisplay}` : `Incorrect. ${correctDisplay}`)
         break
       }
+      // ─────── Fraction Addition Puzzle ──────────────────────────────────
+      case 'fractionadd': {
+        if (answer === '') return
+        // For fraction add in custom mode, accept answer as a single number (simplified result)
+        // Build payload matching the standalone component format
+        const fracPayload = {
+          n1: question.n1, d1: question.d1,
+          n2: question.n2, d2: question.d2,
+          mixed: question.mixed || false,
+        }
+        if (question.mixed) {
+          fracPayload.w1 = question.w1; fracPayload.w2 = question.w2
+          // In custom mode, parse "W N/D" or "N/D" from answer string
+          fracPayload.ansWhole = 0; fracPayload.ansNum = Number(answer); fracPayload.ansDen = 1
+        } else {
+          fracPayload.ansNum = Number(answer); fracPayload.ansDen = 1
+        }
+        res = await fetch(`${API}/fractionadd-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fracPayload) })
+        data = await res.json()
+        correct = data.correct; correctDisplay = data.display; userDisplay = answer
+        setFeedback(data.correct ? `Correct! = ${data.display}` : `Incorrect. = ${data.display}`)
+        break
+      }
       // ─────── Multiple Choice Puzzles (GK, Vocab) ──────────────────────────────────
       case 'gk': case 'vocab': {
         if (!optionToUse) return
@@ -4491,7 +5831,7 @@ function CustomApp({ onBack }) {
     if (!question || !curType) return null
     // Dispatch to type-specific input rendering
     switch (curType) {
-      case 'basicarith': case 'addition': case 'quadratic': case 'multiply': case 'sqrt': case 'funceval':
+      case 'basicarith': case 'addition': case 'quadratic': case 'multiply': case 'sqrt': case 'funceval': case 'fractionadd':
         return <>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d*\.?\d*$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
           <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} />

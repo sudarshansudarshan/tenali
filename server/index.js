@@ -1569,6 +1569,213 @@ app.post('/basicarith-api/check', (req, res) => {
 });
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * FRACTION ADDITION QUIZ API
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Generates fraction addition problems at three difficulty levels:
+ *   - Easy:   Same denominators (e.g., 2/5 + 1/5), denominators 2-10
+ *   - Medium: Different denominators requiring LCD (e.g., 1/3 + 1/4), denominators 2-12
+ *   - Hard:   Mixed numbers (e.g., 1⅔ + 2¼), denominators 2-15
+ *
+ * All answers must be in simplified form. The server computes the correct
+ * simplified answer using GCD for reduction.
+ *
+ * Utility: gcd(a, b) — Euclidean algorithm for Greatest Common Divisor
+ * Used to simplify fractions to lowest terms.
+ */
+
+/**
+ * gcd(a, b): Compute Greatest Common Divisor using the Euclidean algorithm.
+ * Works with non-negative integers. Used to reduce fractions to lowest terms.
+ *
+ * @param {number} a - First non-negative integer
+ * @param {number} b - Second non-negative integer
+ * @returns {number} GCD of a and b
+ */
+function gcd(a, b) {
+  a = Math.abs(a);
+  b = Math.abs(b);
+  while (b) { [a, b] = [b, a % b]; }
+  return a;
+}
+
+/**
+ * simplifyFraction(num, den): Reduce a fraction to lowest terms.
+ * Ensures the denominator is always positive. Returns {num, den}.
+ *
+ * @param {number} num - Numerator (can be negative)
+ * @param {number} den - Denominator (must be non-zero)
+ * @returns {{num: number, den: number}} Simplified fraction
+ */
+function simplifyFraction(num, den) {
+  if (den < 0) { num = -num; den = -den; }
+  const g = gcd(Math.abs(num), den);
+  return { num: num / g, den: den / g };
+}
+
+/**
+ * toMixed(num, den): Convert an improper fraction to mixed number form.
+ * Returns {whole, num, den} where the fraction part is always non-negative
+ * and in simplified form. If fraction is proper, whole=0.
+ *
+ * @param {number} num - Numerator
+ * @param {number} den - Denominator (positive)
+ * @returns {{whole: number, num: number, den: number}} Mixed number representation
+ */
+function toMixed(num, den) {
+  const s = simplifyFraction(num, den);
+  const whole = Math.trunc(s.num / s.den);
+  let remainder = Math.abs(s.num % s.den);
+  return { whole, num: remainder, den: s.den };
+}
+
+/**
+ * GET /fractionadd-api/question
+ *
+ * Generates a random fraction addition question at the specified difficulty.
+ *
+ * Query Parameters:
+ *   difficulty: 'easy' | 'medium' | 'hard' (default: 'easy')
+ *
+ * Response (Easy/Medium): {
+ *   id: number,
+ *   n1: number, d1: number,   // First fraction: n1/d1
+ *   n2: number, d2: number,   // Second fraction: n2/d2
+ *   difficulty: string,
+ *   mixed: false
+ * }
+ *
+ * Response (Hard - mixed numbers): {
+ *   id: number,
+ *   w1: number, n1: number, d1: number,  // First mixed number: w1 n1/d1
+ *   w2: number, n2: number, d2: number,  // Second mixed number: w2 n2/d2
+ *   difficulty: 'hard',
+ *   mixed: true
+ * }
+ */
+app.get('/fractionadd-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+
+  if (difficulty === 'easy') {
+    // Same denominators, denominators 2-10
+    const den = Math.floor(Math.random() * 9) + 2; // 2..10
+    const n1 = Math.floor(Math.random() * (den - 1)) + 1; // 1..(den-1)
+    const n2 = Math.floor(Math.random() * (den - 1)) + 1;
+    res.json({ id, n1, d1: den, n2, d2: den, difficulty, mixed: false });
+  } else if (difficulty === 'medium') {
+    // Different denominators, denominators 2-12
+    // Ensure d1 != d2 for a meaningful LCD problem
+    const d1 = Math.floor(Math.random() * 11) + 2; // 2..12
+    let d2 = Math.floor(Math.random() * 11) + 2;
+    while (d2 === d1) d2 = Math.floor(Math.random() * 11) + 2;
+    const n1 = Math.floor(Math.random() * (d1 - 1)) + 1;
+    const n2 = Math.floor(Math.random() * (d2 - 1)) + 1;
+    res.json({ id, n1, d1, n2, d2, difficulty, mixed: false });
+  } else {
+    // Hard: Mixed numbers with different denominators 2-15
+    const d1 = Math.floor(Math.random() * 14) + 2; // 2..15
+    let d2 = Math.floor(Math.random() * 14) + 2;
+    while (d2 === d1) d2 = Math.floor(Math.random() * 14) + 2;
+    const w1 = Math.floor(Math.random() * 5) + 1; // whole part 1..5
+    const w2 = Math.floor(Math.random() * 5) + 1;
+    const n1 = Math.floor(Math.random() * (d1 - 1)) + 1;
+    const n2 = Math.floor(Math.random() * (d2 - 1)) + 1;
+    res.json({ id, w1, n1, d1: d1, w2, n2, d2: d2, difficulty: 'hard', mixed: true });
+  }
+});
+
+/**
+ * POST /fractionadd-api/check
+ *
+ * Validates the user's fraction addition answer. Computes the correct sum
+ * and compares it (in simplified form) to the user's answer.
+ *
+ * Request Body (Easy/Medium): {
+ *   n1: number, d1: number, n2: number, d2: number,
+ *   ansNum: number, ansDen: number,
+ *   mixed: false
+ * }
+ *
+ * Request Body (Hard): {
+ *   w1: number, n1: number, d1: number,
+ *   w2: number, n2: number, d2: number,
+ *   ansWhole: number, ansNum: number, ansDen: number,
+ *   mixed: true
+ * }
+ *
+ * Response: {
+ *   correct: boolean,
+ *   correctNum: number,     // Correct answer numerator (simplified)
+ *   correctDen: number,     // Correct answer denominator (simplified)
+ *   correctWhole?: number,  // Correct whole part (hard mode only)
+ *   display: string,        // Formatted correct answer string
+ *   message: string
+ * }
+ */
+app.post('/fractionadd-api/check', (req, res) => {
+  const body = req.body || {};
+  let totalNum, totalDen;
+
+  if (body.mixed) {
+    // Hard mode: convert mixed numbers to improper fractions, then add
+    // w1 n1/d1 → (w1*d1 + n1)/d1
+    const imp1 = body.w1 * body.d1 + body.n1;
+    const imp2 = body.w2 * body.d2 + body.n2;
+    // Add fractions: imp1/d1 + imp2/d2 = (imp1*d2 + imp2*d1) / (d1*d2)
+    totalNum = imp1 * body.d2 + imp2 * body.d1;
+    totalDen = body.d1 * body.d2;
+  } else {
+    // Easy/Medium: add n1/d1 + n2/d2 = (n1*d2 + n2*d1) / (d1*d2)
+    totalNum = body.n1 * body.d2 + body.n2 * body.d1;
+    totalDen = body.d1 * body.d2;
+  }
+
+  // Simplify the correct answer
+  const simplified = simplifyFraction(totalNum, totalDen);
+
+  let correct, display;
+
+  if (body.mixed) {
+    // Hard: expect answer as mixed number {ansWhole, ansNum, ansDen}
+    const mixed = toMixed(simplified.num, simplified.den);
+    // User answer: convert to improper fraction for comparison
+    const userTotal = (Number(body.ansWhole) || 0) * (Number(body.ansDen) || 1) + (Number(body.ansNum) || 0);
+    const userDen = Number(body.ansDen) || 1;
+    const userSimp = simplifyFraction(userTotal, userDen);
+    correct = userSimp.num === simplified.num && userSimp.den === simplified.den;
+    // Display format: "3 2/5" or "7/3" if no whole part
+    if (mixed.num === 0) {
+      display = `${mixed.whole}`;
+    } else if (mixed.whole === 0) {
+      display = `${simplified.num}/${simplified.den}`;
+    } else {
+      display = `${mixed.whole} ${mixed.num}/${mixed.den}`;
+    }
+  } else {
+    // Easy/Medium: expect answer as fraction {ansNum, ansDen}
+    const userSimp = simplifyFraction(Number(body.ansNum) || 0, Number(body.ansDen) || 1);
+    correct = userSimp.num === simplified.num && userSimp.den === simplified.den;
+    // Display: if denominator is 1, show as whole number
+    if (simplified.den === 1) {
+      display = `${simplified.num}`;
+    } else {
+      display = `${simplified.num}/${simplified.den}`;
+    }
+  }
+
+  res.json({
+    correct,
+    correctNum: simplified.num,
+    correctDen: simplified.den,
+    ...(body.mixed ? { correctWhole: toMixed(simplified.num, simplified.den).whole } : {}),
+    display,
+    message: correct ? 'Correct!' : 'Incorrect'
+  });
+});
+
+/**
  * CATCH-ALL ROUTE
  * ═══════════════════════════════════════════════════════════════════════════
  * Serves the React/Vue SPA index.html for all unmatched routes

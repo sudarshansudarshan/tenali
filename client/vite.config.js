@@ -67,6 +67,8 @@ export default defineConfig({
       '/lineq-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
       // Basic arithmetic quiz API
       '/basicarith-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
+      // Fraction addition quiz API
+      '/fractionadd-api': { target: 'http://127.0.0.1:4000', changeOrigin: true },
     },
   },
 })

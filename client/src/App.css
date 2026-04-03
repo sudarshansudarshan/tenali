@@ -2028,3 +2028,227 @@ button:disabled {
     height: 180px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SCAFFOLDED TABLES LAYOUT (Taittiriya)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Layout for showing 1-3 reference tables alongside the quiz area.
+ * Tables are displayed in a horizontal row on desktop, stacked on mobile.
+ */
+
+/* Main layout: tables on the left, quiz on the right */
+.scaffold-layout {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* Container for the 1-3 reference tables */
+.scaffold-tables {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* On mobile: stack tables above quiz, make them scroll horizontally */
+@media (max-width: 700px) {
+  .scaffold-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+  .scaffold-tables {
+    order: -1;
+    overflow-x: auto;
+    max-width: 100%;
+    padding-bottom: 0.5rem;
+  }
+  .scaffold-tables .ref-table {
+    min-width: 120px;
+    font-size: 0.75rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * FRACTION ADDITION PUZZLE STYLES
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Handles stacked fraction display (numerator/bar/denominator) and
+ * mixed number rendering. Used for both the problem display and answer input.
+ */
+
+/* Fraction display: inline stacked num/bar/den */
+.fraction-display {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 0.15rem;
+  line-height: 1.1;
+}
+
+/* Numerator text in fraction display */
+.frac-num {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--clr-fg);
+  padding: 0 0.3rem;
+}
+
+/* Horizontal bar between numerator and denominator */
+.frac-bar {
+  width: 100%;
+  min-width: 1.5rem;
+  height: 2px;
+  background: var(--clr-fg);
+}
+
+/* Denominator text in fraction display */
+.frac-den {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--clr-fg);
+  padding: 0 0.3rem;
+}
+
+/* Mixed number: whole part + fraction side by side */
+.mixed-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+/* Whole part of a mixed number */
+.mixed-whole {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--clr-fg);
+}
+
+/* The fraction problem area containing expression + answer inputs */
+.fraction-problem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 1rem 0;
+}
+
+/* The expression row: frac1 + frac2 = [answer area] */
+.fraction-expression {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Plus and equals signs between fractions */
+.frac-operator {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--clr-accent);
+  margin: 0 0.2rem;
+}
+
+/* Answer input area: whole (optional) + stacked fraction inputs */
+.fraction-answer-area {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Whole number input for mixed mode answers */
+.fraction-whole-input {
+  width: 3rem;
+  height: 3rem;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  border: 2px solid var(--clr-border);
+  border-radius: var(--radius);
+  background: var(--clr-card);
+  color: var(--clr-fg);
+}
+
+.fraction-whole-input:focus {
+  border-color: var(--clr-accent);
+  outline: none;
+}
+
+/* Stacked input: numerator input / bar / denominator input */
+.fraction-input-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* Individual fraction input fields (numerator and denominator) */
+.fraction-field {
+  width: 4rem;
+  height: 2rem;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  border: 2px solid var(--clr-border);
+  border-radius: var(--radius);
+  background: var(--clr-card);
+  color: var(--clr-fg);
+  padding: 0.1rem;
+}
+
+.fraction-field:focus {
+  border-color: var(--clr-accent);
+  outline: none;
+}
+
+/* Top field (numerator) rounded only on top */
+.frac-num-input {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: none;
+}
+
+/* Dividing bar between numerator and denominator inputs */
+.fraction-input-bar {
+  width: 4.5rem;
+  height: 3px;
+  background: var(--clr-accent);
+}
+
+/* Bottom field (denominator) rounded only on bottom */
+.frac-den-input {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: none;
+}
+
+/* Mobile adjustments for fraction puzzle */
+@media (max-width: 500px) {
+  .fraction-expression {
+    font-size: 1.2rem;
+    gap: 0.4rem;
+  }
+  .frac-num, .frac-den {
+    font-size: 1.2rem;
+  }
+  .frac-operator {
+    font-size: 1.4rem;
+  }
+  .mixed-whole {
+    font-size: 1.4rem;
+  }
+  .fraction-field {
+    width: 3.5rem;
+    font-size: 1rem;
+  }
+  .fraction-input-bar {
+    width: 4rem;
+  }
+  .fraction-whole-input {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.2rem;
+  }
+}

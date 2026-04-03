@@ -1120,7 +1120,7 @@ function AdaptiveMixedApp({ studentName }) {
   const storageKey = `tenali-mixed-${studentName}`
 
   // ── Constants ────────────────────────────────────────────────────────
-  const TOTAL_QUESTIONS = 30
+  const TOTAL_QUESTIONS = 100
   const ADAPT_WINDOW = 8
   const FAST_THRESH_MS = 4000
   const SLOW_THRESH_MS = 8000

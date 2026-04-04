@@ -4107,6 +4107,8 @@ function RandomMixApp({ onBack }) {
   const [numQInput, setNumQInput] = useState('20')
   const timer = useTimer()
   const advanceFnRef = useRef(null)
+  const submittedRef = useRef(false)
+  const advancedRef = useRef(false)
   // Track topic stats for the summary
   const [topicStats, setTopicStats] = useState({})
 
@@ -4139,6 +4141,8 @@ function RandomMixApp({ onBack }) {
       setFeedback('')
       setIsCorrect(null)
       setRevealed(false)
+      submittedRef.current = false
+      advancedRef.current = false
       setQuestionNumber(n => n + 1)
       timer.reset()
       timer.start()
@@ -4153,8 +4157,9 @@ function RandomMixApp({ onBack }) {
 
   const handleSubmit = async () => {
     if (!question || revealed || answer.trim() === '') return
-    timer.stop()
-    const elapsed = timer.elapsed()
+    if (submittedRef.current) return
+    submittedRef.current = true
+    const elapsed = timer.stop()
     try {
       const payload = { ...question, userAnswer: answer.trim() }
       const r = await fetch(`${API}/${currentTopic.api}/check`, {
@@ -4205,6 +4210,8 @@ function RandomMixApp({ onBack }) {
   }
 
   const advance = () => {
+    if (advancedRef.current) return
+    advancedRef.current = true
     if (questionNumber >= totalQuestions) {
       setPhase('finished')
     } else {
@@ -4215,12 +4222,13 @@ function RandomMixApp({ onBack }) {
 
   // Enter key handler for wrong answers
   useEffect(() => {
+    if (!revealed || isCorrect) return
     const handler = (e) => {
-      if (e.key === 'Enter' && revealed && !isCorrect) advance()
+      if (e.key === 'Enter') { e.preventDefault(); advance() }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  })
+  }, [revealed, isCorrect, questionNumber])
 
   const skipTopic = () => {
     if (!currentTopic) return
@@ -4381,7 +4389,7 @@ function RandomMixApp({ onBack }) {
               onChange={e => { if (!revealed) setAnswer(e.target.value) }}
               disabled={revealed}
               placeholder="Type your answer"
-              onKeyDown={e => { if (e.key === 'Enter') revealed ? advance() : handleSubmit() }}
+              onKeyDown={e => { if (e.key === 'Enter' && !revealed) handleSubmit() }}
               style={{ flex: 1 }}
               autoFocus
             />

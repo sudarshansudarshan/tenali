@@ -2845,7 +2845,7 @@ function MultiplyApp({ onBack }) {
 
   // Maximum possible questions (if all selected tables' 10 multipliers are included)
   // Used for displaying max limit to user
-  const maxQuestions = selectedTables.length * 19
+  const maxQuestions = selectedTables.length * 10
 
   /**
    * toggleTable(num): Add or remove multiplication table from selection
@@ -2867,8 +2867,8 @@ function MultiplyApp({ onBack }) {
   const buildPool = (tables) => {
     const pool = []
     tables.forEach((t) => {
-      // Generate all 19 multiplication facts for this table
-      for (let m = 1; m <= 19; m++) {
+      // Generate all 10 multiplication facts for this table (table × 1 through × 10)
+      for (let m = 1; m <= 10; m++) {
         pool.push({ table: t, multiplier: m })
       }
     })

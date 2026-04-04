@@ -652,6 +652,18 @@ button:disabled {
   /* 3px glow box-shadow (outline-like effect but inside the browser's default outline) */
   box-shadow: 0 0 0 3px var(--clr-accent-soft);
 }
+.answer-input.input-error {
+  border-color: #f44336;
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.18);
+  animation: shake 0.35s ease;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 /* MULTIPLE CHOICE OPTIONS - Answer option cards for GK quizzes */

@@ -6728,7 +6728,7 @@ function PrimeFactorApp({ onBack }) {
     // Reset feedback and UI state
     setFeedback(''); setIsCorrect(null); setRevealed(false)
     // Reset factor input fields
-    setEnteredFactors([]); setCurrentInput('')
+    setEnteredFactors([]); setCurrentInput(''); setInputError('')
     // Fetch prime factorization question from backend based on effective difficulty
     const res = await fetch(`${API}/primefactor-api/question?difficulty=${effectiveDiff()}`)
     const data = await res.json()
@@ -6766,10 +6766,24 @@ function PrimeFactorApp({ onBack }) {
    *   - Increment score if correct
    *   - Store result and mark revealed
    */
+  // Shake + brief error message for invalid factor attempts
+  const [inputError, setInputError] = useState('')
+  const inputRef = useRef(null)
+
   const addFactor = () => {
     const f = Number(currentInput)
     // Validate: factor >= 2 and divides remaining evenly
-    if (!f || f < 2 || remaining % f !== 0) return
+    if (!f || f < 2) {
+      setInputError('Enter a number ≥ 2')
+      inputRef.current?.focus()
+      return
+    }
+    if (remaining % f !== 0) {
+      setInputError(`${f} does not divide ${remaining}`)
+      inputRef.current?.focus()
+      return
+    }
+    setInputError('')
     const newFactors = [...enteredFactors, f]
     const newRemaining = remaining / f
     setEnteredFactors(newFactors)
@@ -6892,12 +6906,13 @@ function PrimeFactorApp({ onBack }) {
         {question && <>
           <div className="question-box prime-chain">{buildChain()}</div>
           {!revealed && remaining > 1 && <div className="prime-input-row">
-            <input className="answer-input" type="text" value={currentInput} placeholder="Enter a prime factor"
-              onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setCurrentInput(v) }}
+            <input ref={inputRef} className={`answer-input${inputError ? ' input-error' : ''}`} type="text" value={currentInput} placeholder="Enter a prime factor"
+              onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) { setCurrentInput(v); setInputError('') } }}
               onKeyDown={e => { if (e.key === 'Enter') addFactor() }} autoFocus />
             <button onClick={addFactor} disabled={!currentInput}>Add</button>
             <button className="give-up-btn" onClick={handleGiveUp}>Give Up</button>
           </div>}
+          {inputError && !revealed && <div className="feedback wrong" style={{ fontSize: '0.9rem', padding: '6px 14px', marginTop: 4 }}>{inputError}</div>}
           <NumPad value={currentInput} onChange={setCurrentInput} onSubmit={addFactor} disabled={revealed || remaining <= 1} />
         </>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}

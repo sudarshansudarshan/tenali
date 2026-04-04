@@ -633,7 +633,7 @@ app.post('/vocab-api/check', (req, res) => {
  */
 app.get('/multiply-api/question', (req, res) => {
   const table = Math.max(1, Number(req.query.table || 1));
-  const multiplier = randomInt(1, 10);
+  const multiplier = randomInt(1, 19);
   const answer = table * multiplier;
 
   res.json({

@@ -1814,7 +1814,7 @@ function Home({ onSelect }) {
     { key: 'log', name: 'Logarithms', subtitle: 'Evaluate, simplify, solve', color: 'purple' },
     { key: 'matrix', name: 'Matrices', subtitle: 'Add, multiply, determinant', color: 'blue' },
     { key: 'mensur', name: 'Mensuration', subtitle: 'Area, volume, surface area', color: 'green' },
-    { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (1–10)', color: 'purple' },
+    { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (2–19)', color: 'purple' },
     { key: 'bases', name: 'Number Bases', subtitle: 'Binary, decimal, hexadecimal', color: 'green' },
     { key: 'percent', name: 'Percentages', subtitle: 'Find, increase, reverse, compound', color: 'blue' },
     { key: 'polyfactor', name: 'Poly Factor', subtitle: 'Factor a quadratic expression', color: 'green' },
@@ -2845,7 +2845,7 @@ function MultiplyApp({ onBack }) {
 
   // Maximum possible questions (if all selected tables' 10 multipliers are included)
   // Used for displaying max limit to user
-  const maxQuestions = selectedTables.length * 10
+  const maxQuestions = selectedTables.length * 19
 
   /**
    * toggleTable(num): Add or remove multiplication table from selection
@@ -2867,8 +2867,8 @@ function MultiplyApp({ onBack }) {
   const buildPool = (tables) => {
     const pool = []
     tables.forEach((t) => {
-      // Generate all 10 multiplication facts for this table
-      for (let m = 1; m <= 10; m++) {
+      // Generate all 19 multiplication facts for this table
+      for (let m = 1; m <= 19; m++) {
         pool.push({ table: t, multiplier: m })
       }
     })
@@ -3007,7 +3007,7 @@ function MultiplyApp({ onBack }) {
         <div className="welcome-box">
           <p className="welcome-text">Select the tables you want to practice</p>
           <div className="checkbox-group">
-            {[2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+            {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].map((num) => (
               <label key={num} className={`checkbox-pill ${selectedTables.includes(num) ? 'active' : ''}`}>
                 <input type="checkbox" checked={selectedTables.includes(num)} onChange={() => toggleTable(num)} />
                 {num}
@@ -4031,17 +4031,16 @@ const SimilarityApp = makeQuizApp({
 
 /* ── Random Mix App ─────────────────────────────────── */
 // Adaptive cross-topic quiz: random topics, progressive difficulty, skip topics
+// Topics that work with a single text-input answer in Random Mix.
+// Excluded: simul (needs x,y,z inputs), polymul (needs coefficient array),
+// polyfactor (needs 4 factor inputs), primefactor (needs factor chain UI),
+// qformula (needs two roots), dotprod (needs matrix grid).
 const RANDOM_MIX_TOPICS = [
   { key: 'basicarith', name: 'Basic Arithmetic', api: 'basicarith-api' },
   { key: 'addition', name: 'Addition', api: 'addition-api' },
   { key: 'quadratic', name: 'Quadratic', api: 'quadratic-api' },
   { key: 'multiply', name: 'Multiplication', api: 'multiply-api' },
   { key: 'sqrt', name: 'Square Root', api: 'sqrt-api' },
-  { key: 'polymul', name: 'Poly Multiply', api: 'polymul-api' },
-  { key: 'polyfactor', name: 'Poly Factor', api: 'polyfactor-api' },
-  { key: 'primefactor', name: 'Prime Factors', api: 'primefactor-api' },
-  { key: 'qformula', name: 'Quadratic Formula', api: 'qformula-api' },
-  { key: 'simul', name: 'Simultaneous Eq.', api: 'simul-api' },
   { key: 'funceval', name: 'Functions', api: 'funceval-api' },
   { key: 'lineq', name: 'Line Equation', api: 'lineq-api' },
   { key: 'fractionadd', name: 'Fractions', api: 'fractionadd-api' },
@@ -4058,7 +4057,6 @@ const RANDOM_MIX_TOPICS = [
   { key: 'stats', name: 'Statistics', api: 'stats-api' },
   { key: 'matrix', name: 'Matrices', api: 'matrix-api' },
   { key: 'vectors', name: 'Vectors', api: 'vectors-api' },
-  { key: 'dotprod', name: 'Dot Products', api: 'dotprod-api' },
   { key: 'transform', name: 'Transformations', api: 'transform-api' },
   { key: 'mensur', name: 'Mensuration', api: 'mensur-api' },
   { key: 'bearings', name: 'Bearings', api: 'bearings-api' },
@@ -7974,11 +7972,21 @@ function getPromptForType(type, q) {
     case 'multiply': return `${q.prompt} = ?`
     case 'sqrt': return `${q.prompt} = ?`
     case 'funceval': return `${q.formula}, evaluate at ${Object.entries(q.vars).map(([k,v]) => `${k} = ${v}`).join(', ')}`
-    case 'polymul': return null // special render with polynomial display
-    case 'polyfactor': return null // special render with factorization display
+    case 'polymul': return q.p1Display && q.p2Display ? `Expand: (${q.p1Display})(${q.p2Display})` : null
+    case 'polyfactor': return q.display ? `Factorise: ${q.display}` : null
     case 'primefactor': return `Find all prime factors of ${q.number}`
     case 'qformula': return `Find the roots of ${q.a}x² ${q.b >= 0 ? '+' : '−'} ${Math.abs(q.b)}x ${q.c >= 0 ? '+' : '−'} ${Math.abs(q.c)} = 0`
-    case 'simul': return null // special render with system of equations display
+    case 'simul': {
+      if (!q.eqs) return null
+      const fmtEq = (eq) => {
+        const parts = []
+        if (eq.a) parts.push(`${eq.a === 1 ? '' : eq.a === -1 ? '-' : eq.a}x`)
+        if (eq.b) parts.push(`${eq.b > 0 && parts.length ? '+' : ''}${eq.b === 1 ? '' : eq.b === -1 ? '-' : eq.b}y`)
+        if (eq.c) parts.push(`${eq.c > 0 && parts.length ? '+' : ''}${eq.c === 1 ? '' : eq.c === -1 ? '-' : eq.c}z`)
+        return `${parts.join(' ')} = ${eq.d}`
+      }
+      return `Solve:\n${q.eqs.map(fmtEq).join('\n')}`
+    }
     case 'lineq': return `Find slope (m) and intercept (c) for the line through (${q.x1}, ${q.y1}) and (${q.x2}, ${q.y2})`
     case 'gk': return q.question
     case 'vocab': return `What does "${q.question}" mean?`

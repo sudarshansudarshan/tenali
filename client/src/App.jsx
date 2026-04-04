@@ -1670,15 +1670,14 @@ function App() {
     )
   }
 
-  // Route: /tatsavit → Tatsavit's adaptive mixed quiz
-  // Uses AdaptiveMixedApp: fractions, monomials, arithmetic with adaptive difficulty
+  // Route: /tatsavit → Tatsavit's 9-level progressive math drill
   if (pathname === '/tatsavit') {
     return (
       <>
         <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
-        <AdaptiveMixedApp studentName="Tatsavit" />
+        <TatsavitApp onBack={() => { window.location.href = '/' }} />
       </>
     )
   }

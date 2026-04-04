@@ -3379,6 +3379,9 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
     const advanceFnRef = useRef(null)
     // Keep a ref for adaptive score so loadQuestion always sees latest
     const adaptScoreRef = useRef(0)
+    // Guards against double-submit and double-advance race conditions
+    const submittedRef = useRef(false)
+    const advancedRef = useRef(false)
 
     const effectiveDifficulty = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
@@ -3393,6 +3396,8 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
         setFeedback('')
         setIsCorrect(null)
         setRevealed(false)
+        submittedRef.current = false
+        advancedRef.current = false
         timer.start()
       } catch (e) { console.error(`Failed to load ${title} question:`, e) }
       setLoading(false)
@@ -3401,9 +3406,14 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
       const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
       setTotalQ(t); setScore(0); setQuestionNumber(1); setResults([]); setStarted(true); setFinished(false)
       setAdaptScore(0); adaptScoreRef.current = 0
+      submittedRef.current = false; advancedRef.current = false
     }
     useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
-    const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+    const advance = () => {
+      if (advancedRef.current) return  // prevent double-advance (Enter + auto-advance race)
+      advancedRef.current = true
+      if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1)
+    }
     advanceFnRef.current = advance
     useAutoAdvance(revealed, advanceFnRef, isCorrect)
     useEffect(() => {
@@ -3415,6 +3425,8 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
 
     const handleSubmit = async () => {
       if (!question || revealed || !answer.trim()) return
+      if (submittedRef.current) return  // prevent double-submit (rapid Enter presses)
+      submittedRef.current = true
       const timeTaken = timer.stop()
       const payload = { ...question, [answerField || 'userAnswer']: answer.trim() }
       try {
@@ -3434,9 +3446,9 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
             return next
           })
         }
-      } catch (e) { console.error(`Failed to check ${title} answer:`, e) }
+      } catch (e) { submittedRef.current = false; console.error(`Failed to check ${title} answer:`, e) }
     }
-    const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
+    const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
     const getPlaceholder = () => {
       if (typeof placeholders === 'string') return placeholders
       if (typeof placeholders === 'function') return placeholders(question, isAdaptive ? effectiveDifficulty() : difficulty)
@@ -3603,6 +3615,8 @@ function DotProdApp({ onBack }) {
   const [results, setResults] = useState([])
   const timer = useTimer()
   const advanceFnRef = useRef(null)
+  const submittedRef = useRef(false)
+  const advancedRef = useRef(false)
 
   const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
   const curAdaptLevel = adaptiveLevel(adaptScore)
@@ -3618,6 +3632,8 @@ function DotProdApp({ onBack }) {
       setFeedback('')
       setIsCorrect(null)
       setRevealed(false)
+      submittedRef.current = false
+      advancedRef.current = false
       // Initialize grid for all answer types
       if (data.type === 'dot2d' || data.type === 'dot3d') {
         // 1×1 grid for scalar dot product answer
@@ -3645,11 +3661,16 @@ function DotProdApp({ onBack }) {
     const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
     setTotalQ(t); setScore(0); setQuestionNumber(1); setResults([]); setStarted(true); setFinished(false)
     setAdaptScore(0); adaptScoreRef.current = 0
+    submittedRef.current = false; advancedRef.current = false
   }
 
   useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
 
-  const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+  const advance = () => {
+    if (advancedRef.current) return
+    advancedRef.current = true
+    if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1)
+  }
   advanceFnRef.current = advance
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
@@ -3672,6 +3693,8 @@ function DotProdApp({ onBack }) {
   const handleSubmit = async () => {
     if (!question || revealed) return
     if (!isGridComplete()) return
+    if (submittedRef.current) return  // prevent double-submit
+    submittedRef.current = true
     // Build userAnswer string from grid
     let userAnswer
     if (question.type === 'dot2d' || question.type === 'dot3d') {
@@ -3702,7 +3725,7 @@ function DotProdApp({ onBack }) {
     } catch (e) { console.error('Failed to check Dot Products answer:', e) }
   }
 
-  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
+  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
 
   // Grid cell change handler — NO auto-tab; user must press Tab or click
   const handleGridChange = (row, col, val) => {
@@ -4420,6 +4443,8 @@ function SetsApp({ onBack }) {
   const [results, setResults] = useState([])
   const timer = useTimer()
   const advanceFnRef = useRef(null)
+  const advancedRef = useRef(false)
+  const submittedRef = useRef(false)
 
   const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
@@ -4433,6 +4458,8 @@ function SetsApp({ onBack }) {
       setFeedback('')
       setIsCorrect(null)
       setRevealed(false)
+      submittedRef.current = false
+      advancedRef.current = false
       timer.start()
     } catch (e) { console.error('Failed to load sets question:', e) }
     setLoading(false)
@@ -4442,10 +4469,12 @@ function SetsApp({ onBack }) {
     const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
     setTotalQ(t); setScore(0); setQuestionNumber(1); setResults([]); setStarted(true); setFinished(false)
     setAdaptScore(0); adaptScoreRef.current = 0
+    submittedRef.current = false
+    advancedRef.current = false
   }
 
   useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
-  const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+  const advance = () => { if (advancedRef.current) return; advancedRef.current = true; if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
   advanceFnRef.current = advance
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
   useEffect(() => {
@@ -4457,6 +4486,8 @@ function SetsApp({ onBack }) {
 
   const handleSubmit = async () => {
     if (!question || revealed || !answer.trim()) return
+    if (submittedRef.current) return
+    submittedRef.current = true
     const timeTaken = timer.stop()
     const payload = { ...question, userAnswer: answer.trim() }
     try {
@@ -4472,7 +4503,7 @@ function SetsApp({ onBack }) {
     } catch (e) { console.error('Failed to check sets answer:', e) }
   }
 
-  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
+  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
   const diffLabels = { easy: 'Easy — List elements', medium: 'Medium — Cardinality', hard: 'Hard — 2-set Venn', extrahard: 'Extra Hard — 3-set Venn' }
   const curAdaptLevel = adaptiveLevel(adaptScore)
 
@@ -4549,6 +4580,8 @@ function SequencesApp({ onBack }) {
   const [results, setResults] = useState([])
   const timer = useTimer()
   const advanceFnRef = useRef(null)
+  const advancedRef = useRef(false)
+  const submittedRef = useRef(false)
 
   const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
@@ -4557,7 +4590,7 @@ function SequencesApp({ onBack }) {
     try {
       const r = await fetch(`${API}/sequences-api/question?difficulty=${effectiveDiff()}`)
       const data = await r.json()
-      setQuestion(data); setAnswer(''); setFeedback(''); setIsCorrect(null); setRevealed(false); timer.start()
+      setQuestion(data); setAnswer(''); setFeedback(''); setIsCorrect(null); setRevealed(false); submittedRef.current = false; advancedRef.current = false; timer.start()
     } catch (e) { console.error('Failed to load sequences question:', e) }
     setLoading(false)
   }
@@ -4566,10 +4599,12 @@ function SequencesApp({ onBack }) {
     const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
     setTotalQ(t); setScore(0); setQuestionNumber(1); setResults([]); setStarted(true); setFinished(false)
     setAdaptScore(0); adaptScoreRef.current = 0
+    submittedRef.current = false
+    advancedRef.current = false
   }
 
   useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
-  const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+  const advance = () => { if (advancedRef.current) return; advancedRef.current = true; if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
   advanceFnRef.current = advance
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
   useEffect(() => {
@@ -4581,6 +4616,8 @@ function SequencesApp({ onBack }) {
 
   const handleSubmit = async () => {
     if (!question || revealed || !answer.trim()) return
+    if (submittedRef.current) return
+    submittedRef.current = true
     const timeTaken = timer.stop()
     const payload = { ...question, answer: answer.trim() }
     try {
@@ -4596,7 +4633,7 @@ function SequencesApp({ onBack }) {
     } catch (e) { console.error('Failed to check sequences answer:', e) }
   }
 
-  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
+  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
   const diffLabels = { easy: 'Easy — Arith. nth term', medium: 'Medium — Arith. sum', hard: 'Hard — Geom. nth term', extrahard: 'Extra Hard — Geom. sum' }
   const curAdaptLevel = adaptiveLevel(adaptScore)
 
@@ -4672,6 +4709,8 @@ function RatioApp({ onBack }) {
   const [results, setResults] = useState([])
   const timer = useTimer()
   const advanceFnRef = useRef(null)
+  const advancedRef = useRef(false)
+  const submittedRef = useRef(false)
 
   const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
@@ -4685,6 +4724,8 @@ function RatioApp({ onBack }) {
       setFeedback('')
       setIsCorrect(null)
       setRevealed(false)
+      submittedRef.current = false
+      advancedRef.current = false
       timer.start()
     } catch (e) { console.error('Failed to load ratio question:', e) }
     setLoading(false)
@@ -4700,10 +4741,12 @@ function RatioApp({ onBack }) {
     setFinished(false)
     setAdaptScore(0)
     adaptScoreRef.current = 0
+    submittedRef.current = false
+    advancedRef.current = false
   }
 
   useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
-  const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+  const advance = () => { if (advancedRef.current) return; advancedRef.current = true; if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
   advanceFnRef.current = advance
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
   useEffect(() => {
@@ -4715,6 +4758,8 @@ function RatioApp({ onBack }) {
 
   const handleSubmit = async () => {
     if (!question || revealed || !answer.trim()) return
+    if (submittedRef.current) return
+    submittedRef.current = true
     const timeTaken = timer.stop()
     const payload = { ...question, answer: answer.trim() }
     try {
@@ -4731,7 +4776,7 @@ function RatioApp({ onBack }) {
     } catch (e) { console.error('Failed to check ratio answer:', e) }
   }
 
-  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
+  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
   const diffLabels = { easy: 'Easy — Simplify', medium: 'Medium — Divide', hard: 'Hard — Direct', extrahard: 'Extra Hard — Inverse' }
   const placeholders = { easy: 'e.g. 3:2', medium: 'e.g. 72, 48', hard: 'e.g. 32', extrahard: 'e.g. 8 or 8/3' }
 
@@ -4809,6 +4854,8 @@ function PercentApp({ onBack }) {
   const [results, setResults] = useState([])
   const timer = useTimer()
   const advanceFnRef = useRef(null)
+  const advancedRef = useRef(false)
+  const submittedRef = useRef(false)
 
   const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
@@ -4822,6 +4869,8 @@ function PercentApp({ onBack }) {
       setFeedback('')
       setIsCorrect(null)
       setRevealed(false)
+      submittedRef.current = false
+      advancedRef.current = false
       timer.start()
     } catch (e) { console.error('Failed to load percent question:', e) }
     setLoading(false)
@@ -4837,10 +4886,12 @@ function PercentApp({ onBack }) {
     setFinished(false)
     setAdaptScore(0)
     adaptScoreRef.current = 0
+    submittedRef.current = false
+    advancedRef.current = false
   }
 
   useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
-  const advance = () => { if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+  const advance = () => { if (advancedRef.current) return; advancedRef.current = true; if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
   advanceFnRef.current = advance
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
   useEffect(() => {
@@ -4852,6 +4903,8 @@ function PercentApp({ onBack }) {
 
   const handleSubmit = async () => {
     if (!question || revealed || !answer.trim()) return
+    if (submittedRef.current) return
+    submittedRef.current = true
     const timeTaken = timer.stop()
     const payload = { ...question, userAnswer: answer.trim().replace(/[$,]/g, '') }
     try {
@@ -4868,7 +4921,7 @@ function PercentApp({ onBack }) {
     } catch (e) { console.error('Failed to check percent answer:', e) }
   }
 
-  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (revealed) advance(); else handleSubmit() } }
+  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
   const diffLabels = { easy: 'Easy — Find %', medium: 'Medium — Increase/Decrease', hard: 'Hard — Reverse %', extrahard: 'Extra Hard — Compound' }
 
   const curAdaptLevel = adaptiveLevel(adaptScore)

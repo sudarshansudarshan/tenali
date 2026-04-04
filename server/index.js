@@ -3846,16 +3846,37 @@ app.get('/bearings-api/question', (req, res) => {
   const id = Date.now();
 
   if (difficulty === 'easy') {
-    // Convert compass direction to bearing
+    // Expanded compass directions + reverse questions for variety
     const dirs = [
-      { name: 'North', bearing: '000' }, { name: 'East', bearing: '090' },
-      { name: 'South', bearing: '180' }, { name: 'West', bearing: '270' },
-      { name: 'North-East', bearing: '045' }, { name: 'South-East', bearing: '135' },
-      { name: 'South-West', bearing: '225' }, { name: 'North-West', bearing: '315' },
+      { name: 'North', bearing: 0 }, { name: 'East', bearing: 90 },
+      { name: 'South', bearing: 180 }, { name: 'West', bearing: 270 },
+      { name: 'North-East', bearing: 45 }, { name: 'South-East', bearing: 135 },
+      { name: 'South-West', bearing: 225 }, { name: 'North-West', bearing: 315 },
+      { name: 'North-North-East', bearing: 23 }, { name: 'East-North-East', bearing: 68 },
+      { name: 'East-South-East', bearing: 113 }, { name: 'South-South-East', bearing: 158 },
+      { name: 'South-South-West', bearing: 203 }, { name: 'West-South-West', bearing: 248 },
+      { name: 'West-North-West', bearing: 293 }, { name: 'North-North-West', bearing: 338 },
     ];
     const d = triPick(dirs);
-    const prompt = `What is the three-figure bearing of ${d.name}?`;
-    res.json({ id, difficulty, type: 'compass', prompt, answer: parseInt(d.bearing), display: d.bearing });
+    const qType = Math.random();
+    let prompt, answer;
+    if (qType < 0.5) {
+      // Forward: compass → bearing
+      prompt = `What is the three-figure bearing of ${d.name}?`;
+      answer = d.bearing;
+    } else if (qType < 0.75) {
+      // Opposite bearing
+      const opp = (d.bearing + 180) % 360;
+      prompt = `What is the bearing directly opposite ${d.name}?`;
+      answer = opp;
+    } else {
+      // 90° clockwise turn
+      const turned = (d.bearing + 90) % 360;
+      prompt = `Face ${d.name} and turn 90° clockwise. What bearing are you now facing?`;
+      answer = turned;
+    }
+    const display = String(answer).padStart(3, '0');
+    res.json({ id, difficulty, type: 'compass', prompt, answer, display });
   }
   else if (difficulty === 'medium') {
     // Back bearing: if bearing from A to B is x, what is bearing from B to A?

@@ -2255,3 +2255,153 @@ button:disabled {
     font-size: 1.2rem;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   DOT PRODUCTS — Matrix & Vector display components
+   ═══════════════════════════════════════════════════════════ */
+
+.matrix-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 6px;
+}
+.matrix-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--clr-accent);
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+.matrix-bracket {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  padding: 6px 14px;
+  border-left: 2.5px solid var(--clr-text);
+  border-right: 2.5px solid var(--clr-text);
+}
+.matrix-bracket::before,
+.matrix-bracket::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 2.5px;
+  background: var(--clr-text);
+}
+.matrix-bracket::before { top: 0; left: 0; }
+.matrix-bracket::after  { bottom: 0; left: 0; }
+.matrix-bracket .cap-tr,
+.matrix-bracket .cap-br {
+  position: absolute;
+  width: 8px;
+  height: 2.5px;
+  background: var(--clr-text);
+}
+.matrix-bracket .cap-tr { top: 0; right: 0; }
+.matrix-bracket .cap-br { bottom: 0; right: 0; }
+
+.matrix-bracket table { border-collapse: collapse; }
+.matrix-bracket td {
+  padding: 3px 10px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  color: var(--clr-text);
+}
+.matrix-bracket td.blank-cell {
+  font-weight: 700;
+  color: var(--clr-accent);
+  background: rgba(232, 134, 74, 0.08);
+  border-radius: 4px;
+}
+
+/* Operator symbol between matrices (×, ·, =) */
+.matrix-op {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--clr-accent);
+  margin: 0 6px;
+  user-select: none;
+}
+
+/* Editable grid input cells */
+.matrix-grid-cell {
+  width: 48px;
+  height: 40px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: 2px solid var(--clr-accent);
+  border-radius: var(--radius-sm);
+  background: var(--clr-input);
+  color: var(--clr-text);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+.matrix-grid-cell:focus {
+  border-color: var(--clr-accent);
+  box-shadow: 0 0 0 3px var(--clr-accent-soft);
+}
+.matrix-grid-cell.small {
+  width: 40px;
+  height: 34px;
+  font-size: 0.95rem;
+}
+.matrix-grid-cell.revealed-correct {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.08);
+}
+.matrix-grid-cell.revealed-wrong {
+  border-color: #f44336;
+  background: rgba(244, 67, 54, 0.08);
+}
+
+/* Pre-filled (non-editable) cells in matfill grids */
+.matrix-grid-fixed {
+  padding: 4px 10px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  color: var(--clr-text);
+}
+
+/* Question layout wrapper */
+.dotprod-question {
+  text-align: center;
+  margin: 18px 0;
+}
+.dotprod-question .hint-text {
+  font-size: 0.92rem;
+  color: var(--clr-dim);
+  margin-bottom: 12px;
+}
+.dotprod-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .matrix-grid-cell {
+    width: 38px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+  .matrix-grid-cell.small {
+    width: 34px;
+    height: 30px;
+    font-size: 0.85rem;
+  }
+  .matrix-bracket td {
+    padding: 2px 6px;
+    font-size: 0.95rem;
+  }
+  .matrix-op {
+    font-size: 1.15rem;
+    margin: 0 3px;
+  }
+}

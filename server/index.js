@@ -5455,6 +5455,10 @@ app.get('/graph', (_req, res) => {
   res.sendFile(path.join(__dirname, '..', 'graph', 'index.html'));
 });
 
+app.get('/path', (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'graph', 'path.html'));
+});
+
 /**
  * CATCH-ALL ROUTE
  * ═══════════════════════════════════════════════════════════════════════════

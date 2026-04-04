@@ -165,8 +165,6 @@ const nodes = [
   { id: 'vocab',        label: 'Vocabulary',            sub: 'Word definitions',                 cat: 'other' },
   { id: 'spot',         label: 'Twin Hunt',             sub: 'Find the common object',           cat: 'other' },
 
-  // ─── Composite drills ───
-  { id: 'tatsavit',     label: 'Tatsavit',             sub: '9-level progressive drill',        cat: 'arith' },
 ]
 
 // ═══════════════════════════════════════════════════════════════
@@ -271,14 +269,6 @@ const edges = [
   ['basicarith', 'matrix'],          // matrix add needs +
   ['matrix',     'dotprod'],         // matrix multiplication is in dot products
 
-  // ─── Tatsavit (composite) — needs all its 9 sub-skills ───
-  ['multiply',   'tatsavit'],        // types 0,1: tables
-  ['squaring',   'tatsavit'],        // type 2: squares
-  ['sqrt',       'tatsavit'],        // type 3: square roots
-  ['polymul',    'tatsavit'],        // type 4: monomial multiplication
-  ['percent',    'tatsavit'],        // type 5: percentages
-  ['addition',   'tatsavit'],        // type 6: addition
-  // type 7 (subtraction) & type 8 (negative arith) covered by basicarith → multiply chain
 ]
 
 // ═══════════════════════════════════════════════════════════════

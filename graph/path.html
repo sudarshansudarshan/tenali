@@ -98,7 +98,7 @@ select option { background: #1a1c2a; color: #e0e0e0; }
 
 <div class="controls">
   <div class="control-group">
-    <label>From (I know this)</label>
+    <label>From</label>
     <select id="source"></select>
   </div>
   <div class="arrow-icon">→</div>
@@ -170,7 +170,6 @@ const nodes = [
   { id: 'gk',           label: 'General Knowledge',    sub: 'Multiple-choice trivia',           cat: 'Other' },
   { id: 'vocab',        label: 'Vocabulary',            sub: 'Word definitions',                 cat: 'Other' },
   { id: 'spot',         label: 'Twin Hunt',             sub: 'Find the common object',           cat: 'Other' },
-  { id: 'tatsavit',     label: 'Tatsavit',             sub: '9-level progressive drill',        cat: 'Arithmetic' },
 ]
 
 const edges = [
@@ -254,12 +253,6 @@ const edges = [
   ['multiply',   'matrix'],
   ['basicarith', 'matrix'],
   ['matrix',     'dotprod'],
-  ['multiply',   'tatsavit'],
-  ['squaring',   'tatsavit'],
-  ['sqrt',       'tatsavit'],
-  ['polymul',    'tatsavit'],
-  ['percent',    'tatsavit'],
-  ['addition',   'tatsavit'],
 ]
 
 // ═══════════════════════════════════════════════════════════════
@@ -325,12 +318,38 @@ function bfsBackward(src, tgt) {
   return null
 }
 
+// Longest path ending at `tgt` in a DAG (DFS + memoisation)
+function longestPathTo(tgt) {
+  const memo = {} // id → longest path (array) from any root to id
+  function dfs(node) {
+    if (memo[node]) return memo[node]
+    const pars = parents[node] || []
+    if (pars.length === 0) {
+      memo[node] = [node]
+      return memo[node]
+    }
+    let best = []
+    for (const p of pars) {
+      const sub = dfs(p)
+      if (sub.length > best.length) best = sub
+    }
+    memo[node] = [...best, node]
+    return memo[node]
+  }
+  return dfs(tgt)
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Populate dropdowns (sorted alphabetically by label)
 // ═══════════════════════════════════════════════════════════════
 const sorted = [...nodes].sort((a, b) => a.label.localeCompare(b.label))
 const srcSel = document.getElementById('source')
 const tgtSel = document.getElementById('target')
+
+// Add NONE as default source — means "show longest path to destination"
+const noneOpt = document.createElement('option')
+noneOpt.value = '__none__'; noneOpt.textContent = 'NONE (longest path)'
+srcSel.appendChild(noneOpt)
 
 sorted.forEach(n => {
   const o1 = document.createElement('option')
@@ -343,7 +362,7 @@ sorted.forEach(n => {
 })
 
 // Set sensible defaults
-srcSel.value = 'basicarith'
+srcSel.value = '__none__'
 tgtSel.value = 'integ'
 
 // ═══════════════════════════════════════════════════════════════
@@ -353,6 +372,17 @@ function findPath() {
   const src = srcSel.value
   const tgt = tgtSel.value
   const result = document.getElementById('result')
+
+  // ── NONE source: show longest path ending at destination ──
+  if (src === '__none__') {
+    const path = longestPathTo(tgt)
+    if (path.length <= 1) {
+      result.innerHTML = `<div class="same-node"><strong>${nodeMap[tgt].label}</strong> has no prerequisites — it's a starting topic.</div>`
+      return
+    }
+    renderPath(path, result)
+    return
+  }
 
   if (src === tgt) {
     result.innerHTML = '<div class="same-node">Source and destination are the same puzzle.</div>'
@@ -381,7 +411,10 @@ function findPath() {
     path.reverse()
   }
 
-  // Render the path
+  renderPath(path, result)
+}
+
+function renderPath(path, result) {
   let html = '<div class="path-container">'
   path.forEach((id, i) => {
     const n = nodeMap[id]

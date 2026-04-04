@@ -5235,10 +5235,10 @@ app.get('/squaring-api/question', (req, res) => {
   const difficulty = req.query.difficulty || 'easy';
   const id = Date.now();
   let lo, hi;
-  if (difficulty === 'easy')      { lo = 11;  hi = 19; }
-  else if (difficulty === 'medium') { lo = 20;  hi = 49; }
-  else if (difficulty === 'hard')   { lo = 50;  hi = 99; }
-  else                              { lo = 100; hi = 999; }
+  if (difficulty === 'easy')      { lo = 11;  hi = 29; }
+  else if (difficulty === 'medium') { lo = 30;  hi = 59; }
+  else if (difficulty === 'hard')   { lo = 60;  hi = 79; }
+  else                              { lo = 80;  hi = 99; }
 
   const n = randomInt(lo, hi);
   // Split: a = largest multiple of 10 ≤ n, b = remainder
@@ -5268,6 +5268,181 @@ app.post('/squaring-api/check', express.json(), (req, res) => {
   } else if (parts.length === 1 && !isNaN(parts[0])) {
     // Just the final answer
     correct = parts[0] === answer;
+  }
+
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TATSAVIT API  /tatsavit-api
+// 9-type progressive math drill: tables, squares, sqrt, monomials,
+// percentages, addition, subtraction, negative arithmetic
+// ═══════════════════════════════════════════════════════════════════════════
+
+// difficulty → which types and ranges to use
+// easy: types 1-3 simple, medium: types 1-6, hard: types 1-8, extrahard: all 9
+// level param (0-8) picks specific type for adaptive mode
+function tatsavitQuestion(difficulty, level) {
+  const id = Date.now();
+  // Pick a type based on difficulty or explicit level
+  let type;
+  if (level !== undefined && level !== null) {
+    type = Math.max(0, Math.min(8, Number(level)));
+  } else {
+    const pools = {
+      easy:      [0, 0, 0, 1, 2, 6, 7],       // mostly single-digit tables, some tables-20, squares, add, sub
+      medium:    [0, 1, 1, 2, 3, 4, 6, 7],     // add sqrt, monomial
+      hard:      [1, 2, 3, 4, 5, 6, 7, 8],     // add percentage, negative arith
+      extrahard: [2, 3, 4, 5, 5, 8, 8, 8],     // heavier on harder types
+    };
+    const pool = pools[difficulty] || pools.easy;
+    type = pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // Scale within-type difficulty based on overall difficulty
+  const isHarder = (difficulty === 'hard' || difficulty === 'extrahard');
+  const isMed = (difficulty === 'medium');
+
+  switch (type) {
+    case 0: { // Single-digit tables (a × b, both 2-9)
+      const a = randomInt(2, 9), b = randomInt(2, 9);
+      const answer = a * b;
+      return { id, type: 0, typeName: 'Tables (1-digit)', prompt: `${a} × ${b}`, answer, display: String(answer) };
+    }
+    case 1: { // Tables up to 20
+      const a = randomInt(2, 20), b = randomInt(2, isHarder ? 20 : 12);
+      const answer = a * b;
+      return { id, type: 1, typeName: 'Tables (up to 20)', prompt: `${a} × ${b}`, answer, display: String(answer) };
+    }
+    case 2: { // Squares
+      const n = isHarder ? randomInt(11, 30) : isMed ? randomInt(11, 20) : randomInt(2, 15);
+      const answer = n * n;
+      return { id, type: 2, typeName: 'Squares', prompt: `${n}² = ?`, answer, display: String(answer) };
+    }
+    case 3: { // Square root (floor or ceiling accepted)
+      const maxVal = isHarder ? 500 : isMed ? 200 : 100;
+      let q = randomInt(2, maxVal);
+      // Avoid perfect squares for more challenge
+      const sr = Math.sqrt(q);
+      if (sr === Math.floor(sr)) q += 1;
+      const floorAns = Math.floor(Math.sqrt(q));
+      const ceilAns = Math.ceil(Math.sqrt(q));
+      return { id, type: 3, typeName: 'Square Root', prompt: `⌊√${q}⌋ or ⌈√${q}⌉ = ?`, answer: floorAns, ceilAnswer: ceilAns, display: `${floorAns} or ${ceilAns}` };
+    }
+    case 4: { // Monomial multiplication
+      if (!isHarder && !isMed) {
+        // Easy: constant × monomial, e.g. 3 × 4x = 12x
+        const c = randomInt(2, 9), coeff = randomInt(2, 9);
+        const answer = c * coeff;
+        return { id, type: 4, typeName: 'Monomial ×', prompt: `${c} × ${coeff}x = ?`, answerStr: `${answer}x`, answer, display: `${answer}x`, inputHint: 'coefficient only' };
+      } else if (isMed) {
+        // Medium: monomial × monomial, e.g. 3x × 5x = 15x²
+        const a = randomInt(2, 9), b = randomInt(2, 9);
+        const answer = a * b;
+        return { id, type: 4, typeName: 'Monomial ×', prompt: `${a}x × ${b}x = ?`, answerStr: `${answer}x²`, answer, display: `${answer}x²`, inputHint: 'coefficient only' };
+      } else {
+        // Hard: e.g. 3x² × 4x³ = 12x⁵
+        const a = randomInt(2, 7), b = randomInt(2, 7);
+        const p1 = randomInt(1, 3), p2 = randomInt(1, 3);
+        const coeff = a * b, exp = p1 + p2;
+        const sup = (n) => String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('');
+        const t1 = p1 === 1 ? `${a}x` : `${a}x${sup(p1)}`;
+        const t2 = p2 === 1 ? `${b}x` : `${b}x${sup(p2)}`;
+        return { id, type: 4, typeName: 'Monomial ×', prompt: `${t1} × ${t2} = ?`, answerStr: `${coeff}x${sup(exp)}`, answer: coeff, answerExp: exp, display: `${coeff}x${sup(exp)}`, inputHint: 'coefficient only' };
+      }
+    }
+    case 5: { // Percentage problems
+      if (!isHarder && !isMed) {
+        // Easy: X% of Y (nice numbers)
+        const pct = triPick([10, 20, 25, 50, 75]);
+        const whole = randomInt(2, 20) * (pct === 25 ? 4 : pct === 75 ? 4 : pct === 50 ? 2 : 10);
+        const answer = (pct / 100) * whole;
+        return { id, type: 5, typeName: 'Percentage', prompt: `${pct}% of ${whole} = ?`, answer, display: String(answer) };
+      } else if (isMed) {
+        // Medium: any percentage, still whole-number answer
+        const pct = randomInt(1, 9) * 10;
+        const whole = randomInt(10, 200);
+        const answer = Math.round((pct / 100) * whole * 100) / 100;
+        return { id, type: 5, typeName: 'Percentage', prompt: `${pct}% of ${whole} = ?`, answer, display: String(answer) };
+      } else {
+        // Hard: find original or percentage
+        const variant = Math.random();
+        if (variant < 0.5) {
+          // "What is X% of Y?"
+          const pct = randomInt(5, 95);
+          const whole = randomInt(50, 500);
+          const answer = Math.round((pct / 100) * whole * 100) / 100;
+          return { id, type: 5, typeName: 'Percentage', prompt: `${pct}% of ${whole} = ?`, answer, display: String(answer) };
+        } else {
+          // "Y is X% of what number?"
+          const pct = triPick([10, 20, 25, 50]);
+          const original = randomInt(20, 200);
+          const part = (pct / 100) * original;
+          return { id, type: 5, typeName: 'Percentage', prompt: `${part} is ${pct}% of what number?`, answer: original, display: String(original) };
+        }
+      }
+    }
+    case 6: { // Addition
+      const digits = isHarder ? randomInt(3, 5) : isMed ? randomInt(2, 3) : 1;
+      const lo = digits === 1 ? 1 : Math.pow(10, digits - 1);
+      const hi = Math.pow(10, digits) - 1;
+      const a = randomInt(lo, hi), b = randomInt(lo, hi);
+      const answer = a + b;
+      return { id, type: 6, typeName: 'Addition', prompt: `${a} + ${b} = ?`, answer, display: String(answer) };
+    }
+    case 7: { // Subtraction
+      const digits = isHarder ? randomInt(3, 5) : isMed ? randomInt(2, 3) : 1;
+      const lo = digits === 1 ? 1 : Math.pow(10, digits - 1);
+      const hi = Math.pow(10, digits) - 1;
+      let a = randomInt(lo, hi), b = randomInt(lo, hi);
+      if (a < b) [a, b] = [b, a]; // ensure non-negative result for easy/medium
+      const answer = a - b;
+      return { id, type: 6, typeName: 'Subtraction', prompt: `${a} − ${b} = ?`, answer, display: String(answer) };
+    }
+    case 8: { // Negative arithmetic: a − (−b), −a + (−b), −a − (−b), etc.
+      const patterns = isHarder
+        ? ['sub_neg', 'neg_add_neg', 'neg_sub_neg', 'neg_sub_pos', 'neg_add_pos']
+        : isMed ? ['sub_neg', 'neg_add_neg', 'neg_sub_neg']
+        : ['sub_neg'];
+      const pat = triPick(patterns);
+      const a = randomInt(2, isHarder ? 30 : 12);
+      const b = randomInt(2, isHarder ? 30 : 12);
+      let prompt, answer;
+      switch (pat) {
+        case 'sub_neg':      prompt = `${a} − (−${b})`;   answer = a + b;  break;
+        case 'neg_add_neg':  prompt = `−${a} + (−${b})`;  answer = -(a + b); break;
+        case 'neg_sub_neg':  prompt = `−${a} − (−${b})`;  answer = -a + b; break;
+        case 'neg_sub_pos':  prompt = `−${a} − ${b}`;     answer = -(a + b); break;
+        case 'neg_add_pos':  prompt = `−${a} + ${b}`;     answer = b - a;  break;
+        default:             prompt = `${a} − (−${b})`;   answer = a + b;
+      }
+      return { id, type: 8, typeName: 'Negative Arithmetic', prompt: `${prompt} = ?`, answer, display: String(answer) };
+    }
+    default:
+      return tatsavitQuestion(difficulty, 0); // fallback
+  }
+}
+
+app.get('/tatsavit-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const level = req.query.level !== undefined ? Number(req.query.level) : null;
+  const q = tatsavitQuestion(difficulty, level);
+  q.difficulty = difficulty;
+  res.json(q);
+});
+
+app.post('/tatsavit-api/check', express.json(), (req, res) => {
+  const { type, answer, ceilAnswer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-');
+  const userNum = parseFloat(userStr);
+  let correct = false;
+
+  if (type === 3) {
+    // Square root: accept floor OR ceiling
+    correct = !isNaN(userNum) && (userNum === answer || userNum === ceilAnswer);
+  } else {
+    // All other types: numeric comparison with small tolerance for percentages
+    correct = !isNaN(userNum) && Math.abs(userNum - answer) < 0.05;
   }
 
   res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });

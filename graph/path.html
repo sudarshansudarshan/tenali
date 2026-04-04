@@ -84,6 +84,8 @@ select option { background: #1a1c2a; color: #e0e0e0; }
 }
 .path-summary strong { color: #fff; }
 
+select option.none-opt { color: #ef5350; font-weight: 600; }
+
 /* Responsive */
 @media (max-width: 600px) {
   select { min-width: 160px; font-size: 0.85rem; }
@@ -349,6 +351,7 @@ const tgtSel = document.getElementById('target')
 // Add NONE as default source — means "show longest path to destination"
 const noneOpt = document.createElement('option')
 noneOpt.value = '__none__'; noneOpt.textContent = 'NONE (longest path)'
+noneOpt.className = 'none-opt'; noneOpt.style.color = '#ef5350'
 srcSel.appendChild(noneOpt)
 
 sorted.forEach(n => {
@@ -364,6 +367,13 @@ sorted.forEach(n => {
 // Set sensible defaults
 srcSel.value = '__none__'
 tgtSel.value = 'integ'
+
+// Make select text red when NONE is selected
+function updateSrcColor() {
+  srcSel.style.color = srcSel.value === '__none__' ? '#ef5350' : '#e0e0e0'
+}
+srcSel.addEventListener('change', updateSrcColor)
+updateSrcColor()
 
 // ═══════════════════════════════════════════════════════════════
 // Find & render path

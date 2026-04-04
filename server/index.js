@@ -5227,6 +5227,52 @@ app.post('/similarity-api/check', express.json(), (req, res) => {
   res.json({ correct, display: req.body.display, message: correct ? 'Correct!' : 'Incorrect' });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SQUARING API  /squaring-api
+// Identity: n² = (a+b)² = a² + 2ab + b²  where a = nearest lower ten, b = remainder
+// ═══════════════════════════════════════════════════════════════════════════
+app.get('/squaring-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const id = Date.now();
+  let lo, hi;
+  if (difficulty === 'easy')      { lo = 11;  hi = 19; }
+  else if (difficulty === 'medium') { lo = 20;  hi = 49; }
+  else if (difficulty === 'hard')   { lo = 50;  hi = 99; }
+  else                              { lo = 100; hi = 999; }
+
+  const n = randomInt(lo, hi);
+  // Split: a = largest multiple of 10 ≤ n, b = remainder
+  const a = Math.floor(n / 10) * 10;
+  const b = n - a;
+  const aSq = a * a;
+  const bSq = b * b;
+  const twoAB = 2 * a * b;
+  const answer = n * n;
+
+  const prompt = `Find ${n}² using (${a} + ${b})²`;
+  const display = `${n}² = ${a}² + 2·${a}·${b} + ${b}² = ${aSq} + ${twoAB} + ${bSq} = ${answer}`;
+
+  res.json({ id, difficulty, n, a, b, aSq, bSq, twoAB, answer, prompt, display });
+});
+
+app.post('/squaring-api/check', express.json(), (req, res) => {
+  const { a, b, aSq, bSq, twoAB, answer, display } = req.body;
+  const ua = (req.body.userAnswer || '').toString().replace(/\s/g, '');
+  // Accept pipe-separated "aSq|bSq|twoAB|final" or just the final answer
+  const parts = ua.split('|').map(s => parseInt(s.trim()));
+
+  let correct = false;
+  if (parts.length === 4) {
+    // Full check: a², b², 2ab, final
+    correct = parts[0] === aSq && parts[1] === bSq && parts[2] === twoAB && parts[3] === answer;
+  } else if (parts.length === 1 && !isNaN(parts[0])) {
+    // Just the final answer
+    correct = parts[0] === answer;
+  }
+
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
 /**
  * CATCH-ALL ROUTE
  * ═══════════════════════════════════════════════════════════════════════════

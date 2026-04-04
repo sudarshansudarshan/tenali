@@ -1749,6 +1749,7 @@ function App() {
     pythag: PythagApp,             // Pythagoras' Theorem
     polygons: PolygonsApp,         // Polygons
     similarity: SimilarityApp,     // Similarity
+    squaring: SquaringApp,         // Squaring (a+b)²
     randommix: RandomMixApp,       // Random Mix (adaptive)
     custom: CustomApp,             // Custom lesson builder
   }
@@ -1831,6 +1832,7 @@ function Home({ onSelect }) {
     { key: 'sequences', name: 'Sequences', subtitle: 'Arithmetic & geometric sequences', color: 'purple' },
     { key: 'sets', name: 'Sets', subtitle: 'Union, intersection, Venn diagrams', color: 'blue' },
     { key: 'similarity', name: 'Similarity', subtitle: 'Scale factor, area & volume ratios', color: 'green' },
+    { key: 'squaring', name: 'Squaring', subtitle: 'Square numbers using (a+b)²', color: 'purple' },
     { key: 'simul', name: 'Sim. Equations', subtitle: '2×2 (easy) or 3×3 (hard)', color: 'purple' },
     { key: 'sdt', name: 'Speed, Distance, Time', subtitle: 'Rate problems & conversions', color: 'blue' },
     { key: 'sqrt', name: 'Square Root', subtitle: 'Nearest-integer square root drill', color: 'green' },
@@ -4028,6 +4030,200 @@ const SimilarityApp = makeQuizApp({
   diffLabels: { easy: 'Easy — Missing side', medium: 'Medium — Scale factor', hard: 'Hard — Area ratio', extrahard: 'Extra Hard — Volume ratio' },
   placeholders: 'e.g. 24',
 })
+
+/* ── Squaring App ──────────────────────────────────── */
+// (a+b)² = a² + 2ab + b²  — student fills all four boxes
+function SquaringApp({ onBack }) {
+  const DIFFS = ['easy', 'medium', 'hard', 'extrahard']
+  const DIFF_LABELS_SQ = { easy: 'Easy — 11-19', medium: 'Medium — 20-49', hard: 'Hard — 50-99', extrahard: 'Extra Hard — 100-999' }
+
+  const [difficulty, setDifficulty] = useState('easy')
+  const [isAdaptive, setIsAdaptive] = useState(false)
+  const [adaptScore, setAdaptScore] = useState(0)
+  const adaptScoreRef = useRef(0)
+  const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+  const [started, setStarted] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [question, setQuestion] = useState(null)
+  const [score, setScore] = useState(0)
+  const [questionNumber, setQuestionNumber] = useState(0)
+  const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const [results, setResults] = useState([])
+  const timer = useTimer()
+  const advanceFnRef = useRef(null)
+  const submittedRef = useRef(false)
+  const advancedRef = useRef(false)
+
+  // Four input fields: a², b², 2ab, final answer
+  const [valASq, setValASq] = useState('')
+  const [valBSq, setValBSq] = useState('')
+  const [val2AB, setVal2AB] = useState('')
+  const [valFinal, setValFinal] = useState('')
+  const refASq = useRef(null)
+  const refBSq = useRef(null)
+  const ref2AB = useRef(null)
+  const refFinal = useRef(null)
+
+  const effectiveDiff = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
+  const curAdaptLevel = adaptiveLevel(adaptScore)
+
+  const loadQuestion = async () => {
+    setLoading(true)
+    try {
+      const diff = effectiveDiff()
+      const r = await fetch(`${API}/squaring-api/question?difficulty=${diff}`)
+      const data = await r.json()
+      setQuestion(data)
+      setValASq(''); setValBSq(''); setVal2AB(''); setValFinal('')
+      setFeedback(''); setIsCorrect(null); setRevealed(false)
+      submittedRef.current = false; advancedRef.current = false
+      timer.start()
+      setTimeout(() => refASq.current?.focus(), 50)
+    } catch (e) { console.error('Failed to load Squaring question:', e) }
+    setLoading(false)
+  }
+
+  const startQuiz = () => {
+    const t = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
+    setTotalQ(t); setScore(0); setQuestionNumber(1); setResults([]); setStarted(true); setFinished(false)
+    setAdaptScore(0); adaptScoreRef.current = 0
+    submittedRef.current = false; advancedRef.current = false
+  }
+
+  useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
+
+  const advance = () => { if (advancedRef.current) return; advancedRef.current = true; if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+  advanceFnRef.current = advance
+  useAutoAdvance(revealed, advanceFnRef, isCorrect)
+
+  useEffect(() => {
+    if (!revealed || isCorrect) return
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [revealed, isCorrect, questionNumber])
+
+  const isComplete = () => valASq.trim() !== '' && valBSq.trim() !== '' && val2AB.trim() !== '' && valFinal.trim() !== ''
+
+  const handleSubmit = async () => {
+    if (!question || revealed || !isComplete()) return
+    if (submittedRef.current) return
+    submittedRef.current = true
+    const timeTaken = timer.stop()
+    const userAnswer = `${valASq.trim()}|${valBSq.trim()}|${val2AB.trim()}|${valFinal.trim()}`
+    try {
+      const r = await fetch(`${API}/squaring-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...question, userAnswer }) })
+      const data = await r.json()
+      setIsCorrect(data.correct); setRevealed(true)
+      if (data.correct) setScore(s => s + 1)
+      setFeedback(data.correct ? `Correct! ${question.n}² = ${question.answer}` : `Incorrect. ${question.display}`)
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: valFinal.trim(), correctAnswer: String(question.answer), correct: data.correct, time: timeTaken }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = data.correct ? Math.min(3, prev + 0.25) : Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
+    } catch (e) { submittedRef.current = false; console.error('Failed to check Squaring answer:', e) }
+  }
+
+  const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
+
+  // Tab between the four fields
+  const handleFieldKey = (e, nextRef) => {
+    if (e.key === 'Tab' && !e.shiftKey && nextRef?.current) {
+      e.preventDefault()
+      nextRef.current.focus()
+    }
+    handleKeyDown(e)
+  }
+
+  const numInput = (val, setter, ref, nextRef, label, correctVal) => (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+      <label className="matrix-label">{label}</label>
+      <input
+        ref={ref}
+        className={`matrix-grid-cell${revealed ? (isCorrect ? ' revealed-correct' : ' revealed-wrong') : ''}`}
+        style={{ width: 90, height: 44, fontSize: '1.1rem' }}
+        type="text" value={val}
+        onChange={e => { if (!revealed) { const v = e.target.value; if (v === '' || /^-?\d+$/.test(v)) setter(v) } }}
+        onKeyDown={e => handleFieldKey(e, nextRef)}
+        disabled={revealed}
+        placeholder="?"
+      />
+      {revealed && !isCorrect && <span style={{ fontSize: '0.78rem', color: '#f44336', fontWeight: 600 }}>{correctVal}</span>}
+    </div>
+  )
+
+  return (
+    <QuizLayout title="Squaring" subtitle="(a + b)² = a² + 2ab + b²" onBack={onBack} timer={started && !finished ? timer : null}>
+      {!started && !finished && <div className="welcome-box">
+        <p className="welcome-text">Square numbers quickly using the identity (a + b)² = a² + 2ab + b²</p>
+        <p style={{ fontSize: '0.85rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Split any number into a round part (a) and remainder (b), then fill in all four boxes.</p>
+        <div className="checkbox-group" style={{ marginBottom: '12px' }}>
+          {DIFFS.map(d => (
+            <label key={d} className={`checkbox-pill${!isAdaptive && difficulty === d ? ' active' : ''}`}>
+              <input type="radio" name="squaring-diff" checked={!isAdaptive && difficulty === d} onChange={() => { setDifficulty(d); setIsAdaptive(false) }} />
+              {DIFF_LABELS_SQ[d]}
+            </label>
+          ))}
+          <label className={`checkbox-pill${isAdaptive ? ' active' : ''}`} style={isAdaptive ? { background: 'linear-gradient(135deg, #4caf50, #ff9800, #f44336, #9c27b0)', color: '#fff', border: 'none' } : {}}>
+            <input type="radio" name="squaring-diff" checked={isAdaptive} onChange={() => setIsAdaptive(true)} />
+            Adaptive
+          </label>
+        </div>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>Starts easy and smoothly adjusts to your level as you answer.</p>}
+        <div className="question-count-row">
+          <label className="question-count-label">How many questions?</label>
+          <input className="answer-input question-count-input" type="text" value={numQuestions} onChange={e => { const v = e.target.value; if (v === '' || /^\d+$/.test(v)) setNumQuestions(v) }} />
+        </div>
+        <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
+      </div>}
+      {started && !finished && <>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
+        </div>
+        {isAdaptive && (
+          <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}>
+            <div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} />
+          </div>
+        )}
+        {question && <div style={{ textAlign: 'center' }}>
+          <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '16px 0 6px', lineHeight: '1.6' }}>
+            {question.n}²
+          </div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--clr-dim)', marginBottom: 14 }}>
+            Split as ({question.a} + {question.b})² &nbsp;→&nbsp; {question.a}² + 2·{question.a}·{question.b} + {question.b}²
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+            {numInput(valASq, setValASq, refASq, refBSq, `${question.a}²`, question.aSq)}
+            <span className="matrix-op" style={{ marginTop: 28 }}>+</span>
+            {numInput(val2AB, setVal2AB, ref2AB, refBSq, `2·${question.a}·${question.b}`, question.twoAB)}
+            <span className="matrix-op" style={{ marginTop: 28 }}>+</span>
+            {numInput(valBSq, setValBSq, refBSq, refFinal, `${question.b}²`, question.bSq)}
+            <span className="matrix-op" style={{ marginTop: 28 }}>=</span>
+            {numInput(valFinal, setValFinal, refFinal, null, 'Answer', question.answer)}
+          </div>
+        </div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed ? <button onClick={handleSubmit} disabled={loading || !question || !isComplete()}>Submit</button>
+            : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </>}
+      {finished && <div className="welcome-box">
+        <p className="welcome-text">Quiz complete!</p>
+        <p className="final-score">Final score: {score}/{totalQ}</p>
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: ADAPT_COLORS[curAdaptLevel] }}>{ADAPT_LABELS[curAdaptLevel]}</strong></p>}
+        <ResultsTable results={results} />
+        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+      </div>}
+    </QuizLayout>
+  )
+}
 
 /* ── Random Mix App ─────────────────────────────────── */
 // Adaptive cross-topic quiz: random topics, progressive difficulty, skip topics
@@ -7879,6 +8075,7 @@ const CUSTOM_PUZZLES = [
   { key: 'pythag', name: "Pythagoras' Theorem" },
   { key: 'polygons', name: 'Polygons' },
   { key: 'similarity', name: 'Similarity' },
+  { key: 'squaring', name: 'Squaring' },
 ]
 
 /**
@@ -7954,6 +8151,7 @@ function fetchQuestionForType(type, difficulty) {
     pythag: `${API}/pythag-api/question?difficulty=${difficulty}`,
     polygons: `${API}/polygons-api/question?difficulty=${difficulty}`,
     similarity: `${API}/similarity-api/question?difficulty=${difficulty}`,
+    squaring: `${API}/squaring-api/question?difficulty=${difficulty}`,
   }
   return fetch(urls[type]).then(r => r.json())
 }
@@ -8011,6 +8209,7 @@ function getPromptForType(type, q) {
     case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
     case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity':
       return q.prompt || ''
+    case 'squaring': return q.prompt || `Find ${q.n}²`
     default: return ''
   }
 }
@@ -8420,9 +8619,9 @@ function CustomApp({ onBack }) {
       case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
       case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
       case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
-      case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity': {
+      case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity': case 'squaring': {
         if (answer === '') return
-        const apiMap = { trig: 'trig-api', ineq: 'ineq-api', coordgeom: 'coordgeom-api', prob: 'prob-api', stats: 'stats-api', matrix: 'matrix-api', vectors: 'vectors-api', dotprod: 'dotprod-api', transform: 'transform-api', mensur: 'mensur-api', bearings: 'bearings-api', log: 'log-api', diff: 'diff-api', bases: 'bases-api', circleth: 'circle-api', integ: 'integ-api', stdform: 'stdform-api', bounds: 'bounds-api', sdt: 'sdt-api', variation: 'variation-api', hcflcm: 'hcflcm-api', profitloss: 'profitloss-api', rounding: 'rounding-api', binomial: 'binomial-api', complex: 'complex-api', angles: 'angles-api', triangles: 'triangles-api', congruence: 'congruence-api', pythag: 'pythag-api', polygons: 'polygons-api', similarity: 'similarity-api' }
+        const apiMap = { trig: 'trig-api', ineq: 'ineq-api', coordgeom: 'coordgeom-api', prob: 'prob-api', stats: 'stats-api', matrix: 'matrix-api', vectors: 'vectors-api', dotprod: 'dotprod-api', transform: 'transform-api', mensur: 'mensur-api', bearings: 'bearings-api', log: 'log-api', diff: 'diff-api', bases: 'bases-api', circleth: 'circle-api', integ: 'integ-api', stdform: 'stdform-api', bounds: 'bounds-api', sdt: 'sdt-api', variation: 'variation-api', hcflcm: 'hcflcm-api', profitloss: 'profitloss-api', rounding: 'rounding-api', binomial: 'binomial-api', complex: 'complex-api', angles: 'angles-api', triangles: 'triangles-api', congruence: 'congruence-api', pythag: 'pythag-api', polygons: 'polygons-api', similarity: 'similarity-api', squaring: 'squaring-api' }
         const genPayload = { ...question, userAnswer: answer.trim() }
         res = await fetch(`${API}/${apiMap[curType]}/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(genPayload) })
         data = await res.json()
@@ -8566,7 +8765,7 @@ function CustomApp({ onBack }) {
       case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
       case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
       case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
-      case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity':
+      case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity': case 'squaring':
         return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
       case 'gk': case 'vocab':
         if (!question.options) return null

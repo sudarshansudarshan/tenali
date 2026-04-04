@@ -5448,6 +5448,13 @@ app.post('/tatsavit-api/check', express.json(), (req, res) => {
   res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// /graph — Prerequisite DAG visualisation
+// ═══════════════════════════════════════════════════════════════════════════
+app.get('/graph', (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'graph', 'index.html'));
+});
+
 /**
  * CATCH-ALL ROUTE
  * ═══════════════════════════════════════════════════════════════════════════

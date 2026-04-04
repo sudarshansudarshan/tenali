@@ -4044,9 +4044,12 @@ const TATSAVIT_DIFF_LABELS = {
 }
 
 function TatsavitApp({ onBack }) {
+  // ─────── Setup State ──────────────────────────────────
   const [difficulty, setDifficulty] = useState('easy')
   const [isAdaptive, setIsAdaptive] = useState(true) // default to adaptive
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
+
+  // ─────── Quiz State ──────────────────────────────────
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
   const [question, setQuestion] = useState(null)
@@ -4063,19 +4066,31 @@ function TatsavitApp({ onBack }) {
   const advanceFnRef = useRef(null)
   const submittedRef = useRef(false)
   const advancedRef = useRef(false)
+  const inputRef = useRef(null)
 
-  // Adaptive level tracking: 0-8 across the 9 types
-  // Score floats: +0.3 on correct, -0.4 on wrong, range 0.0-8.0
+  // ─────── Adaptive level tracking ──────────────────────
+  // Float 0.0–8.0 mapping to 9 types; +0.3 correct, -0.4 wrong, +0.5 on 3-streak
   const [adaptLevel, setAdaptLevel] = useState(0)
   const adaptLevelRef = useRef(0)
-  const [streak, setStreak] = useState(0)
+  const streakRef = useRef(0)
 
   const currentLevel = () => Math.min(8, Math.max(0, Math.floor(adaptLevelRef.current)))
+
+  // ─────── Difficulty label for adaptive within-type scaling ─────
+  // When adaptive, we scale within-type difficulty based on the adapt level:
+  // levels 0-2 → 'easy', 3-5 → 'medium', 6-7 → 'hard', 8 → 'extrahard'
+  const adaptiveDifficulty = () => {
+    const lvl = currentLevel()
+    if (lvl <= 2) return 'easy'
+    if (lvl <= 5) return 'medium'
+    if (lvl <= 7) return 'hard'
+    return 'extrahard'
+  }
 
   const loadQuestion = async () => {
     setLoading(true)
     try {
-      const diff = isAdaptive ? 'easy' : difficulty // adaptive manages its own scaling via level
+      const diff = isAdaptive ? adaptiveDifficulty() : difficulty
       const levelParam = isAdaptive ? `&level=${currentLevel()}` : ''
       const r = await fetch(`${API}/tatsavit-api/question?difficulty=${diff}${levelParam}`)
       const data = await r.json()
@@ -4087,23 +4102,38 @@ function TatsavitApp({ onBack }) {
       submittedRef.current = false
       advancedRef.current = false
       timer.start()
+      setTimeout(() => inputRef.current?.focus(), 50)
     } catch (e) { console.error('Failed to load Tatsavit question:', e) }
     setLoading(false)
   }
 
   const startQuiz = () => {
     const t = Math.max(1, Math.min(200, Number(numQuestions) || DEFAULT_TOTAL))
-    setTotalQ(t); setScore(0); setQuestionNumber(1); setResults([]); setStarted(true); setFinished(false)
-    setAdaptLevel(0); adaptLevelRef.current = 0; setStreak(0)
-    submittedRef.current = false; advancedRef.current = false
+    setTotalQ(t)
+    setScore(0)
+    setQuestionNumber(1)
+    setResults([])
+    setStarted(true)
+    setFinished(false)
+    setAdaptLevel(0)
+    adaptLevelRef.current = 0
+    streakRef.current = 0
+    submittedRef.current = false
+    advancedRef.current = false
   }
 
   useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
 
-  const advance = () => { if (advancedRef.current) return; advancedRef.current = true; if (questionNumber >= totalQ) setFinished(true); else setQuestionNumber(n => n + 1) }
+  const advance = () => {
+    if (advancedRef.current) return
+    advancedRef.current = true
+    if (questionNumber >= totalQ) setFinished(true)
+    else setQuestionNumber(n => n + 1)
+  }
   advanceFnRef.current = advance
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
+  // Enter to advance on wrong answer
   useEffect(() => {
     if (!revealed || isCorrect) return
     const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
@@ -4117,32 +4147,43 @@ function TatsavitApp({ onBack }) {
     submittedRef.current = true
     const timeTaken = timer.stop()
     try {
-      const r = await fetch(`${API}/tatsavit-api/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...question, userAnswer: answer.trim() }) })
+      const r = await fetch(`${API}/tatsavit-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...question, userAnswer: answer.trim() }),
+      })
       const data = await r.json()
-      setIsCorrect(data.correct); setRevealed(true)
+      setIsCorrect(data.correct)
+      setRevealed(true)
       if (data.correct) setScore(s => s + 1)
       setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
-      setResults(prev => [...prev, { prompt: `[${question.typeName}] ${question.prompt}`, userAnswer: answer.trim(), correctAnswer: data.display, correct: data.correct, time: timeTaken }])
+      setResults(prev => [...prev, {
+        question: `[${question.typeName}] ${question.prompt}`,
+        userAnswer: answer.trim(),
+        correctAnswer: data.display,
+        correct: data.correct,
+        time: timeTaken,
+      }])
       // Adaptive progression
       if (isAdaptive) {
         setAdaptLevel(prev => {
           let next
           if (data.correct) {
-            const newStreak = streak >= 0 ? streak + 1 : 1
-            setStreak(newStreak)
-            // Move up faster with streaks
-            const bump = newStreak >= 3 ? 0.5 : 0.3
+            streakRef.current = streakRef.current >= 0 ? streakRef.current + 1 : 1
+            const bump = streakRef.current >= 3 ? 0.5 : 0.3
             next = Math.min(8, prev + bump)
           } else {
-            const newStreak = streak <= 0 ? streak - 1 : -1
-            setStreak(newStreak)
+            streakRef.current = streakRef.current <= 0 ? streakRef.current - 1 : -1
             next = Math.max(0, prev - 0.4)
           }
           adaptLevelRef.current = next
           return next
         })
       }
-    } catch (e) { submittedRef.current = false; console.error('Failed to check Tatsavit answer:', e) }
+    } catch (e) {
+      submittedRef.current = false
+      console.error('Failed to check Tatsavit answer:', e)
+    }
   }
 
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
@@ -4152,9 +4193,10 @@ function TatsavitApp({ onBack }) {
 
   return (
     <QuizLayout title="Tatsavit" subtitle="Progressive math drill — 9 levels" onBack={onBack} timer={started && !finished ? timer : null}>
+      {/* ─── Setup screen: choose difficulty + question count ─── */}
       {!started && !finished && <div className="welcome-box">
         <p className="welcome-text">Mental math training for Tatsavit!</p>
-        <p style={{ fontSize: '0.85rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>
+        <p style={{ fontSize: '0.85rem', color: 'var(--clr-dim)', marginBottom: '8px', textAlign: 'center' }}>
           9 question types: tables, squares, square roots, monomials, percentages, addition, subtraction, and negative arithmetic.
         </p>
         <div className="checkbox-group" style={{ marginBottom: '12px' }}>
@@ -4169,7 +4211,7 @@ function TatsavitApp({ onBack }) {
             Adaptive
           </label>
         </div>
-        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px' }}>
+        {isAdaptive && <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', marginBottom: '8px', textAlign: 'center' }}>
           Starts with single-digit tables and progressively unlocks harder types as you answer correctly. 3 correct in a row levels up faster.
         </p>}
         <div className="question-count-row">
@@ -4178,35 +4220,39 @@ function TatsavitApp({ onBack }) {
         </div>
         <div className="button-row"><button onClick={startQuiz}>Start Quiz</button></div>
       </div>}
+
+      {/* ─── Quiz phase ─── */}
       {started && !finished && <>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
-          <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
+          <div className="progress-pill center">Score {score}</div>
+          <div className="progress-pill center">Q {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: levelColor, color: '#fff' }}>Level {currentLevel() + 1}: {TATSAVIT_TYPE_NAMES[currentLevel()]}</div>}
+          {!isAdaptive && <div className="progress-pill">{question?.typeName || '...'}</div>}
         </div>
         {isAdaptive && (
           <div style={{ maxWidth: 300, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}>
-            <div style={{ width: `${levelPct}%`, height: '100%', borderRadius: 3, background: `linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)`, transition: 'width 0.5s ease' }} />
+            <div style={{ width: `${levelPct}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} />
           </div>
         )}
         {question && <div style={{ textAlign: 'center' }}>
-          {!isAdaptive && <div style={{ fontSize: '0.8rem', color: 'var(--clr-dim)', marginBottom: 4 }}>{question.typeName}</div>}
-          <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '16px 0', lineHeight: '1.6' }}>{question.prompt}</div>
-          {question.inputHint && <div style={{ fontSize: '0.78rem', color: 'var(--clr-dim)', marginBottom: 8 }}>Enter {question.inputHint}</div>}
-          <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={handleKeyDown} autoFocus />
+          <div className="question-box" style={{ fontSize: '1.4rem', margin: '16px auto', lineHeight: '1.6' }}>{question.prompt}</div>
+          {question.inputHint && <div style={{ fontSize: '0.78rem', color: 'var(--clr-dim)', marginBottom: 8, textAlign: 'center' }}>{question.inputHint}</div>}
+          <input ref={inputRef} className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={handleKeyDown} autoFocus style={{ textAlign: 'center' }} />
         </div>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
           {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
             : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
-        {results.length > 0 && <ResultsTable results={results} />}
       </>}
+
+      {/* ─── Finished screen ─── */}
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
         <p className="final-score">Final score: {score}/{totalQ}</p>
-        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)' }}>Reached level: <strong style={{ color: levelColor }}>{currentLevel() + 1} — {TATSAVIT_TYPE_NAMES[currentLevel()]}</strong></p>}
+        {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)', textAlign: 'center' }}>Reached level: <strong style={{ color: levelColor }}>{currentLevel() + 1} — {TATSAVIT_TYPE_NAMES[currentLevel()]}</strong></p>}
         <ResultsTable results={results} />
-        <button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button>
+        <div className="button-row"><button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button></div>
       </div>}
     </QuizLayout>
   )

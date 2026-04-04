@@ -5397,7 +5397,7 @@ function tatsavitQuestion(difficulty, level) {
       let a = randomInt(lo, hi), b = randomInt(lo, hi);
       if (a < b) [a, b] = [b, a]; // ensure non-negative result for easy/medium
       const answer = a - b;
-      return { id, type: 6, typeName: 'Subtraction', prompt: `${a} − ${b} = ?`, answer, display: String(answer) };
+      return { id, type: 7, typeName: 'Subtraction', prompt: `${a} − ${b} = ?`, answer, display: String(answer) };
     }
     case 8: { // Negative arithmetic: a − (−b), −a + (−b), −a − (−b), etc.
       const patterns = isHarder

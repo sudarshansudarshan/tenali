@@ -1749,6 +1749,21 @@ function App() {
     polygons: PolygonsApp,         // Polygons
     similarity: SimilarityApp,     // Similarity
     squaring: SquaringApp,         // Squaring (a+b)²
+    lineareq: LinearEqApp,         // Linear Equations
+    decimals: DecimalsApp,         // Decimals
+    permcomb: PermCombApp,         // Permutations & Combinations
+    limits: LimitsApp,             // Limits
+    invtrig: InvTrigApp,           // Inverse Trigonometry
+    remfactor: RemFactorApp,       // Remainder Theorem
+    heron: HeronApp,               // Heron's Formula
+    shares: SharesApp,             // Shares & Dividends
+    banking: BankingApp,           // Banking (RD)
+    gst: GSTApp,                   // GST
+    section: SectionApp,           // Section Formula
+    linprog: LinProgApp,           // Linear Programming
+    circmeasure: CircMeasureApp,   // Circular Measure
+    conics: ConicsApp,             // Conic Sections
+    diffeq: DiffEqApp,             // Differential Equations
     tatsavit: TatsavitApp,         // Tatsavit (progressive math drill)
     randommix: RandomMixApp,       // Random Mix (adaptive)
     custom: CustomApp,             // Custom lesson builder
@@ -1795,29 +1810,41 @@ function Home({ onSelect }) {
     { key: 'addition', name: 'Addition', subtitle: '20-question addition practice', color: 'blue' },
     { key: 'angles', name: 'Angles', subtitle: 'Lines, points, parallel lines', color: 'green' },
     { key: 'basicarith', name: 'Arithmetic', subtitle: '+, −, × with positive & negative', color: 'purple' },
+    { key: 'banking', name: 'Banking (RD)', subtitle: 'Interest & recurring deposits', color: 'blue' },
     { key: 'bearings', name: 'Bearings', subtitle: 'Three-figure bearings', color: 'green' },
     { key: 'binomial', name: 'Binomial Theorem', subtitle: 'Expansions & coefficients', color: 'purple' },
     { key: 'bounds', name: 'Bounds', subtitle: 'Upper & lower bounds', color: 'blue' },
+    { key: 'circmeasure', name: 'Circular Measure', subtitle: 'Radians, arc length, sectors', color: 'green' },
     { key: 'circleth', name: 'Circle Theorems', subtitle: 'Angles, tangents, cyclic quads', color: 'purple' },
     { key: 'complex', name: 'Complex Numbers', subtitle: 'Add, multiply, modulus', color: 'blue' },
     { key: 'congruence', name: 'Congruence', subtitle: 'SSS, SAS, ASA, RHS', color: 'green' },
+    { key: 'conics', name: 'Conic Sections', subtitle: 'Circle, parabola, ellipse, hyperbola', color: 'purple' },
     { key: 'coordgeom', name: 'Coord. Geometry', subtitle: 'Midpoint, distance, gradient', color: 'blue' },
+    { key: 'decimals', name: 'Decimals', subtitle: 'Add, subtract, multiply, divide', color: 'blue' },
     { key: 'diff', name: 'Differentiation', subtitle: 'Power rule, turning points', color: 'purple' },
+    { key: 'diffeq', name: 'Differential Eq.', subtitle: 'Order, degree, solve DEs', color: 'green' },
     { key: 'dotprod', name: 'Dot Products', subtitle: 'Vectors, matrices, fill blanks', color: 'blue' },
     { key: 'fractionadd', name: 'Fractions (Add)', subtitle: 'Add fractions and simplify', color: 'green' },
     { key: 'funceval', name: 'Functions', subtitle: 'Evaluate f(x), f(x,y), f(x,y,z)', color: 'green' },
     { key: 'gk', name: 'GK', subtitle: 'General Knowledge questions', color: 'purple' },
+    { key: 'gst', name: 'GST', subtitle: 'Goods & Services Tax', color: 'purple' },
     { key: 'hcflcm', name: 'HCF & LCM', subtitle: 'Highest common factor & LCM', color: 'blue' },
+    { key: 'heron', name: "Heron's Formula", subtitle: 'Triangle area from sides', color: 'blue' },
     { key: 'indices', name: 'Indices', subtitle: 'Laws of exponents', color: 'purple' },
     { key: 'ineq', name: 'Inequalities', subtitle: 'Linear & quadratic inequalities', color: 'green' },
     { key: 'integ', name: 'Integration', subtitle: 'Reverse differentiation & areas', color: 'blue' },
+    { key: 'invtrig', name: 'Inverse Trig', subtitle: 'arcsin, arccos, arctan', color: 'green' },
+    { key: 'limits', name: 'Limits', subtitle: 'Evaluate limits', color: 'purple' },
+    { key: 'lineareq', name: 'Linear Equations', subtitle: 'Solve for x in one variable', color: 'blue' },
     { key: 'lineq', name: 'Line Equation', subtitle: 'Find m and c from two points', color: 'green' },
+    { key: 'linprog', name: 'Linear Programming', subtitle: 'Optimize objective functions', color: 'green' },
     { key: 'log', name: 'Logarithms', subtitle: 'Evaluate, simplify, solve', color: 'purple' },
     { key: 'matrix', name: 'Matrices', subtitle: 'Add, multiply, determinant', color: 'blue' },
     { key: 'mensur', name: 'Mensuration', subtitle: 'Area, volume, surface area', color: 'green' },
     { key: 'multiply', name: 'Multiplication', subtitle: 'Practice any times table (2–19)', color: 'purple' },
     { key: 'bases', name: 'Number Bases', subtitle: 'Binary, decimal, hexadecimal', color: 'green' },
     { key: 'percent', name: 'Percentages', subtitle: 'Find, increase, reverse, compound', color: 'blue' },
+    { key: 'permcomb', name: 'Perm. & Comb.', subtitle: 'Permutations & combinations', color: 'purple' },
     { key: 'polyfactor', name: 'Poly Factor', subtitle: 'Factor a quadratic expression', color: 'green' },
     { key: 'polymul', name: 'Poly Multiply', subtitle: 'Multiply two polynomials', color: 'blue' },
     { key: 'polygons', name: 'Polygons', subtitle: 'Interior & exterior angles', color: 'purple' },
@@ -1828,8 +1855,11 @@ function Home({ onSelect }) {
     { key: 'quadratic', name: 'Quadratic', subtitle: 'Find y for y = ax² + bx + c', color: 'blue' },
     { key: 'qformula', name: 'Quadratics (Formula)', subtitle: 'Find roots of ax² + bx + c = 0', color: 'purple' },
     { key: 'ratio', name: 'Ratio', subtitle: 'Ratio & proportion', color: 'green' },
+    { key: 'remfactor', name: 'Remainder Theorem', subtitle: 'Remainder & factor theorem', color: 'blue' },
     { key: 'rounding', name: 'Rounding', subtitle: 'D.P., sig. figs, estimation', color: 'blue' },
+    { key: 'section', name: 'Section Formula', subtitle: 'Midpoint, section, centroid', color: 'green' },
     { key: 'sequences', name: 'Sequences', subtitle: 'Arithmetic & geometric sequences', color: 'purple' },
+    { key: 'shares', name: 'Shares & Dividends', subtitle: 'Shares, dividends, returns', color: 'purple' },
     { key: 'sets', name: 'Sets', subtitle: 'Union, intersection, Venn diagrams', color: 'blue' },
     { key: 'similarity', name: 'Similarity', subtitle: 'Scale factor, area & volume ratios', color: 'green' },
     { key: 'squaring', name: 'Squaring', subtitle: 'Square numbers using (a+b)²', color: 'purple' },
@@ -4032,6 +4062,96 @@ const SimilarityApp = makeQuizApp({
   placeholders: 'e.g. 24',
 })
 
+const LinearEqApp = makeQuizApp({
+  title: 'Linear Equations', subtitle: 'Solve for x', apiPath: 'lineareq-api',
+  diffLabels: { easy: 'Easy — ax+b=c', medium: 'Medium — ax+b=cx+d', hard: 'Hard — a(bx+c)=d', extrahard: 'Extra Hard — (ax+b)/c=d' },
+  placeholders: 'e.g. 3 or -2.5',
+})
+
+const DecimalsApp = makeQuizApp({
+  title: 'Decimals', subtitle: 'Add, subtract, multiply, divide', apiPath: 'decimals-api',
+  diffLabels: { easy: 'Easy — Add', medium: 'Medium — Subtract', hard: 'Hard — Multiply', extrahard: 'Extra Hard — Divide' },
+  placeholders: 'e.g. 6.1',
+})
+
+const PermCombApp = makeQuizApp({
+  title: 'Perm. & Comb.', subtitle: 'Permutations & combinations', apiPath: 'permcomb-api',
+  diffLabels: { easy: 'Easy — nPr', medium: 'Medium — nCr', hard: 'Hard — Word problems', extrahard: 'Extra Hard — With/without repetition' },
+  placeholders: 'e.g. 120',
+})
+
+const LimitsApp = makeQuizApp({
+  title: 'Limits', subtitle: 'Evaluate limits', apiPath: 'limits-api',
+  diffLabels: { easy: 'Easy — Direct sub', medium: 'Medium — Factorable', hard: 'Hard — Trig limits', extrahard: 'Extra Hard — Limits at infinity' },
+  placeholders: 'e.g. 4 or 0.5',
+})
+
+const InvTrigApp = makeQuizApp({
+  title: 'Inverse Trig', subtitle: 'arcsin, arccos, arctan', apiPath: 'invtrig-api',
+  diffLabels: { easy: 'Easy — Basic values', medium: 'Medium — √ values', hard: 'Hard — Compositions', extrahard: 'Extra Hard — Principal values' },
+  placeholders: 'e.g. 30 or 45',
+})
+
+const RemFactorApp = makeQuizApp({
+  title: 'Remainder Theorem', subtitle: 'Remainder & factor theorem', apiPath: 'remfactor-api',
+  diffLabels: { easy: 'Easy — Remainder (deg 2)', medium: 'Medium — Factor check', hard: 'Hard — Remainder (deg 3)', extrahard: 'Extra Hard — Find k' },
+  placeholders: 'e.g. 7 or yes/no',
+})
+
+const HeronApp = makeQuizApp({
+  title: "Heron's Formula", subtitle: 'Triangle area from sides', apiPath: 'heron-api',
+  diffLabels: { easy: 'Easy — Semi-perimeter', medium: 'Medium — Integer area', hard: 'Hard — Decimal area', extrahard: 'Extra Hard — Find side' },
+  placeholders: 'e.g. 24',
+})
+
+const SharesApp = makeQuizApp({
+  title: 'Shares & Dividends', subtitle: 'Shares, dividends, returns', apiPath: 'shares-api',
+  diffLabels: { easy: 'Easy — Find dividend', medium: 'Medium — Income', hard: 'Hard — Return %', extrahard: 'Extra Hard — Buy for target' },
+  placeholders: 'e.g. 500',
+})
+
+const BankingApp = makeQuizApp({
+  title: 'Banking (RD)', subtitle: 'Interest & recurring deposits', apiPath: 'banking-api',
+  diffLabels: { easy: 'Easy — Simple interest', medium: 'Medium — Compound interest', hard: 'Hard — RD maturity', extrahard: 'Extra Hard — Find installment' },
+  placeholders: 'e.g. 12600',
+})
+
+const GSTApp = makeQuizApp({
+  title: 'GST', subtitle: 'Goods & Services Tax', apiPath: 'gst-api',
+  diffLabels: { easy: 'Easy — GST amount', medium: 'Medium — Total with GST', hard: 'Hard — CGST+SGST', extrahard: 'Extra Hard — Input tax credit' },
+  placeholders: 'e.g. 180',
+})
+
+const SectionApp = makeQuizApp({
+  title: 'Section Formula', subtitle: 'Midpoint, section, centroid', apiPath: 'section-api',
+  diffLabels: { easy: 'Easy — Midpoint', medium: 'Medium — Internal division', hard: 'Hard — Find ratio', extrahard: 'Extra Hard — Centroid' },
+  placeholders: 'e.g. 3,5',
+})
+
+const LinProgApp = makeQuizApp({
+  title: 'Linear Programming', subtitle: 'Optimize objective functions', apiPath: 'linprog-api',
+  diffLabels: { easy: 'Easy — Evaluate at vertex', medium: 'Medium — Max from vertices', hard: 'Hard — 2-constraint LP', extrahard: 'Extra Hard — 3-constraint LP' },
+  placeholders: 'e.g. 42',
+})
+
+const CircMeasureApp = makeQuizApp({
+  title: 'Circular Measure', subtitle: 'Radians, arc length, sectors', apiPath: 'circmeasure-api',
+  diffLabels: { easy: 'Easy — Deg→Rad', medium: 'Medium — Rad→Deg', hard: 'Hard — Arc length', extrahard: 'Extra Hard — Sector area' },
+  placeholders: 'e.g. 1.57',
+})
+
+const ConicsApp = makeQuizApp({
+  title: 'Conic Sections', subtitle: 'Circle, parabola, ellipse, hyperbola', apiPath: 'conics-api',
+  diffLabels: { easy: 'Easy — Identify conic', medium: 'Medium — Circle radius', hard: 'Hard — Eccentricity', extrahard: 'Extra Hard — Focus of parabola' },
+  placeholders: (q, d) => d === 'easy' ? 'e.g. circle' : 'e.g. 5',
+})
+
+const DiffEqApp = makeQuizApp({
+  title: 'Differential Equations', subtitle: 'Order, degree, solve DEs', apiPath: 'diffeq-api',
+  diffLabels: { easy: 'Easy — Find order', medium: 'Medium — Find degree', hard: 'Hard — Verify solution', extrahard: 'Extra Hard — Solve separable' },
+  placeholders: (q, d) => d === 'hard' ? 'yes or no' : 'e.g. 2',
+})
+
 /* ── Tatsavit App ─────────────────────────────────── */
 // 9-type progressive math drill for Tatsavit
 const TATSAVIT_TYPE_NAMES = [
@@ -4123,11 +4243,20 @@ function TatsavitApp({ onBack }) {
 
   useEffect(() => { if (started && !finished && questionNumber > 0) loadQuestion() }, [started, questionNumber])
 
+  // Track whether current question was answered correctly (for advance logic)
+  const lastCorrectRef = useRef(false)
+
   const advance = () => {
     if (advancedRef.current) return
     advancedRef.current = true
-    if (questionNumber >= totalQ) setFinished(true)
-    else setQuestionNumber(n => n + 1)
+    if (lastCorrectRef.current) {
+      // Correct answer — counts toward total, move to next question
+      if (questionNumber >= totalQ) setFinished(true)
+      else setQuestionNumber(n => n + 1)
+    } else {
+      // Wrong answer — does NOT count; reload a fresh question at same number
+      loadQuestion()
+    }
   }
   advanceFnRef.current = advance
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
@@ -4154,15 +4283,19 @@ function TatsavitApp({ onBack }) {
       const data = await r.json()
       setIsCorrect(data.correct)
       setRevealed(true)
+      lastCorrectRef.current = data.correct
       if (data.correct) setScore(s => s + 1)
       setFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`)
-      setResults(prev => [...prev, {
-        question: `[${question.typeName}] ${question.prompt}`,
-        userAnswer: answer.trim(),
-        correctAnswer: data.display,
-        correct: data.correct,
-        time: timeTaken,
-      }])
+      // Only record correct answers in results (wrong ones don't count)
+      if (data.correct) {
+        setResults(prev => [...prev, {
+          question: `[${question.typeName}] ${question.prompt}`,
+          userAnswer: answer.trim(),
+          correctAnswer: data.display,
+          correct: data.correct,
+          time: timeTaken,
+        }])
+      }
       // Adaptive progression
       if (isAdaptive) {
         setAdaptLevel(prev => {
@@ -4248,7 +4381,8 @@ function TatsavitApp({ onBack }) {
       {/* ─── Finished screen ─── */}
       {finished && <div className="welcome-box">
         <p className="welcome-text">Quiz complete!</p>
-        <p className="final-score">Final score: {score}/{totalQ}</p>
+        <p className="final-score">Completed {score} of {totalQ} questions</p>
+        <p style={{ fontSize: '0.82rem', color: 'var(--clr-dim)', textAlign: 'center', marginTop: '-4px' }}>Wrong answers didn't count — only correct ones moved you forward.</p>
         {isAdaptive && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)', textAlign: 'center' }}>Reached level: <strong style={{ color: levelColor }}>{currentLevel() + 1} — {TATSAVIT_TYPE_NAMES[currentLevel()]}</strong></p>}
         <ResultsTable results={results} />
         <div className="button-row"><button onClick={() => { setStarted(false); setFinished(false) }}>Play Again</button></div>
@@ -8303,6 +8437,21 @@ const CUSTOM_PUZZLES = [
   { key: 'similarity', name: 'Similarity' },
   { key: 'squaring', name: 'Squaring' },
   { key: 'tatsavit', name: 'Tatsavit' },
+  { key: 'lineareq', name: 'Linear Equations' },
+  { key: 'decimals', name: 'Decimals' },
+  { key: 'permcomb', name: 'Perm. & Comb.' },
+  { key: 'limits', name: 'Limits' },
+  { key: 'invtrig', name: 'Inverse Trig' },
+  { key: 'remfactor', name: 'Remainder Theorem' },
+  { key: 'heron', name: "Heron's Formula" },
+  { key: 'shares', name: 'Shares & Dividends' },
+  { key: 'banking', name: 'Banking (RD)' },
+  { key: 'gst', name: 'GST' },
+  { key: 'section', name: 'Section Formula' },
+  { key: 'linprog', name: 'Linear Programming' },
+  { key: 'circmeasure', name: 'Circular Measure' },
+  { key: 'conics', name: 'Conic Sections' },
+  { key: 'diffeq', name: 'Differential Equations' },
 ]
 
 /**
@@ -8379,6 +8528,21 @@ function fetchQuestionForType(type, difficulty) {
     polygons: `${API}/polygons-api/question?difficulty=${difficulty}`,
     similarity: `${API}/similarity-api/question?difficulty=${difficulty}`,
     squaring: `${API}/squaring-api/question?difficulty=${difficulty}`,
+    lineareq: `${API}/lineareq-api/question?difficulty=${difficulty}`,
+    decimals: `${API}/decimals-api/question?difficulty=${difficulty}`,
+    permcomb: `${API}/permcomb-api/question?difficulty=${difficulty}`,
+    limits: `${API}/limits-api/question?difficulty=${difficulty}`,
+    invtrig: `${API}/invtrig-api/question?difficulty=${difficulty}`,
+    remfactor: `${API}/remfactor-api/question?difficulty=${difficulty}`,
+    heron: `${API}/heron-api/question?difficulty=${difficulty}`,
+    shares: `${API}/shares-api/question?difficulty=${difficulty}`,
+    banking: `${API}/banking-api/question?difficulty=${difficulty}`,
+    gst: `${API}/gst-api/question?difficulty=${difficulty}`,
+    section: `${API}/section-api/question?difficulty=${difficulty}`,
+    linprog: `${API}/linprog-api/question?difficulty=${difficulty}`,
+    circmeasure: `${API}/circmeasure-api/question?difficulty=${difficulty}`,
+    conics: `${API}/conics-api/question?difficulty=${difficulty}`,
+    diffeq: `${API}/diffeq-api/question?difficulty=${difficulty}`,
     tatsavit: `${API}/tatsavit-api/question?difficulty=${difficulty}`,
   }
   return fetch(urls[type]).then(r => r.json())
@@ -8436,6 +8600,9 @@ function getPromptForType(type, q) {
     case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
     case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
     case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity':
+    case 'lineareq': case 'decimals': case 'permcomb': case 'limits': case 'invtrig':
+    case 'remfactor': case 'heron': case 'shares': case 'banking': case 'gst':
+    case 'section': case 'linprog': case 'circmeasure': case 'conics': case 'diffeq':
       return q.prompt || ''
     case 'squaring': return q.prompt || `Find ${q.n}²`
     case 'tatsavit': return q.prompt || ''
@@ -8848,9 +9015,12 @@ function CustomApp({ onBack }) {
       case 'bearings': case 'log': case 'diff': case 'bases': case 'circleth':
       case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
       case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
-      case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity': case 'squaring': case 'tatsavit': {
+      case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity': case 'squaring': case 'tatsavit':
+      case 'lineareq': case 'decimals': case 'permcomb': case 'limits': case 'invtrig':
+      case 'remfactor': case 'heron': case 'shares': case 'banking': case 'gst':
+      case 'section': case 'linprog': case 'circmeasure': case 'conics': case 'diffeq': {
         if (answer === '') return
-        const apiMap = { trig: 'trig-api', ineq: 'ineq-api', coordgeom: 'coordgeom-api', prob: 'prob-api', stats: 'stats-api', matrix: 'matrix-api', vectors: 'vectors-api', dotprod: 'dotprod-api', transform: 'transform-api', mensur: 'mensur-api', bearings: 'bearings-api', log: 'log-api', diff: 'diff-api', bases: 'bases-api', circleth: 'circle-api', integ: 'integ-api', stdform: 'stdform-api', bounds: 'bounds-api', sdt: 'sdt-api', variation: 'variation-api', hcflcm: 'hcflcm-api', profitloss: 'profitloss-api', rounding: 'rounding-api', binomial: 'binomial-api', complex: 'complex-api', angles: 'angles-api', triangles: 'triangles-api', congruence: 'congruence-api', pythag: 'pythag-api', polygons: 'polygons-api', similarity: 'similarity-api', squaring: 'squaring-api', tatsavit: 'tatsavit-api' }
+        const apiMap = { trig: 'trig-api', ineq: 'ineq-api', coordgeom: 'coordgeom-api', prob: 'prob-api', stats: 'stats-api', matrix: 'matrix-api', vectors: 'vectors-api', dotprod: 'dotprod-api', transform: 'transform-api', mensur: 'mensur-api', bearings: 'bearings-api', log: 'log-api', diff: 'diff-api', bases: 'bases-api', circleth: 'circle-api', integ: 'integ-api', stdform: 'stdform-api', bounds: 'bounds-api', sdt: 'sdt-api', variation: 'variation-api', hcflcm: 'hcflcm-api', profitloss: 'profitloss-api', rounding: 'rounding-api', binomial: 'binomial-api', complex: 'complex-api', angles: 'angles-api', triangles: 'triangles-api', congruence: 'congruence-api', pythag: 'pythag-api', polygons: 'polygons-api', similarity: 'similarity-api', squaring: 'squaring-api', tatsavit: 'tatsavit-api', lineareq: 'lineareq-api', decimals: 'decimals-api', permcomb: 'permcomb-api', limits: 'limits-api', invtrig: 'invtrig-api', remfactor: 'remfactor-api', heron: 'heron-api', shares: 'shares-api', banking: 'banking-api', gst: 'gst-api', section: 'section-api', linprog: 'linprog-api', circmeasure: 'circmeasure-api', conics: 'conics-api', diffeq: 'diffeq-api' }
         const genPayload = { ...question, userAnswer: answer.trim() }
         res = await fetch(`${API}/${apiMap[curType]}/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(genPayload) })
         data = await res.json()
@@ -8995,6 +9165,9 @@ function CustomApp({ onBack }) {
       case 'integ': case 'stdform': case 'bounds': case 'sdt': case 'variation':
       case 'hcflcm': case 'profitloss': case 'rounding': case 'binomial': case 'complex':
       case 'angles': case 'triangles': case 'congruence': case 'pythag': case 'polygons': case 'similarity': case 'squaring': case 'tatsavit':
+      case 'lineareq': case 'decimals': case 'permcomb': case 'limits': case 'invtrig':
+      case 'remfactor': case 'heron': case 'shares': case 'banking': case 'gst':
+      case 'section': case 'linprog': case 'circmeasure': case 'conics': case 'diffeq':
         return <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={e => { if (e.key === 'Enter') revealed ? advanceRef.current() : handleSubmit() }} />
       case 'gk': case 'vocab':
         if (!question.options) return null

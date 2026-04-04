@@ -5327,7 +5327,7 @@ function tatsavitQuestion(difficulty, level) {
       if (sr === Math.floor(sr)) q += 1;
       const floorAns = Math.floor(Math.sqrt(q));
       const ceilAns = Math.ceil(Math.sqrt(q));
-      return { id, type: 3, typeName: 'Square Root', prompt: `⌊√${q}⌋ or ⌈√${q}⌉ = ?`, answer: floorAns, ceilAnswer: ceilAns, display: `${floorAns} or ${ceilAns}` };
+      return { id, type: 3, typeName: 'Square Root', prompt: `√${q} = ?`, answer: floorAns, ceilAnswer: ceilAns, display: `${floorAns} or ${ceilAns}` };
     }
     case 4: { // Monomial multiplication
       if (!isHarder && !isMed) {
@@ -5382,20 +5382,20 @@ function tatsavitQuestion(difficulty, level) {
         }
       }
     }
-    case 6: { // Addition
-      const digits = isHarder ? randomInt(3, 5) : isMed ? randomInt(2, 3) : 1;
+    case 6: { // Addition — cap at 3 digits (100-999); no need for huge numbers
+      const digits = isHarder ? 3 : isMed ? 2 : 1;
       const lo = digits === 1 ? 1 : Math.pow(10, digits - 1);
       const hi = Math.pow(10, digits) - 1;
       const a = randomInt(lo, hi), b = randomInt(lo, hi);
       const answer = a + b;
       return { id, type: 6, typeName: 'Addition', prompt: `${a} + ${b} = ?`, answer, display: String(answer) };
     }
-    case 7: { // Subtraction
-      const digits = isHarder ? randomInt(3, 5) : isMed ? randomInt(2, 3) : 1;
+    case 7: { // Subtraction — cap at 3 digits (100-999); mastery sufficient at this level
+      const digits = isHarder ? 3 : isMed ? 2 : 1;
       const lo = digits === 1 ? 1 : Math.pow(10, digits - 1);
       const hi = Math.pow(10, digits) - 1;
       let a = randomInt(lo, hi), b = randomInt(lo, hi);
-      if (a < b) [a, b] = [b, a]; // ensure non-negative result for easy/medium
+      if (a < b) [a, b] = [b, a]; // ensure non-negative result
       const answer = a - b;
       return { id, type: 7, typeName: 'Subtraction', prompt: `${a} − ${b} = ?`, answer, display: String(answer) };
     }
@@ -5445,6 +5445,910 @@ app.post('/tatsavit-api/check', express.json(), (req, res) => {
     correct = !isNaN(userNum) && Math.abs(userNum - answer) < 0.05;
   }
 
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 1. LINEAR EQUATIONS (lineareq-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function linearEqQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // ax + b = c
+    const a = randomInt(2, 9);
+    const b = randomInt(1, 20);
+    const c = randomInt(1, 100);
+    const answer = (c - b) / a;
+    const prompt = `Solve for x: ${a}x + ${b} = ${c}`;
+    return { id, difficulty, prompt, answer, display: String(answer.toFixed(2)) };
+  } else if (difficulty === 'medium') {
+    // ax + b = cx + d
+    const a = randomInt(2, 8);
+    const b = randomInt(1, 20);
+    const c = randomInt(2, 8);
+    if (a === c) return linearEqQuestion(difficulty);
+    const d = randomInt(1, 20);
+    const answer = (d - b) / (a - c);
+    const prompt = `Solve for x: ${a}x + ${b} = ${c}x + ${d}`;
+    return { id, difficulty, prompt, answer, display: String(answer.toFixed(2)) };
+  } else if (difficulty === 'hard') {
+    // a(bx + c) = d
+    const a = randomInt(2, 5);
+    const b = randomInt(2, 6);
+    const c = randomInt(1, 10);
+    const d = randomInt(10, 100);
+    const answer = (d / a - c) / b;
+    const prompt = `Solve for x: ${a}(${b}x + ${c}) = ${d}`;
+    return { id, difficulty, prompt, answer, display: String(answer.toFixed(3)) };
+  } else {
+    // (ax+b)/c = d
+    const a = randomInt(2, 6);
+    const b = randomInt(1, 10);
+    const c = randomInt(2, 5);
+    const d = randomInt(2, 10);
+    const answer = (d * c - b) / a;
+    const prompt = `Solve for x: (${a}x + ${b})/${c} = ${d}`;
+    return { id, difficulty, prompt, answer, display: String(answer.toFixed(3)) };
+  }
+}
+
+app.get('/lineareq-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = linearEqQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/lineareq-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  const userNum = parseFloat(userStr);
+  const correct = !isNaN(userNum) && Math.abs(userNum - answer) < 0.1;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 2. DECIMALS (decimals-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function decimalsQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // add two decimals (1 dp)
+    const a = (randomInt(1, 10) * 10 + randomInt(0, 9)) / 10;
+    const b = (randomInt(1, 10) * 10 + randomInt(0, 9)) / 10;
+    const answer = Math.round((a + b) * 100) / 100;
+    const prompt = `${a.toFixed(1)} + ${b.toFixed(1)} = ?`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(1) };
+  } else if (difficulty === 'medium') {
+    // subtract decimals (2 dp)
+    let a = (randomInt(10, 100) + randomInt(0, 99) / 100);
+    let b = (randomInt(10, 100) + randomInt(0, 99) / 100);
+    if (a < b) [a, b] = [b, a];
+    const answer = Math.round((a - b) * 100) / 100;
+    const prompt = `${a.toFixed(2)} − ${b.toFixed(2)} = ?`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(2) };
+  } else if (difficulty === 'hard') {
+    // multiply decimal by integer
+    const dec = (randomInt(10, 50) + randomInt(0, 99) / 100);
+    const int = randomInt(2, 15);
+    const answer = Math.round(dec * int * 100) / 100;
+    const prompt = `${dec.toFixed(2)} × ${int} = ?`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(2) };
+  } else {
+    // divide decimal by decimal
+    const a = (randomInt(20, 100) + randomInt(0, 99) / 100);
+    const b = (randomInt(2, 20) + randomInt(0, 99) / 100);
+    const answer = Math.round((a / b) * 100) / 100;
+    const prompt = `${a.toFixed(2)} ÷ ${b.toFixed(2)} = ?`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(2) };
+  }
+}
+
+app.get('/decimals-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = decimalsQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/decimals-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  const userNum = parseFloat(userStr);
+  const correct = !isNaN(userNum) && Math.abs(userNum - answer) < 0.01;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. PERMUTATIONS & COMBINATIONS (permcomb-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function factorial(n) {
+  if (n < 0) return undefined;
+  if (n === 0 || n === 1) return 1;
+  let result = 1;
+  for (let i = 2; i <= n; i++) result *= i;
+  return result;
+}
+
+function permcombQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // nPr (n≤8, r≤3)
+    const n = randomInt(4, 8);
+    const r = randomInt(1, Math.min(3, n));
+    const answer = factorial(n) / factorial(n - r);
+    const prompt = `Calculate ${n}P${r} (permutations)`;
+    return { id, difficulty, prompt, answer, display: String(answer) };
+  } else if (difficulty === 'medium') {
+    // nCr (n≤10, r≤4)
+    const n = randomInt(4, 10);
+    const r = randomInt(1, Math.min(4, n));
+    const answer = factorial(n) / (factorial(r) * factorial(n - r));
+    const prompt = `Calculate ${n}C${r} (combinations)`;
+    return { id, difficulty, prompt, answer, display: String(answer) };
+  } else if (difficulty === 'hard') {
+    // word problems
+    const scenarios = [
+      { n: 5, r: 3, prompt: 'How many ways can you arrange 3 books from 5 different books on a shelf?' },
+      { n: 6, r: 2, prompt: 'How many ways to choose 2 presidents from 6 candidates?' },
+      { n: 7, r: 4, prompt: 'How many ways to select 4 students from 7 for a committee?' }
+    ];
+    const scenario = triPick(scenarios);
+    const answer = scenario.r <= scenario.n ? factorial(scenario.n) / (factorial(scenario.r) * factorial(scenario.n - scenario.r)) : 0;
+    return { id, difficulty, prompt: scenario.prompt, answer, display: String(answer) };
+  } else {
+    // mixed - 3-letter words from ABCDE with/without repetition
+    const variant = Math.random();
+    if (variant < 0.5) {
+      // without repetition: P(5,3)
+      const answer = factorial(5) / factorial(2);
+      const prompt = 'How many 3-letter words can be formed from {A, B, C, D, E} without repetition?';
+      return { id, difficulty, prompt, answer, display: String(answer) };
+    } else {
+      // with repetition: 5^3
+      const answer = 125;
+      const prompt = 'How many 3-letter words can be formed from {A, B, C, D, E} with repetition allowed?';
+      return { id, difficulty, prompt, answer, display: String(answer) };
+    }
+  }
+}
+
+app.get('/permcomb-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = permcombQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/permcomb-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  const userNum = parseInt(userStr, 10);
+  const correct = !isNaN(userNum) && userNum === answer;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. LIMITS (limits-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function limitsQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // lim x→a of (bx+c) — direct substitution
+    const a = randomInt(1, 5);
+    const b = randomInt(2, 6);
+    const c = randomInt(1, 10);
+    const answer = b * a + c;
+    const prompt = `Find lim(x→${a}) [${b}x + ${c}]`;
+    return { id, difficulty, prompt, answer, display: String(answer) };
+  } else if (difficulty === 'medium') {
+    // lim x→a of (x²-a²)/(x-a) = 2a (factorable)
+    const a = randomInt(2, 6);
+    const answer = 2 * a;
+    const prompt = `Find lim(x→${a}) [(x² − ${a * a})/(x − ${a})]`;
+    return { id, difficulty, prompt, answer, display: String(answer) };
+  } else if (difficulty === 'hard') {
+    // lim x→0 of sin(ax)/bx = a/b
+    const a = randomInt(1, 4);
+    const b = randomInt(1, 4);
+    const answer = a / b;
+    const prompt = `Find lim(x→0) [sin(${a}x)/${b}x]`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(3) };
+  } else {
+    // lim x→∞ of (ax²+bx+c)/(dx²+ex+f) = a/d
+    const a = randomInt(1, 5);
+    const d = randomInt(1, 5);
+    const b = randomInt(1, 10);
+    const e = randomInt(1, 10);
+    const c = randomInt(1, 10);
+    const f = randomInt(1, 10);
+    const answer = a / d;
+    const prompt = `Find lim(x→∞) [(${a}x² + ${b}x + ${c})/(${d}x² + ${e}x + ${f})]`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(3) };
+  }
+}
+
+app.get('/limits-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = limitsQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/limits-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  const userNum = parseFloat(userStr);
+  const correct = !isNaN(userNum) && Math.abs(userNum - answer) < 0.05;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 5. INVERSE TRIGONOMETRIC (invtrig-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function invtrigQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // standard values in degrees
+    const values = [
+      { val: 0, func: 'arcsin', ans: 0 },
+      { val: '1/2', func: 'arcsin', ans: 30 },
+      { val: 1, func: 'arcsin', ans: 90 },
+      { val: 1, func: 'arccos', ans: 0 },
+      { val: '1/2', func: 'arccos', ans: 60 },
+      { val: 0, func: 'arccos', ans: 90 },
+      { val: 0, func: 'arctan', ans: 0 },
+      { val: 1, func: 'arctan', ans: 45 }
+    ];
+    const chosen = triPick(values);
+    const prompt = `Find ${chosen.func}(${chosen.val}) in degrees`;
+    return { id, difficulty, prompt, answer: chosen.ans, display: String(chosen.ans) };
+  } else if (difficulty === 'medium') {
+    // arcsin(√3/2), arccos(√2/2), etc.
+    const values = [
+      { val: '√3/2', func: 'arcsin', ans: 60 },
+      { val: '√2/2', func: 'arcsin', ans: 45 },
+      { val: '√2/2', func: 'arccos', ans: 45 },
+      { val: '√3/2', func: 'arccos', ans: 30 }
+    ];
+    const chosen = triPick(values);
+    const prompt = `Find ${chosen.func}(${chosen.val}) in degrees`;
+    return { id, difficulty, prompt, answer: chosen.ans, display: String(chosen.ans) };
+  } else if (difficulty === 'hard') {
+    // sin(arccos(x)) type compositions
+    const x = (randomInt(3, 9)) / 10;
+    const answer = Math.sqrt(1 - x * x);
+    const prompt = `Find sin(arccos(${x.toFixed(1)}))`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(3) };
+  } else {
+    // principal value
+    const x = (randomInt(1, 9)) / 10;
+    const answer = Math.atan(x) * 180 / Math.PI;
+    const prompt = `Find principal value of arctan(${x.toFixed(1)}) in degrees`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(2) };
+  }
+}
+
+app.get('/invtrig-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = invtrigQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/invtrig-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  const userNum = parseFloat(userStr);
+  const correct = !isNaN(userNum) && Math.abs(userNum - answer) < 0.5;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6. REMAINDER & FACTOR THEOREM (remfactor-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function remfactorQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // f(x) = ax² + bx + c, find remainder when divided by (x-a)
+    const a = randomInt(2, 5);
+    const b = randomInt(1, 10);
+    const c = randomInt(1, 20);
+    const xVal = randomInt(1, 5);
+    const answer = a * xVal * xVal + b * xVal + c;
+    const prompt = `Find remainder when f(x) = ${a}x² + ${b}x + ${c} is divided by (x − ${xVal})`;
+    return { id, difficulty, prompt, answer, display: String(answer) };
+  } else if (difficulty === 'medium') {
+    // factor theorem: is (x-a) a factor?
+    const a = randomInt(2, 5);
+    const answer_val = randomInt(1, 6);
+    const b = randomInt(1, 8);
+    const remainder = randomInt(1, 10);
+    const isFactor = Math.random() < 0.5;
+    const result = isFactor ? 0 : remainder;
+    const prompt = `Is (x − ${answer_val}) a factor of f(x) = ${a}x² + ${b}x + ${result}? Answer yes or no`;
+    const answerStr = isFactor ? 'yes' : 'no';
+    return { id, difficulty, prompt, answer: answerStr, display: answerStr };
+  } else if (difficulty === 'hard') {
+    // degree 3 polynomial remainder
+    const a = randomInt(1, 4);
+    const b = randomInt(1, 6);
+    const c = randomInt(1, 10);
+    const d = randomInt(1, 15);
+    const xVal = randomInt(1, 4);
+    const answer = a * xVal * xVal * xVal + b * xVal * xVal + c * xVal + d;
+    const prompt = `Find remainder when f(x) = ${a}x³ + ${b}x² + ${c}x + ${d} is divided by (x − ${xVal})`;
+    return { id, difficulty, prompt, answer, display: String(answer) };
+  } else {
+    // find k such that (x-a) is factor of x³+kx+b
+    const a = randomInt(2, 5);
+    const b = randomInt(1, 20);
+    const k = randomInt(1, 20);
+    const xVal = randomInt(1, 4);
+    const answer = -(xVal * xVal * xVal + b) / xVal;
+    const prompt = `Find k such that (x − ${xVal}) is a factor of x³ + kx + ${b}`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(2) };
+  }
+}
+
+app.get('/remfactor-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = remfactorQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/remfactor-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  let userStr = (req.body.userAnswer || '').trim().toLowerCase();
+  const correct = (typeof answer === 'string')
+    ? userStr === answer.toLowerCase()
+    : !isNaN(parseFloat(userStr)) && Math.abs(parseFloat(userStr) - answer) < 0.1;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 7. HERON'S FORMULA (heron-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function heronQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // semi-perimeter
+    const a = randomInt(3, 10);
+    const b = randomInt(3, 10);
+    const c = randomInt(3, 10);
+    if (a + b <= c) return heronQuestion(difficulty);
+    const answer = (a + b + c) / 2;
+    const prompt = `Find semi-perimeter of triangle with sides ${a}, ${b}, ${c}`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(1) };
+  } else if (difficulty === 'medium') {
+    // Pythagorean triple: area is integer
+    const triples = [[3, 4, 5], [5, 12, 13], [8, 15, 17], [7, 24, 25]];
+    const [a, b, c] = triPick(triples);
+    const s = (a + b + c) / 2;
+    const answer = Math.sqrt(s * (s - a) * (s - b) * (s - c));
+    const prompt = `Find area using Heron's formula: sides ${a}, ${b}, ${c}`;
+    return { id, difficulty, prompt, answer, display: String(Math.round(answer)) };
+  } else if (difficulty === 'hard') {
+    // non-integer answer, round to 1 dp
+    const a = randomInt(5, 12);
+    const b = randomInt(5, 12);
+    const c = randomInt(5, 12);
+    if (a + b <= c) return heronQuestion(difficulty);
+    const s = (a + b + c) / 2;
+    const answer = Math.sqrt(s * (s - a) * (s - b) * (s - c));
+    const prompt = `Find area using Heron's formula: sides ${a}, ${b}, ${c}`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(1) };
+  } else {
+    // given area and two sides, find third
+    const a = randomInt(4, 10);
+    const b = randomInt(4, 10);
+    const area = randomInt(10, 40);
+    const s_val = (area * 2) / (a + b);
+    const c = 2 * s_val - a - b;
+    const answer = Math.abs(c);
+    const prompt = `Triangle has sides ${a} and ${b}, area = ${area}. Find the third side`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(2) };
+  }
+}
+
+app.get('/heron-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = heronQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/heron-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  const userNum = parseFloat(userStr);
+  const correct = !isNaN(userNum) && Math.abs(userNum - answer) < 0.5;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 8. SHARES & DIVIDENDS (shares-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function sharesQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // dividend = shares × dividend_per_share
+    const shares = randomInt(10, 100);
+    const divPerShare = randomInt(2, 10);
+    const answer = shares * divPerShare;
+    const prompt = `Calculate dividend: ${shares} shares, dividend per share = Rs ${divPerShare}`;
+    return { id, difficulty, prompt, answer, display: String(answer) };
+  } else if (difficulty === 'medium') {
+    // income = shares × (faceValue/100) × dividend%
+    const shares = randomInt(50, 200);
+    const faceValue = 100;
+    const divPercent = randomInt(5, 20);
+    const answer = shares * (faceValue / 100) * (divPercent / 100) * 100;
+    const prompt = `Income from ${shares} shares, face value Rs 100, dividend ${divPercent}%`;
+    return { id, difficulty, prompt, answer, display: String(Math.round(answer)) };
+  } else if (difficulty === 'hard') {
+    // return% = (dividend / market_value) × 100
+    const marketValue = randomInt(100, 200);
+    const faceValue = 100;
+    const divPercent = randomInt(5, 15);
+    const dividend = (faceValue * divPercent) / 100;
+    const returnPct = (dividend / marketValue) * 100;
+    const answer = returnPct;
+    const prompt = `Find return% given market value Rs ${marketValue}, face value Rs ${faceValue}, dividend ${divPercent}%`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(2) };
+  } else {
+    // find shares to buy for target income
+    const faceValue = 100;
+    const divPercent = randomInt(6, 12);
+    const targetIncome = randomInt(500, 2000);
+    const dividend = (faceValue * divPercent) / 100;
+    const answer = targetIncome / dividend;
+    const prompt = `How many shares (face value Rs 100, dividend ${divPercent}%) needed for income of Rs ${targetIncome}?`;
+    return { id, difficulty, prompt, answer, display: String(Math.round(answer)) };
+  }
+}
+
+app.get('/shares-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = sharesQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/shares-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  const userNum = parseFloat(userStr);
+  const correct = !isNaN(userNum) && Math.abs(userNum - answer) < 1;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 9. BANKING / RECURRING DEPOSITS (banking-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function bankingQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // SI = (P × R × T) / 100
+    const P = randomInt(1000, 10000);
+    const R = randomInt(2, 10);
+    const T = randomInt(1, 5);
+    const answer = (P * R * T) / 100;
+    const prompt = `Simple Interest: Principal Rs ${P}, Rate ${R}%, Time ${T} years`;
+    return { id, difficulty, prompt, answer, display: String(answer.toFixed(0)) };
+  } else if (difficulty === 'medium') {
+    // CI = P(1 + r/100)^n - P
+    const P = randomInt(5000, 20000);
+    const R = randomInt(4, 12);
+    const T = randomInt(1, 4);
+    const amount = P * Math.pow(1 + R / 100, T);
+    const answer = amount - P;
+    const prompt = `Compound Interest: Principal Rs ${P}, Rate ${R}%, Time ${T} years`;
+    return { id, difficulty, prompt, answer, display: String(answer.toFixed(0)) };
+  } else if (difficulty === 'hard') {
+    // RD maturity: MV = P*n + P*n(n+1)/(2*12) * (r/100)
+    const P = randomInt(500, 2000);
+    const r = randomInt(6, 10);
+    const n = randomInt(12, 36);
+    const MV = P * n + (P * n * (n + 1) / (2 * 12)) * (r / 100);
+    const answer = MV;
+    const prompt = `RD maturity: Monthly Rs ${P}, Rate ${r}%, Months ${n}`;
+    return { id, difficulty, prompt, answer, display: String(Math.round(answer)) };
+  } else {
+    // find P given maturity value
+    const MV = randomInt(10000, 50000);
+    const r = randomInt(6, 10);
+    const n = randomInt(12, 36);
+    const P = MV / (n + (n * (n + 1) / (2 * 12)) * (r / 100));
+    const answer = P;
+    const prompt = `RD: Find monthly installment for maturity Rs ${MV}, Rate ${r}%, Months ${n}`;
+    return { id, difficulty, prompt, answer, display: String(Math.round(answer)) };
+  }
+}
+
+app.get('/banking-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = bankingQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/banking-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  const userNum = parseFloat(userStr);
+  const correct = !isNaN(userNum) && Math.abs(userNum - answer) < 10;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 10. GST (gst-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function gstQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // GST amount = price × (rate/100)
+    const price = randomInt(100, 1000);
+    const rate = triPick([5, 12, 18]);
+    const answer = (price * rate) / 100;
+    const prompt = `Find GST on price Rs ${price} at rate ${rate}%`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(0) };
+  } else if (difficulty === 'medium') {
+    // Total = price + GST
+    const price = randomInt(500, 2000);
+    const rate = triPick([5, 12, 18]);
+    const gst = (price * rate) / 100;
+    const answer = price + gst;
+    const prompt = `Total price including ${rate}% GST on Rs ${price}`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(0) };
+  } else if (difficulty === 'hard') {
+    // CGST + SGST = GST
+    const listPrice = randomInt(1000, 5000);
+    const rate = triPick([5, 12, 18]);
+    const gst = (listPrice * rate) / 100;
+    const cgst = gst / 2;
+    const sgst = gst / 2;
+    const answer = listPrice + cgst + sgst;
+    const prompt = `Intra-state: List price Rs ${listPrice}, GST ${rate}%. Find total (with CGST+SGST)`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(0) };
+  } else {
+    // IGST input tax credit
+    const billedAmount = randomInt(5000, 20000);
+    const rate = triPick([5, 12, 18]);
+    const igst = (billedAmount * rate) / 100;
+    const answer = igst;
+    const prompt = `IGST at ${rate}% on Rs ${billedAmount}. Find input tax credit`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(0) };
+  }
+}
+
+app.get('/gst-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = gstQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/gst-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  const userNum = parseFloat(userStr);
+  const correct = !isNaN(userNum) && Math.abs(userNum - answer) < 1;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 11. SECTION FORMULA (section-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function sectionQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // midpoint
+    const x1 = randomInt(-10, 10);
+    const y1 = randomInt(-10, 10);
+    const x2 = randomInt(-10, 10);
+    const y2 = randomInt(-10, 10);
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+    const prompt = `Find midpoint of (${x1},${y1}) and (${x2},${y2})`;
+    return { id, difficulty, prompt, answer: [midX, midY], display: `${midX.toFixed(1)},${midY.toFixed(1)}` };
+  } else if (difficulty === 'medium') {
+    // point dividing m:n internally
+    const x1 = randomInt(-5, 5);
+    const y1 = randomInt(-5, 5);
+    const x2 = randomInt(-5, 5);
+    const y2 = randomInt(-5, 5);
+    const m = randomInt(1, 4);
+    const n = randomInt(1, 4);
+    const px = (m * x2 + n * x1) / (m + n);
+    const py = (m * y2 + n * y1) / (m + n);
+    const prompt = `Point dividing (${x1},${y1}) and (${x2},${y2}) in ratio ${m}:${n}`;
+    return { id, difficulty, prompt, answer: [px, py], display: `${px.toFixed(2)},${py.toFixed(2)}` };
+  } else if (difficulty === 'hard') {
+    // find ratio given point
+    const x1 = randomInt(-5, 5);
+    const y1 = randomInt(-5, 5);
+    const x2 = randomInt(-5, 5);
+    const y2 = randomInt(-5, 5);
+    const t = randomInt(1, 3) / (randomInt(1, 3));
+    const px = (t * x2 + x1) / (t + 1);
+    const py = (t * y2 + y1) / (t + 1);
+    const prompt = `Point (${px.toFixed(1)},${py.toFixed(1)}) divides (${x1},${y1}) and (${x2},${y2}). Find ratio m:n`;
+    return { id, difficulty, prompt, answer: t, display: `1:${(1/t).toFixed(2)}` };
+  } else {
+    // centroid of triangle
+    const x1 = randomInt(-5, 5);
+    const y1 = randomInt(-5, 5);
+    const x2 = randomInt(-5, 5);
+    const y2 = randomInt(-5, 5);
+    const x3 = randomInt(-5, 5);
+    const y3 = randomInt(-5, 5);
+    const cx = (x1 + x2 + x3) / 3;
+    const cy = (y1 + y2 + y3) / 3;
+    const prompt = `Centroid of triangle with vertices (${x1},${y1}), (${x2},${y2}), (${x3},${y3})`;
+    return { id, difficulty, prompt, answer: [cx, cy], display: `${cx.toFixed(2)},${cy.toFixed(2)}` };
+  }
+}
+
+app.get('/section-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = sectionQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/section-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  if (Array.isArray(answer)) {
+    const parts = userStr.split(',').map(p => parseFloat(p.trim()));
+    const correct = parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1]) &&
+                    Math.abs(parts[0] - answer[0]) < 0.2 && Math.abs(parts[1] - answer[1]) < 0.2;
+    res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+  } else {
+    const userNum = parseFloat(userStr);
+    const correct = !isNaN(userNum) && Math.abs(userNum - answer) < 0.2;
+    res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 12. LINEAR PROGRAMMING (linprog-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function linprogQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // evaluate Z at given vertex
+    const a = randomInt(2, 5);
+    const b = randomInt(2, 5);
+    const vx = randomInt(1, 5);
+    const vy = randomInt(1, 5);
+    const answer = a * vx + b * vy;
+    const prompt = `Maximize Z = ${a}x + ${b}y at vertex (${vx}, ${vy})`;
+    return { id, difficulty, prompt, answer, display: String(answer) };
+  } else if (difficulty === 'medium') {
+    // max Z at given vertices
+    const a = randomInt(2, 4);
+    const b = randomInt(2, 4);
+    const vertices = [[0, 0], [randomInt(2, 6), 0], [0, randomInt(2, 6)], [randomInt(1, 3), randomInt(1, 3)]];
+    let maxVal = -Infinity;
+    vertices.forEach(([x, y]) => {
+      const val = a * x + b * y;
+      maxVal = Math.max(maxVal, val);
+    });
+    const prompt = `Maximize Z = ${a}x + ${b}y at vertices ${JSON.stringify(vertices)}`;
+    return { id, difficulty, prompt, answer: maxVal, display: String(maxVal) };
+  } else if (difficulty === 'hard') {
+    // find corner points with 2 constraints
+    const a = randomInt(1, 3);
+    const b = randomInt(1, 3);
+    const c1 = randomInt(4, 8);
+    const c2 = randomInt(4, 8);
+    const prompt = `Minimize Z = ${a}x + ${b}y subject to x + y ≥ ${c1}, 2x + y ≥ ${c2}, x,y ≥ 0`;
+    const corners = [[0, c1], [0, c2], [c1, 0], [c2/2, 0]].filter(p => p[0] >= 0 && p[1] >= 0);
+    let minVal = Infinity;
+    corners.forEach(([x, y]) => {
+      if (x + y >= c1 && 2 * x + y >= c2) {
+        minVal = Math.min(minVal, a * x + b * y);
+      }
+    });
+    return { id, difficulty, prompt, answer: minVal < Infinity ? minVal : 0, display: String(minVal < Infinity ? Math.round(minVal) : 0) };
+  } else {
+    // 3 constraints
+    const a = randomInt(1, 3);
+    const b = randomInt(1, 3);
+    const c1 = randomInt(3, 6);
+    const c2 = randomInt(3, 6);
+    const c3 = randomInt(3, 6);
+    const prompt = `Maximize Z = ${a}x + ${b}y subject to: x + y ≤ ${c1}, x ≤ ${c2}, y ≤ ${c3}, x,y ≥ 0`;
+    const corners = [[0, 0], [c2, 0], [0, c3], [c2, Math.min(c3, c1 - c2)]];
+    let maxVal = 0;
+    corners.forEach(([x, y]) => {
+      if (x + y <= c1 && x <= c2 && y <= c3) {
+        maxVal = Math.max(maxVal, a * x + b * y);
+      }
+    });
+    return { id, difficulty, prompt, answer: maxVal, display: String(maxVal) };
+  }
+}
+
+app.get('/linprog-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = linprogQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/linprog-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  const userNum = parseFloat(userStr);
+  const correct = !isNaN(userNum) && Math.abs(userNum - answer) < 1;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 13. CIRCULAR MEASURE (circmeasure-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function circmeasureQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // degrees to radians
+    const angles = [30, 45, 60, 90, 180, 360];
+    const deg = triPick(angles);
+    const answer = (deg * Math.PI) / 180;
+    const prompt = `Convert ${deg}° to radians`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(2) };
+  } else if (difficulty === 'medium') {
+    // radians to degrees
+    const radMult = triPick([0.5, 1, 1.5, 2, 3]);
+    const rad = radMult;
+    const answer = (rad * 180) / Math.PI;
+    const prompt = `Convert ${rad}π radians to degrees`;
+    return { id, difficulty, prompt, answer, display: String(Math.round(answer)) };
+  } else if (difficulty === 'hard') {
+    // arc length = rθ
+    const r = randomInt(2, 8);
+    const theta = (randomInt(30, 180) * Math.PI) / 180;
+    const answer = r * theta;
+    const deg = Math.round((theta * 180) / Math.PI);
+    const prompt = `Arc length: radius ${r}, angle ${deg}° (θ in radians)`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(2) };
+  } else {
+    // area of sector = (1/2)r²θ
+    const r = randomInt(3, 10);
+    const theta = (randomInt(45, 180) * Math.PI) / 180;
+    const answer = (1 / 2) * r * r * theta;
+    const deg = Math.round((theta * 180) / Math.PI);
+    const prompt = `Sector area: radius ${r}, angle ${deg}° (θ in radians)`;
+    return { id, difficulty, prompt, answer, display: answer.toFixed(2) };
+  }
+}
+
+app.get('/circmeasure-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = circmeasureQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/circmeasure-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  const userStr = (req.body.userAnswer || '').trim();
+  const userNum = parseFloat(userStr);
+  const correct = !isNaN(userNum) && Math.abs(userNum - answer) < 0.5;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 14. CONIC SECTIONS (conics-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function conicsQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // identify conic type
+    const types = [
+      { eq: 'x² + y² = 25', type: 'circle' },
+      { eq: 'y² = 8x', type: 'parabola' },
+      { eq: 'x²/25 + y²/9 = 1', type: 'ellipse' },
+      { eq: 'x²/16 − y²/9 = 1', type: 'hyperbola' }
+    ];
+    const chosen = triPick(types);
+    const prompt = `Identify conic: ${chosen.eq}`;
+    return { id, difficulty, prompt, answer: chosen.type, display: chosen.type };
+  } else if (difficulty === 'medium') {
+    // find radius of circle x²+y²+Dx+Ey+F=0
+    const h = randomInt(-5, 5);
+    const k = randomInt(-5, 5);
+    const r = randomInt(2, 8);
+    const D = -2 * h;
+    const E = -2 * k;
+    const F = h * h + k * k - r * r;
+    const answer = r;
+    const prompt = `Find radius: x² + y² + ${D}x + ${E}y + ${F} = 0`;
+    return { id, difficulty, prompt, answer, display: String(answer) };
+  } else if (difficulty === 'hard') {
+    // find eccentricity of ellipse
+    const a = randomInt(5, 10);
+    const b = randomInt(2, a - 1);
+    const c = Math.sqrt(a * a - b * b);
+    const ecc = c / a;
+    const prompt = `Ellipse: x²/${a * a} + y²/${b * b} = 1. Find eccentricity`;
+    return { id, difficulty, prompt, answer: ecc, display: ecc.toFixed(3) };
+  } else {
+    // find focus of parabola y²=4ax
+    const a = randomInt(1, 5);
+    const answer = a;
+    const focus_x = a;
+    const prompt = `Parabola: y² = ${4 * a}x. Find x-coordinate of focus`;
+    return { id, difficulty, prompt, answer, display: String(answer) };
+  }
+}
+
+app.get('/conics-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = conicsQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/conics-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  let userStr = (req.body.userAnswer || '').trim().toLowerCase();
+  const correct = (typeof answer === 'string')
+    ? userStr === answer.toLowerCase()
+    : !isNaN(parseFloat(userStr)) && Math.abs(parseFloat(userStr) - answer) < 0.1;
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 15. DIFFERENTIAL EQUATIONS (diffeq-api)
+// ═══════════════════════════════════════════════════════════════════════════
+function diffeqQuestion(difficulty) {
+  const id = uuid();
+  if (difficulty === 'easy') {
+    // find order
+    const orders = [
+      { de: "dy/dx = 2x", order: 1 },
+      { de: "d²y/dx² + 3dy/dx = 0", order: 2 },
+      { de: "d³y/dx³ − y = x", order: 3 },
+      { de: "(dy/dx)² + dy/dx = x", order: 1 }
+    ];
+    const chosen = triPick(orders);
+    const prompt = `Find order: ${chosen.de}`;
+    return { id, difficulty, prompt, answer: chosen.order, display: String(chosen.order) };
+  } else if (difficulty === 'medium') {
+    // find degree
+    const degrees = [
+      { de: "(dy/dx)² + dy/dx = x", deg: 2 },
+      { de: "d²y/dx² + (dy/dx)³ = 0", deg: 3 },
+      { de: "(d²y/dx²)² = 4(dy/dx)", deg: 2 },
+      { de: "dy/dx + y = x", deg: 1 }
+    ];
+    const chosen = triPick(degrees);
+    const prompt = `Find degree: ${chosen.de}`;
+    return { id, difficulty, prompt, answer: chosen.deg, display: String(chosen.deg) };
+  } else if (difficulty === 'hard') {
+    // verify solution
+    const solutions = [
+      { de: "dy/dx = 2x", sol: "y = x² + C", isValid: true },
+      { de: "dy/dx + y = 0", sol: "y = e^(−x)", isValid: true },
+      { de: "dy/dx = y", sol: "y = e^x", isValid: true },
+      { de: "d²y/dx² + y = 0", sol: "y = sin(x)", isValid: true }
+    ];
+    const chosen = triPick(solutions);
+    const prompt = `Is y = ${chosen.sol.split('=')[1].trim()} a solution of ${chosen.de}? (yes/no)`;
+    const answerStr = chosen.isValid ? 'yes' : 'no';
+    return { id, difficulty, prompt, answer: answerStr, display: answerStr };
+  } else {
+    // solve separable dy/dx = f(x)
+    const a = randomInt(1, 4);
+    const b = randomInt(1, 4);
+    const prompt = `Solve: dy/dx = ${a}x + ${b}`;
+    const answerStr = `y = ${a}x²/2 + ${b}x + C`;
+    return { id, difficulty, prompt, answer: answerStr, display: answerStr };
+  }
+}
+
+app.get('/diffeq-api/question', (req, res) => {
+  const difficulty = req.query.difficulty || 'easy';
+  const q = diffeqQuestion(difficulty);
+  res.json(q);
+});
+
+app.post('/diffeq-api/check', express.json(), (req, res) => {
+  const { answer, display } = req.body;
+  let userStr = (req.body.userAnswer || '').trim().toLowerCase();
+  const correct = (typeof answer === 'string')
+    ? userStr === answer.toLowerCase() || userStr === answer.toLowerCase().replace(/\s+/g, '')
+    : !isNaN(parseInt(userStr, 10)) && parseInt(userStr, 10) === answer;
   res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
 });
 

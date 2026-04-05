@@ -194,6 +194,46 @@ function renderFeedback(feedback, isCorrect) {
   )
 }
 
+/**
+ * DifficultySlider — Interactive difficulty bar with draggable seeker.
+ * Props:
+ *   pct        — current position 0-100
+ *   onChange   — (newPct: number) => void  called on drag/click with 0-100
+ *   maxWidth   — optional, default 260
+ */
+function DifficultySlider({ pct, onChange, maxWidth = 260 }) {
+  const barRef = useRef(null)
+  const pctToPos = (p) => Math.min(100, Math.max(0, p))
+  const handleInteraction = (clientX) => {
+    const bar = barRef.current
+    if (!bar) return
+    const rect = bar.getBoundingClientRect()
+    const newPct = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100))
+    onChange(newPct)
+  }
+  const onPointerDown = (e) => {
+    e.preventDefault()
+    handleInteraction(e.clientX)
+    const onMove = (ev) => handleInteraction(ev.clientX)
+    const onUp = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp) }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+  return (
+    <div ref={barRef} onPointerDown={onPointerDown} style={{ maxWidth, margin: '0.3rem auto 0.6rem', height: 20, borderRadius: 10, background: 'var(--color-border, #e0e0e0)', position: 'relative', cursor: 'pointer', touchAction: 'none' }}>
+      <div style={{ position: 'absolute', top: 7, left: 0, right: 0, height: 6, borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)' }} />
+      <div style={{
+        position: 'absolute', top: 1, left: `calc(${pctToPos(pct)}% - 9px)`,
+        width: 18, height: 18, borderRadius: '50%',
+        background: '#fff', border: '2.5px solid var(--clr-accent, #e8864a)',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+        transition: 'left 0.3s ease',
+        pointerEvents: 'none'
+      }} />
+    </div>
+  )
+}
+
 function NumPad({ value, onChange, onSubmit, disabled, showDecimal, showSlash, showCaret, showX }) {
   /**
    * press(key): Handle numpad key press
@@ -2496,7 +2536,7 @@ function AdditionApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
@@ -2743,7 +2783,7 @@ function BasicArithApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} />
@@ -2998,7 +3038,7 @@ function QuadraticApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         <div className="question-box">
           {loading || !question ? 'Loading question…' : (
             <>
@@ -3573,7 +3613,7 @@ function VocabApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         <div className="question-box vocab-word">{loading || !question ? 'Loading question…' : question.question}</div>
         {question && (
           <div className="options-list">
@@ -3822,13 +3862,7 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
             {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
           </div>
           {isAdaptive && (
-            <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}>
-              <div style={{
-                width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3,
-                background: `linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)`,
-                transition: 'width 0.5s ease'
-              }} />
-            </div>
+            <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />
           )}
           {question && <div style={{ textAlign: 'center' }}>
             <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '20px 0', lineHeight: '1.6' }}>{question.prompt}</div>
@@ -4216,9 +4250,7 @@ function DotProdApp({ onBack }) {
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
         {isAdaptive && (
-          <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}>
-            <div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} />
-          </div>
+          <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />
         )}
         {question && <div style={{ textAlign: 'center' }}>
           {renderQuestion()}
@@ -4756,9 +4788,7 @@ function TatsavitApp({ onBack }) {
           {!isAdaptive && <div className="progress-pill">{question?.typeName || '...'}</div>}
         </div>
         {isAdaptive && (
-          <div style={{ maxWidth: 300, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}>
-            <div style={{ width: `${levelPct}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} />
-          </div>
+          <DifficultySlider pct={levelPct} maxWidth={300} onChange={(p) => { const v = (p / 100) * 8; setAdaptLevel(v); adaptLevelRef.current = v }} />
         )}
         {question && <div style={{ textAlign: 'center' }}>
           <div className="question-box" style={{ fontSize: '1.4rem', margin: '16px auto', lineHeight: '1.6' }}>{question.prompt}</div>
@@ -4977,9 +5007,7 @@ function SquaringApp({ onBack }) {
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
         {isAdaptive && (
-          <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}>
-            <div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} />
-          </div>
+          <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />
         )}
         {question && <div style={{ textAlign: 'center' }}>
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '16px 0 6px', lineHeight: '1.6' }}>
@@ -5609,7 +5637,7 @@ function SetsApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && <div style={{ textAlign: 'center' }}>
           <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '20px 0', lineHeight: '1.6' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={question.type === 'list' ? 'e.g. {1, 3, 5} or empty' : 'e.g. 12'} onKeyDown={handleKeyDown} autoFocus />
@@ -5762,7 +5790,7 @@ function SequencesApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && <div style={{ textAlign: 'center' }}>
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="e.g. 42 or 3/4" onKeyDown={handleKeyDown} autoFocus />
@@ -5931,7 +5959,7 @@ function RatioApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && <div style={{ textAlign: 'center' }}>
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={placeholders[isAdaptive ? adaptiveLevel(adaptScore) : difficulty] || 'Type your answer'} onKeyDown={handleKeyDown} autoFocus />
@@ -6099,7 +6127,7 @@ function PercentApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && <div style={{ textAlign: 'center' }}>
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={handleKeyDown} autoFocus />
@@ -6301,7 +6329,7 @@ function IndicesApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && (
           <div style={{ textAlign: 'center' }}>
             <div className="question-prompt" style={{ fontSize: '1.6rem', margin: '20px 0' }}>{question.prompt} = ?</div>
@@ -6557,7 +6585,7 @@ function SurdsApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && (
           <div style={{ textAlign: 'center' }}>
             <div className="question-prompt" style={{ fontSize: '1.6rem', margin: '20px 0' }}>{getPrompt(question)}</div>
@@ -6880,7 +6908,7 @@ function FractionAddApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && (
           <div className="fraction-problem">
             {/* Render the problem: n1/d1 + n2/d2 or mixed numbers */}
@@ -7428,7 +7456,7 @@ function SqrtApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
@@ -7654,7 +7682,7 @@ function PolyMulApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && <>
           <div className="question-box">
             <span className="poly-expr">({question.p1Display})</span> × <span className="poly-expr">({question.p2Display})</span>
@@ -7892,7 +7920,7 @@ function PolyFactorApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && <>
           <div className="question-box">{question.display} = 0</div>
           <div className="factor-inputs">
@@ -8168,7 +8196,7 @@ function PrimeFactorApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && <>
           <div className="question-box prime-chain">{buildChain()}</div>
           {!revealed && remaining > 1 && <div className="prime-input-row">
@@ -8403,7 +8431,7 @@ function QFormulaApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && <>
           <div className="question-box">{question.a}x² {question.b >= 0 ? '+' : '−'} {Math.abs(question.b)}x {question.c >= 0 ? '+' : '−'} {Math.abs(question.c)} = 0</div>
           <div className="roots-inputs">
@@ -8657,7 +8685,7 @@ function SimulApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && <>
           <div className="question-box equation-system">
             {question.eqs.map((eq, i) => <div key={i}>{is3x3 ? fmtEq3(eq) : fmtEq2(eq)}</div>)}
@@ -8870,7 +8898,7 @@ function FuncEvalApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && <>
           <div className="question-box">
             <div>{question.formula}</div>
@@ -9089,7 +9117,7 @@ function LineEqApp({ onBack }) {
           <div className="progress-pill center">Question {questionNumber}/{totalQ}</div>
           {isAdaptive && <div className="progress-pill" style={{ background: ADAPT_COLORS[curAdaptLevel], color: '#fff' }}>{ADAPT_LABELS[curAdaptLevel]}</div>}
         </div>
-        {isAdaptive && <div style={{ maxWidth: 260, margin: '0.3rem auto 0.6rem', height: 6, borderRadius: 3, background: 'var(--color-border, #e0e0e0)', overflow: 'hidden' }}><div style={{ width: `${adaptivePct(adaptScore)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4caf50, #ff9800, #f44336, #9c27b0)', transition: 'width 0.5s ease' }} /></div>}
+        {isAdaptive && <DifficultySlider pct={adaptivePct(adaptScore)} onChange={(p) => { const v = (p / 100) * 3; setAdaptScore(v); adaptScoreRef.current = v }} />}
         {question && <>
           <div className="question-box">
             <div>Point A: ({question.x1}, {question.y1})</div>

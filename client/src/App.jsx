@@ -3714,13 +3714,17 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
       if (!isAdaptive) return
       setAdaptScore(prev => {
         const next = wasDifficult
-          ? Math.max(0, prev - 0.5)   // drop when student says it's too hard
-          : Math.min(3, prev + 0.3)   // bump when student says it's too easy
+          ? Math.max(0, prev - 0.5)
+          : Math.min(3, prev + 0.3)
         adaptScoreRef.current = next
         return next
       })
-      setReportAck(wasDifficult ? 'Lowering difficulty...' : 'Raising difficulty...')
-      setTimeout(() => setReportAck(''), 1500)
+      // Both buttons skip to the next question
+      if (!revealed) {
+        handleSkip()
+      } else {
+        advance()
+      }
     }
 
     const handleSubmit = async () => {
@@ -3763,6 +3767,18 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
         setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
         setResults(prev => [...prev, { prompt: question.prompt, userAnswer: '(solved)', correctAnswer: display, correct: false, time: 0 }])
       } catch (e) { submittedRef.current = false; console.error(`Failed to solve ${title}:`, e) }
+    }
+
+    const handleSkip = () => {
+      if (!question || revealed) return
+      submittedRef.current = true
+      timer.stop()
+      setIsCorrect(false); setRevealed(true)
+      setFeedback('Skipped — counted as incorrect.')
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: '(skipped)', correctAnswer: '—', correct: false, time: 0 }])
+      if (isAdaptive) {
+        setAdaptScore(prev => { const next = Math.max(0, prev - 0.35); adaptScoreRef.current = next; return next })
+      }
     }
 
     const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
@@ -3823,6 +3839,7 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
             {!revealed ? <>
               <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
               <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+              {isAdaptive && <button onClick={handleSkip} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-text-soft)', color: 'var(--clr-text-soft)' }}>Skip</button>}
             </> : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
           </div>
           {isAdaptive && <div style={{ textAlign: 'center', margin: '10px 0 4px' }}>
@@ -5217,14 +5234,31 @@ function RandomMixApp({ onBack }) {
     })
   }
 
+  const handleSkip = () => {
+    if (!question || revealed) return
+    submittedRef.current = true
+    timer.stop()
+    setIsCorrect(false); setRevealed(true); setStreak(s => Math.min(s, 0) - 1)
+    setFeedback('Skipped — counted as incorrect.')
+    setResults(prev => [...prev, {
+      question: `[${currentTopic?.name || '?'}] ${getPromptForType(currentTopic?.key, question) || question.prompt || '?'}`,
+      userAnswer: '(skipped)', correctAnswer: '—', correct: false, time: 0
+    }])
+    if (diffIndex > 0) setDiffIndex(d => d - 1)
+  }
+
   const reportDifficulty = (wasDifficult) => {
     if (wasDifficult) {
       if (diffIndex > 0) { setDiffIndex(d => d - 1); setStreak(0) }
     } else {
       if (diffIndex < DIFF_LEVELS.length - 1) { setDiffIndex(d => d + 1); setStreak(0) }
     }
-    setReportAck(wasDifficult ? 'Lowering difficulty...' : 'Raising difficulty...')
-    setTimeout(() => setReportAck(''), 1500)
+    // Both buttons skip to the next question
+    if (!revealed) {
+      handleSkip()
+    } else {
+      advance()
+    }
   }
 
   const handleSolve = async () => {
@@ -5400,6 +5434,7 @@ function RandomMixApp({ onBack }) {
               <>
                 <button className="submit-btn" onClick={handleSubmit} disabled={answer.trim() === ''}>Submit</button>
                 <button className="submit-btn" onClick={handleSolve} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+                <button className="submit-btn" onClick={handleSkip} style={{ background: 'transparent', border: '1px solid var(--clr-text-soft)', color: 'var(--clr-text-soft)' }}>Skip</button>
               </>
             )}
             {revealed && (

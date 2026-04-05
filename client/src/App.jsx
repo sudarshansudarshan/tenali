@@ -4438,6 +4438,12 @@ function TatsavitApp({ onBack }) {
           {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
             : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
+        {/* Always-visible Easy/Difficult self-report buttons */}
+        {isAdaptive && <div style={{ textAlign: 'center', margin: '10px 0 4px' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--clr-text-soft)', marginRight: '8px' }}>How are you feeling?</span>
+          <button onClick={() => reportDifficulty(false)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', marginRight: '6px', background: 'transparent', border: '1px solid var(--clr-correct)', color: 'var(--clr-correct)', cursor: 'pointer' }}>Too Easy</button>
+          <button onClick={() => reportDifficulty(true)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--clr-wrong)', color: 'var(--clr-wrong)', cursor: 'pointer' }}>Too Hard</button>
+        </div>}
       </>}
 
       {/* ─── Finished screen ─── */}

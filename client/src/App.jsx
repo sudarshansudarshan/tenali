@@ -3648,6 +3648,7 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
     const [difficulty, setDifficulty] = useState(diffs[0])
     const [isAdaptive, setIsAdaptive] = useState(false)
     const [adaptScore, setAdaptScore] = useState(0) // 0.0 (easy) → 3.0 (extrahard)
+    const [reportAck, setReportAck] = useState('')
     const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
     const [started, setStarted] = useState(false)
     const [finished, setFinished] = useState(false)
@@ -3718,6 +3719,8 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
         adaptScoreRef.current = next
         return next
       })
+      setReportAck(wasDifficult ? 'Lowering difficulty...' : 'Raising difficulty...')
+      setTimeout(() => setReportAck(''), 1500)
     }
 
     const handleSubmit = async () => {
@@ -3827,6 +3830,7 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
             <button onClick={() => reportDifficulty(false)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', marginRight: '6px', background: 'transparent', border: '1px solid var(--clr-correct)', color: 'var(--clr-correct)', cursor: 'pointer' }}>Too Easy</button>
             <button onClick={() => reportDifficulty(true)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--clr-wrong)', color: 'var(--clr-wrong)', cursor: 'pointer' }}>Too Hard</button>
           </div>}
+          {reportAck && <div style={{ textAlign: 'center', fontSize: '0.82rem', color: 'var(--clr-accent)', margin: '6px 0', fontWeight: 500 }}>{reportAck}</div>}
           {results.length > 0 && <ResultsTable results={results} />}
         </>}
         {finished && <div className="welcome-box">
@@ -4599,6 +4603,7 @@ function TatsavitApp({ onBack }) {
   const [showSlowHint, setShowSlowHint] = useState(false)
 
   // Student self-reports difficulty — adjusts adaptive level on top of automatic progression
+  const [reportAck, setReportAck] = useState('')
   const reportDifficulty = (wasDifficult) => {
     if (!isAdaptive) { setShowSlowHint(false); return }
     setAdaptLevel(prev => {
@@ -4609,6 +4614,8 @@ function TatsavitApp({ onBack }) {
       return next
     })
     setShowSlowHint(false)
+    setReportAck(wasDifficult ? 'Lowering difficulty...' : 'Raising difficulty...')
+    setTimeout(() => setReportAck(''), 1500)
   }
 
   const handleSubmit = async () => {
@@ -4760,6 +4767,7 @@ function TatsavitApp({ onBack }) {
           <button onClick={() => reportDifficulty(false)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', marginRight: '6px', background: 'transparent', border: '1px solid var(--clr-correct)', color: 'var(--clr-correct)', cursor: 'pointer' }}>Too Easy</button>
           <button onClick={() => reportDifficulty(true)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--clr-wrong)', color: 'var(--clr-wrong)', cursor: 'pointer' }}>Too Hard</button>
         </div>}
+        {reportAck && <div style={{ textAlign: 'center', fontSize: '0.82rem', color: 'var(--clr-accent)', margin: '6px 0', fontWeight: 500, transition: 'opacity 0.3s' }}>{reportAck}</div>}
       </>}
 
       {/* ─── Finished screen ─── */}
@@ -5073,6 +5081,7 @@ function RandomMixApp({ onBack }) {
   const advancedRef = useRef(false)
   // Track topic stats for the summary
   const [topicStats, setTopicStats] = useState({})
+  const [reportAck, setReportAck] = useState('')
 
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
@@ -5214,6 +5223,8 @@ function RandomMixApp({ onBack }) {
     } else {
       if (diffIndex < DIFF_LEVELS.length - 1) { setDiffIndex(d => d + 1); setStreak(0) }
     }
+    setReportAck(wasDifficult ? 'Lowering difficulty...' : 'Raising difficulty...')
+    setTimeout(() => setReportAck(''), 1500)
   }
 
   const handleSolve = async () => {
@@ -5404,6 +5415,7 @@ function RandomMixApp({ onBack }) {
             <button onClick={() => reportDifficulty(false)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', marginRight: '6px', background: 'transparent', border: '1px solid var(--clr-correct)', color: 'var(--clr-correct)', cursor: 'pointer' }}>Too Easy</button>
             <button onClick={() => reportDifficulty(true)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--clr-wrong)', color: 'var(--clr-wrong)', cursor: 'pointer' }}>Too Hard</button>
           </div>
+          {reportAck && <div style={{ textAlign: 'center', fontSize: '0.82rem', color: 'var(--clr-accent)', margin: '6px 0', fontWeight: 500 }}>{reportAck}</div>}
 
           {renderFeedback(feedback, isCorrect)}
 

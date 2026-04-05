@@ -738,37 +738,104 @@ button:disabled {
 }
 
 .feedback.solve {
-  /* Solve/explanation: polished card with structured layout */
   background: var(--clr-surface);
   color: var(--clr-text);
   text-align: center;
-  line-height: 1.8;
   font-size: 0.9rem;
   font-weight: 400;
-  border: 1.5px solid var(--clr-accent);
+  border: none;
   border-radius: var(--radius);
-  padding: 28px 32px;
+  padding: 0;
   max-width: 440px;
-  margin: 20px auto 0;
-  box-shadow: var(--shadow-card);
+  margin: 24px auto 0;
+  box-shadow: none;
 }
-.solve-answer {
+
+/* ─── Answer badge ─── */
+.solve-answer-badge {
+  display: inline-block;
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 700;
-  color: var(--clr-accent);
-  margin-bottom: 16px;
-  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(135deg, var(--clr-accent), #d4714a);
+  padding: 10px 28px;
+  border-radius: 24px;
+  letter-spacing: 0.03em;
+  box-shadow: 0 3px 12px rgba(232, 134, 74, 0.35);
+  margin-bottom: 20px;
 }
-.solve-explanation {
+
+/* ─── Timeline container ─── */
+.solve-timeline {
   text-align: left;
-  white-space: pre-line;
-  font-size: 0.88rem;
-  line-height: 1.75;
+  padding: 0 8px;
+}
+
+/* ─── Each step row ─── */
+.solve-step {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+
+/* ─── Marker column: dot + connecting line ─── */
+.solve-step-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 18px;
+  padding-top: 6px;
+}
+
+.solve-step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--clr-accent);
+  box-shadow: 0 0 0 3px rgba(232, 134, 74, 0.18);
+  flex-shrink: 0;
+}
+
+.solve-step-line {
+  width: 2px;
+  flex: 1;
+  background: linear-gradient(to bottom, var(--clr-accent), var(--clr-border));
+  margin: 4px 0;
+  border-radius: 1px;
+}
+
+/* ─── Step content card ─── */
+.solve-step-content {
+  flex: 1;
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 10px;
+  font-size: 0.86rem;
+  line-height: 1.65;
   color: var(--clr-text-soft);
-  border-top: 1px solid var(--clr-border);
-  padding-top: 14px;
-  margin-top: 4px;
+  white-space: pre-line;
+  transition: border-color 0.2s;
+}
+
+.solve-step-content:hover {
+  border-color: var(--clr-accent);
+}
+
+/* Last step (answer) gets accent highlight */
+.solve-step:last-child .solve-step-content {
+  border-color: var(--clr-accent);
+  background: rgba(232, 134, 74, 0.06);
+  color: var(--clr-text);
+  font-weight: 500;
+}
+
+.solve-step:last-child .solve-step-dot {
+  background: var(--clr-correct);
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.18);
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */

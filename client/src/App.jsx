@@ -185,11 +185,37 @@ function renderFeedback(feedback, isCorrect) {
   // Parse solve feedback: "Solution: ANSWER\nExplanation..."
   const lines = feedback.split('\n')
   const answerLine = lines[0].replace('Solution: ', '').trim()
-  const explanationLines = lines.slice(1).join('\n').trim()
+  const rawExplanation = lines.slice(1).filter(l => l.trim()).map(l => l.trim())
+
+  // Group lines into steps: lines starting with a keyword or number are step headers
+  const steps = []
+  for (const line of rawExplanation) {
+    // Detect step boundaries: numbered lines, "Step N:", "Answer:", "So,", "Therefore", etc.
+    const isStepStart = /^(\d+[\.\):]|Step\s|Answer:|So[, ]|Therefore|Result:|Formula:|First|Next|Then|Finally|Multiply|Divide|Add|Subtract|Convert|Simplify|Calculate|Apply|Using|Problem:)/i.test(line)
+    if (isStepStart || steps.length === 0) {
+      steps.push(line)
+    } else {
+      // Append to previous step
+      steps[steps.length - 1] += '\n' + line
+    }
+  }
+
   return (
     <div className="feedback solve">
-      <div className="solve-answer">{answerLine}</div>
-      {explanationLines && <div className="solve-explanation">{explanationLines}</div>}
+      <div className="solve-answer-badge">{answerLine}</div>
+      {steps.length > 0 && (
+        <div className="solve-timeline">
+          {steps.map((step, i) => (
+            <div key={i} className="solve-step">
+              <div className="solve-step-marker">
+                <div className="solve-step-dot" />
+                {i < steps.length - 1 && <div className="solve-step-line" />}
+              </div>
+              <div className="solve-step-content">{step}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

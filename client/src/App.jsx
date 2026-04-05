@@ -3463,6 +3463,17 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
       return () => window.removeEventListener('keydown', h)
     }, [revealed, isCorrect, questionNumber])
 
+    const reportDifficulty = (wasDifficult) => {
+      if (!isAdaptive) return
+      setAdaptScore(prev => {
+        const next = wasDifficult
+          ? Math.max(0, prev - 0.5)   // drop when student says it's too hard
+          : Math.min(3, prev + 0.3)   // bump when student says it's too easy
+        adaptScoreRef.current = next
+        return next
+      })
+    }
+
     const handleSubmit = async () => {
       if (!question || revealed || !answer.trim()) return
       if (submittedRef.current) return  // prevent double-submit (rapid Enter presses)
@@ -3546,6 +3557,11 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
             {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
               : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
           </div>
+          {isAdaptive && <div style={{ textAlign: 'center', margin: '10px 0 4px' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--clr-text-soft)', marginRight: '8px' }}>How are you feeling?</span>
+            <button onClick={() => reportDifficulty(false)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', marginRight: '6px', background: 'transparent', border: '1px solid var(--clr-correct)', color: 'var(--clr-correct)', cursor: 'pointer' }}>Too Easy</button>
+            <button onClick={() => reportDifficulty(true)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--clr-wrong)', color: 'var(--clr-wrong)', cursor: 'pointer' }}>Too Hard</button>
+          </div>}
           {results.length > 0 && <ResultsTable results={results} />}
         </>}
         {finished && <div className="welcome-box">
@@ -4868,6 +4884,14 @@ function RandomMixApp({ onBack }) {
     })
   }
 
+  const reportDifficulty = (wasDifficult) => {
+    if (wasDifficult) {
+      if (diffIndex > 0) { setDiffIndex(d => d - 1); setStreak(0) }
+    } else {
+      if (diffIndex < DIFF_LEVELS.length - 1) { setDiffIndex(d => d + 1); setStreak(0) }
+    }
+  }
+
   const startQuiz = () => {
     const n = parseInt(numQInput) || 20
     setTotalQuestions(Math.max(5, Math.min(100, n)))
@@ -5025,6 +5049,13 @@ function RandomMixApp({ onBack }) {
                 {questionNumber >= totalQuestions ? 'Finish' : 'Next'}
               </button>
             )}
+          </div>
+
+          {/* Always-visible Easy/Difficult self-report buttons */}
+          <div style={{ textAlign: 'center', margin: '10px 0 4px' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--clr-text-soft)', marginRight: '8px' }}>How are you feeling?</span>
+            <button onClick={() => reportDifficulty(false)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', marginRight: '6px', background: 'transparent', border: '1px solid var(--clr-correct)', color: 'var(--clr-correct)', cursor: 'pointer' }}>Too Easy</button>
+            <button onClick={() => reportDifficulty(true)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--clr-wrong)', color: 'var(--clr-wrong)', cursor: 'pointer' }}>Too Hard</button>
           </div>
 
           {feedback && (

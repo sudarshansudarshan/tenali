@@ -152,6 +152,7 @@ select option.none-opt { color: #ef5350; font-weight: 600; }
 }
 .quiz-card .q-feedback.correct { color: #66bb6a; }
 .quiz-card .q-feedback.wrong { color: #ef5350; }
+.quiz-card .q-feedback.solve { color: #42a5f5; text-align: left; line-height: 1.6; }
 
 .quiz-card .q-numpad {
   display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 14px;
@@ -782,6 +783,33 @@ function skipJourneyQuestion() {
   renderQuiz()
 }
 
+async function solveJourneyQuestion() {
+  if (journey.revealed || !journey.question) return
+  journey.revealed = true
+
+  const puzzleId = journey.path[journey.stepIndex]
+  const apiPath = API_MAP[puzzleId]
+
+  try {
+    const r = await fetch(`/${apiPath}/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...journey.question, userAnswer: '', solve: true }),
+    })
+    const data = await r.json()
+    journey.isCorrect = false
+    const displayAnswer = data.display || data.correctAnswer || data.answer || ''
+    const explanation = data.explanation || ''
+    journey.feedback = `Solution: ${displayAnswer}${explanation ? '\n' + explanation : ''}`
+    journey.history.push(false)
+    if (journey.history.length > MASTERY_WINDOW) journey.history.shift()
+  } catch (e) {
+    journey.isCorrect = false
+    journey.feedback = 'Error getting solution'
+  }
+  renderQuiz()
+}
+
 function reportJourneyDifficulty(wasDifficult) {
   if (wasDifficult) {
     journey.adaptScore = Math.max(0, journey.adaptScore - 0.5)
@@ -891,8 +919,8 @@ function renderQuiz() {
 
   // Feedback
   if (journey.feedback) {
-    const cls = journey.isCorrect ? 'correct' : 'wrong'
-    html += `<div class="q-feedback ${cls}">${journey.feedback}</div>`
+    const cls = journey.isCorrect ? 'correct' : (journey.feedback.startsWith('Solution:') ? 'solve' : 'wrong')
+    html += `<div class="q-feedback ${cls}" style="white-space:pre-line">${journey.feedback}</div>`
   }
 
   // Mastery bar for current step
@@ -914,6 +942,7 @@ function renderQuiz() {
   html += '<div class="quiz-btns">'
   if (!journey.revealed) {
     html += `<button class="submit-btn" onclick="submitJourneyAnswer()" ${!journey.answer.trim() ? 'disabled' : ''}>Submit</button>`
+    html += `<button class="submit-btn" onclick="solveJourneyQuestion()" style="background:transparent;border:1px solid #42a5f5;color:#42a5f5;">Solve</button>`
     html += `<button class="quit-btn" onclick="skipJourneyQuestion()">Skip</button>`
   } else if (mastered) {
     html += `<button class="next-btn" onclick="advanceStep()">${journey.stepIndex >= totalSteps - 1 ? 'Finish Journey' : 'Next Topic →'}</button>`

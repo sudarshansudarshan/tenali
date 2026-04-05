@@ -737,6 +737,14 @@ button:disabled {
   color: var(--clr-wrong);
 }
 
+.feedback.solve {
+  /* Solve/explanation state: blue/accent background */
+  background: rgba(66, 165, 245, 0.12);
+  color: #42a5f5;
+  text-align: left;
+  line-height: 1.6;
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 /* BUTTON ROW - Horizontal button layout for actions */
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */

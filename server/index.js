@@ -62,6 +62,104 @@ app.use(express.json());
 app.use(express.static(clientDistPath));
 
 /**
+ * EXPLANATION SUPPORT MIDDLEWARE
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Intercepts all check endpoint responses when solve=true is in the request body.
+ * Adds an 'explanation' field with step-by-step solution guidance.
+ * Also marks the response with 'solved: true' to indicate this was a solve request.
+ *
+ * This middleware enables explanation generation without modifying individual endpoints.
+ *
+ * USAGE:
+ * Send a POST request to any check endpoint with solve=true in the request body:
+ *
+ * POST /basicarith-api/check
+ * { a: 5, b: 3, op: '+', answer: 8, solve: true }
+ *
+ * Response will include:
+ * { correct: true, correctAnswer: 8, message: '...', solved: true,
+ *   explanation: 'Step 1: Write the problem: 5 + 3\nStep 2: Calculate: 5 + 3 = 8\n...' }
+ */
+app.use((req, res, next) => {
+  // Only intercept POST requests to check endpoints
+  if (req.method !== 'POST' || !req.path.includes('-api/check')) {
+    return next();
+  }
+
+  // Check if solve=true is requested
+  const shouldSolve = req.body && req.body.solve === true;
+  if (!shouldSolve) {
+    return next();
+  }
+
+  // Store the original res.json method
+  const originalJson = res.json.bind(res);
+
+  // Monkey-patch res.json to intercept the response
+  res.json = function (data) {
+    // Add solved flag to indicate this was a solve request
+    data.solved = true;
+
+    // Generate explanation based on the API type, request data, and response data
+    const explanation = generateExplanation(req, data);
+    if (explanation) {
+      data.explanation = explanation;
+    }
+
+    // Call the original res.json with the modified data
+    return originalJson(data);
+  };
+
+  next();
+});
+
+/**
+ * Generate a step-by-step explanation for how to solve the problem
+ * @param {object} req - Express request object (contains path and body)
+ * @param {object} data - Response data object from the check endpoint
+ * @returns {string|null} Explanation text or null if unable to generate
+ */
+function generateExplanation(req, data) {
+  const { path, body } = req;
+  const { a, b, op } = body || {};
+  const { correctAnswer } = data || {};
+
+  // Basic arithmetic (addition, subtraction, multiplication)
+  if (path.includes('basicarith-api')) {
+    if (a !== undefined && b !== undefined && op !== undefined && correctAnswer !== undefined) {
+      const opDisplay = op === '−' ? '−' : op;
+      let explanation = `Step 1: Write the problem: ${a} ${opDisplay} ${b}\n`;
+      explanation += `Step 2: Calculate: ${a} ${opDisplay} ${b} = ${correctAnswer}\n`;
+
+      // Add context for different operations
+      if (op === '+') {
+        explanation += `Step 3: When adding positive numbers, sum them directly.`;
+      } else if (op === '−') {
+        explanation += `Step 3: When subtracting, find the difference between the numbers.`;
+      } else if (op === '×' || op === '*') {
+        explanation += `Step 3: When multiplying, combine equal groups.`;
+      }
+
+      return explanation;
+    }
+  }
+
+  // Generic case for arithmetic-like problems with a, b, op
+  if (a !== undefined && b !== undefined && op !== undefined && correctAnswer !== undefined) {
+    return `Step 1: The operation is: ${a} ${op} ${b}\nStep 2: The answer is: ${correctAnswer}`;
+  }
+
+  // Fallback for any other problem type
+  if (correctAnswer !== undefined) {
+    return `The correct answer is: ${correctAnswer}`;
+  }
+
+  // If we can't generate an explanation, return null
+  return null;
+}
+
+/**
  * Generate a random integer between min and max (inclusive)
  * @param {number} min - Minimum value (inclusive)
  * @param {number} max - Maximum value (inclusive)

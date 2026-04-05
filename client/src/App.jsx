@@ -565,6 +565,13 @@ function AdaptiveTablesApp({ studentName }) {
     }
   }
 
+  const handleSolve = () => {
+    if (!question || revealed) return
+    setIsCorrect(false)
+    setRevealed(true)
+    setFeedback(`Solution: ${question.table} × ${question.multiplier} = ${question.answer}`)
+  }
+
   /**
    * renderTable(): Render the visual reference multiplication table
    * Shows all 10 multiples (e.g., "2 × 1 = 2", "2 × 2 = 4", ..., "2 × 10 = 20")
@@ -673,7 +680,12 @@ function AdaptiveTablesApp({ studentName }) {
                   )}
                 </form>
                 {feedback && (
-                  <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>
+                  <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>
+                )}
+                {!revealed && (
+                  <div className="button-row">
+                    <button onClick={handleSolve} disabled={!answer} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+                  </div>
                 )}
                 {revealed && (
                   <div className="button-row">
@@ -960,6 +972,13 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     }
   }
 
+  const handleSolve = () => {
+    if (!question || revealed) return
+    setIsCorrect(false)
+    setRevealed(true)
+    setFeedback(`Solution: ${question.table} × ${question.multiplier} = ${question.answer}`)
+  }
+
   /**
    * renderRefTable(): Render the reference table for the current multiplication table
    * Only shows the single table being practiced (e.g., "2 × Table")
@@ -1082,7 +1101,12 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
                   )}
                 </form>
                 {feedback && (
-                  <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>
+                  <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>
+                )}
+                {!revealed && (
+                  <div className="button-row">
+                    <button onClick={handleSolve} disabled={!answer} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+                  </div>
                 )}
                 {revealed && (
                   <div className="button-row">
@@ -1500,6 +1524,13 @@ function AdaptiveMixedApp({ studentName }) {
     return () => window.removeEventListener('keydown', handleKey)
   }, [phase, revealed])
 
+  const handleSolve = () => {
+    if (!question || revealed) return
+    setIsCorrect(false)
+    setRevealed(true)
+    setFeedback(`Solution: ${question.correctAnswer}`)
+  }
+
   const computeAvgTime = () => {
     if (results.length === 0) return '0.0'
     const total = results.reduce((sum, r) => sum + parseFloat(r.time), 0)
@@ -1599,7 +1630,12 @@ function AdaptiveMixedApp({ studentName }) {
                 )}
               </form>
               {feedback && (
-                <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>
+                <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>
+              )}
+              {!revealed && (
+                <div className="button-row">
+                  <button onClick={handleSolve} disabled={!answer.trim()} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+                </div>
               )}
               {revealed && (
                 <div className="button-row">
@@ -2136,6 +2172,35 @@ function GKApp({ onBack }) {
     await loadQuestion()
   }
 
+  /**
+   * handleSolve(): Get the solution without submitting an answer
+   * Fetches the correct answer from the API with solve: true flag
+   */
+  const handleSolve = async () => {
+    if (revealed) return
+    const timeTaken = timer.stop()
+    // POST to backend API with solve flag to get the solution
+    const res = await fetch(`${API}/gk-api/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: question.id, answerOption: '', solve: true }),
+    })
+    const data = await res.json()
+    setIsCorrect(false)
+    const display = data.correctAnswer || ''
+    const displayText = `${display}) ${data.correctAnswerText || ''}`
+    const explanation = data.explanation || ''
+    setFeedback(`Solution: ${displayText}${explanation ? '\n' + explanation : ''}`)
+    setResults((prev) => [...prev, {
+      question: question.question.length > 50 ? question.question.slice(0, 50) + '…' : question.question,
+      userAnswer: '—',
+      correctAnswer: displayText,
+      correct: false,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
   // Auto-advance after correct answer
   const advanceRef = useRef(() => {})
   advanceRef.current = () => loadQuestion()
@@ -2192,9 +2257,12 @@ function GKApp({ onBack }) {
             })}
           </div>
         )}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         <div className="button-row">
-          <button onClick={handleSubmitOrNext} disabled={loading || (!revealed && !selected)}>{revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next Question') : 'Submit'}</button>
+          {!revealed ? <>
+            <button onClick={handleSubmitOrNext} disabled={loading || !selected}>Submit</button>
+            <button onClick={handleSolve} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={handleSubmitOrNext}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
@@ -2345,6 +2413,33 @@ function AdditionApp({ onBack }) {
     await fetchQuestion(difficulty)
   }
 
+  /**
+   * handleSolve(): Get the solution without submitting an answer
+   * Fetches the correct answer from the API with solve: true flag
+   */
+  const handleSolve = async () => {
+    if (revealed) return
+    const timeTaken = timer.stop()
+    // POST to backend API with solve flag to get the solution
+    const res = await fetch(`${API}/addition-api/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ a: question.a, b: question.b, answer: '', solve: true }),
+    })
+    const data = await res.json()
+    setIsCorrect(false)
+    const reasoning = `${question.a} + ${question.b} = ${data.correctAnswer}`
+    setFeedback(`Solution: ${reasoning}`)
+    setResults((prev) => [...prev, {
+      question: `${question.a} + ${question.b}`,
+      userAnswer: '—',
+      correctAnswer: data.correctAnswer,
+      correct: false,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
   useEffect(() => {
     if (!revealed || isCorrect) return
     const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmitOrNext() } }
@@ -2387,8 +2482,13 @@ function AdditionApp({ onBack }) {
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
-        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed ? <>
+            <button onClick={handleSubmitOrNext} disabled={loading || answer === ''}>Submit</button>
+            <button onClick={handleSolve} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={handleSubmitOrNext}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+        </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
@@ -2561,6 +2661,32 @@ function BasicArithApp({ onBack }) {
     await fetchQuestion()
   }
 
+  /**
+   * handleSolve(): Get the solution without submitting an answer
+   * Fetches the correct answer from the API with solve: true flag
+   */
+  const handleSolve = async () => {
+    if (revealed) return
+    const timeTaken = timer.stop()
+    // POST to backend API with solve flag to get the solution
+    const res = await fetch(`${API}/basicarith-api/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ a: question.a, b: question.b, op: question.op, answer: '', solve: true }),
+    })
+    const data = await res.json()
+    setIsCorrect(false)
+    setFeedback(`Solution: ${question.prompt} = ${data.correctAnswer}`)
+    setResults(prev => [...prev, {
+      question: question.prompt,
+      userAnswer: '—',
+      correctAnswer: String(data.correctAnswer),
+      correct: false,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
   useEffect(() => {
     if (!revealed || isCorrect) return
     const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmitOrNext() } }
@@ -2603,8 +2729,13 @@ function BasicArithApp({ onBack }) {
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} />
-        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed ? <>
+            <button onClick={handleSubmitOrNext} disabled={loading || answer === ''}>Submit</button>
+            <button onClick={handleSolve} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={handleSubmitOrNext}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+        </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
@@ -2778,6 +2909,39 @@ function QuadraticApp({ onBack }) {
     await fetchQuestion()
   }
 
+  /**
+   * handleSolve(): Get the solution without submitting an answer
+   * Fetches the correct answer from the API with solve: true flag
+   */
+  const handleSolve = async () => {
+    if (revealed) return
+    const timeTaken = timer.stop()
+    // POST to backend API with solve flag to get the solution
+    const res = await fetch(`${API}/quadratic-api/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ a: question.a, b: question.b, c: question.c, x: question.x, answer: '', solve: true }),
+    })
+    const data = await res.json()
+    setIsCorrect(false)
+    // Generate step-by-step working for feedback
+    const { a, b, c, x } = question
+    const xSq = x * x
+    const termA = a * xSq
+    const termB = b * x
+    const sign = (v) => v >= 0 ? `+ ${v}` : `− ${Math.abs(v)}`
+    const reasoning = `y = ${a}(${x})² ${sign(b)}(${x}) ${sign(c)}\n= ${a}(${xSq}) ${sign(termB)} ${sign(c)}\n= ${termA} ${sign(termB)} ${sign(c)}\n= ${data.correctAnswer}`
+    setFeedback(`Solution:\n${reasoning}`)
+    setResults((prev) => [...prev, {
+      question: `y = ${a}x² ${b >= 0 ? '+' : '−'} ${Math.abs(b)}x ${c >= 0 ? '+' : '−'} ${Math.abs(c)}, x=${x}`,
+      userAnswer: '—',
+      correctAnswer: data.correctAnswer,
+      correct: false,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
   useEffect(() => {
     if (!revealed || isCorrect) return
     const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmitOrNext() } }
@@ -2827,8 +2991,13 @@ function QuadraticApp({ onBack }) {
         </div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="y = ?" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
-        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed ? <>
+            <button onClick={handleSubmitOrNext} disabled={loading || answer === ''}>Submit</button>
+            <button onClick={handleSolve} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={handleSubmitOrNext}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+        </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
@@ -3037,6 +3206,28 @@ function MultiplyApp({ onBack }) {
     nextFromPool(questionPool, nextIdx)
   }
 
+  /**
+   * handleSolve(): Get the solution without submitting an answer
+   * For multiplication, simply calculates the product locally
+   */
+  const handleSolve = async () => {
+    if (revealed) return
+    const timeTaken = timer.stop()
+    // Calculate expected answer locally (no API required)
+    const correctAnswer = question.table * question.multiplier
+    setIsCorrect(false)
+    const reasoning = `${question.table} × ${question.multiplier} = ${correctAnswer}`
+    setFeedback(`Solution: ${reasoning}`)
+    setResults((prev) => [...prev, {
+      question: question.prompt,
+      userAnswer: '—',
+      correctAnswer,
+      correct: false,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
   const advanceRef = useRef(() => {})
   advanceRef.current = () => handleSubmitOrNext()
   useAutoAdvance(revealed, advanceRef, isCorrect)
@@ -3084,8 +3275,13 @@ function MultiplyApp({ onBack }) {
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
-        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQuestions ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed ? <>
+            <button onClick={handleSubmitOrNext} disabled={loading || answer === ''}>Submit</button>
+            <button onClick={handleSolve} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={handleSubmitOrNext}>{questionNumber >= totalQuestions ? 'Finish Quiz' : 'Next Question'}</button>}
+        </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
@@ -3257,6 +3453,35 @@ function VocabApp({ onBack }) {
     await loadQuestion()
   }
 
+  /**
+   * handleSolve(): Get the solution without submitting an answer
+   * Fetches the correct answer from the API with solve: true flag
+   */
+  const handleSolve = async () => {
+    if (revealed) return
+    const timeTaken = timer.stop()
+    // POST to backend API with solve flag to get the solution
+    const res = await fetch(`${API}/vocab-api/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: question.id, answerOption: '', solve: true }),
+    })
+    const data = await res.json()
+    setIsCorrect(false)
+    // Show feedback with correct answer text
+    setFeedback(`Solution: "${data.correctAnswerText}"`)
+    // Truncate long definitions to fit in results table
+    const truncate = (s) => s.length > 35 ? s.slice(0, 35) + '…' : s
+    setResults((prev) => [...prev, {
+      question: question.question,
+      userAnswer: '—',
+      correctAnswer: truncate(data.correctAnswerText),
+      correct: false,
+      time: timeTaken,
+    }])
+    setRevealed(true)
+  }
+
   useEffect(() => {
     if (!revealed || isCorrect) return
     const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmitOrNext() } }
@@ -3345,9 +3570,12 @@ function VocabApp({ onBack }) {
             })}
           </div>
         )}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         <div className="button-row">
-          <button onClick={handleSubmitOrNext} disabled={loading || (!revealed && !selected)}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button>
+          {!revealed ? <>
+            <button onClick={handleSubmitOrNext} disabled={loading || !selected}>Submit</button>
+            <button onClick={handleSolve} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={handleSubmitOrNext}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
@@ -3499,6 +3727,23 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
         }
       } catch (e) { submittedRef.current = false; console.error(`Failed to check ${title} answer:`, e) }
     }
+
+    const handleSolve = async () => {
+      if (!question || revealed) return
+      submittedRef.current = true
+      timer.stop()
+      const payload = { ...question, [answerField || 'userAnswer']: '', solve: true }
+      try {
+        const r = await fetch(`${API}/${apiPath}/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        const data = await r.json()
+        setIsCorrect(false); setRevealed(true)
+        const display = data.display || data.correctAnswer || data.answer || ''
+        const explanation = data.explanation || ''
+        setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+        setResults(prev => [...prev, { prompt: question.prompt, userAnswer: '(solved)', correctAnswer: display, correct: false, time: 0 }])
+      } catch (e) { submittedRef.current = false; console.error(`Failed to solve ${title}:`, e) }
+    }
+
     const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
     const getPlaceholder = () => {
       if (typeof placeholders === 'string') return placeholders
@@ -3552,10 +3797,12 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
             <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '20px 0', lineHeight: '1.6' }}>{question.prompt}</div>
             <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={getPlaceholder()} onKeyDown={handleKeyDown} autoFocus />
           </div>}
-          {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+          {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
           <div className="button-row">
-            {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
-              : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+            {!revealed ? <>
+              <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+              <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+            </> : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
           </div>
           {isAdaptive && <div style={{ textAlign: 'center', margin: '10px 0 4px' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--clr-text-soft)', marginRight: '8px' }}>How are you feeling?</span>
@@ -3781,6 +4028,15 @@ function DotProdApp({ onBack }) {
     } catch (e) { console.error('Failed to check Dot Products answer:', e) }
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    const timeTaken = timer.stop()
+    setIsCorrect(false)
+    setRevealed(true)
+    const display = question.display || question.answer || '(solution unavailable)'
+    setFeedback(`Solution: ${display}`)
+  }
+
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
 
   // Grid cell change handler — NO auto-tab; user must press Tab or click
@@ -3928,9 +4184,14 @@ function DotProdApp({ onBack }) {
         {question && <div style={{ textAlign: 'center' }}>
           {renderQuestion()}
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
-          {!revealed ? <button onClick={handleSubmit} disabled={loading || !question || !isGridComplete()}>Submit</button>
+          {!revealed ? (
+            <>
+              <button onClick={handleSolve} disabled={loading || !question} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+              <button onClick={handleSubmit} disabled={loading || !question || !isGridComplete()}>Submit</button>
+            </>
+          )
             : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
         {results.length > 0 && <ResultsTable results={results} />}
@@ -4390,6 +4651,25 @@ function TatsavitApp({ onBack }) {
     }
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    submittedRef.current = true
+    timer.stop()
+    setShowSlowHint(false)
+    try {
+      const r = await fetch(`${API}/tatsavit-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...question, userAnswer: '', solve: true }),
+      })
+      const data = await r.json()
+      setIsCorrect(false); setRevealed(true); lastCorrectRef.current = false
+      const display = data.display || data.correctAnswer || data.answer || ''
+      const explanation = data.explanation || ''
+      setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+    } catch (e) { submittedRef.current = false; console.error('Failed to solve Tatsavit:', e) }
+  }
+
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
 
   const levelPct = (adaptLevel / 8) * 100
@@ -4444,15 +4724,17 @@ function TatsavitApp({ onBack }) {
           <input ref={inputRef} className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={handleKeyDown} autoFocus style={{ textAlign: 'center' }} />
           <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} showDecimal showCaret showX />
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         {showSlowHint && <div style={{ textAlign: 'center', margin: '8px 0', padding: '12px 16px', borderRadius: '10px', background: 'var(--clr-accent-soft)', border: '1px solid var(--clr-accent)', fontSize: '0.88rem' }}>
           <div style={{ marginBottom: '8px' }}>Was the previous question easy or difficult for you?</div>
           <button onClick={() => reportDifficulty(false)} style={{ fontSize: '0.84rem', padding: '6px 16px', borderRadius: '8px', marginRight: '8px', background: 'var(--clr-correct)', color: '#fff' }}>Easy</button>
           <button onClick={() => reportDifficulty(true)} style={{ fontSize: '0.84rem', padding: '6px 16px', borderRadius: '8px', background: 'var(--clr-wrong)', color: '#fff' }}>Difficult</button>
         </div>}
         <div className="button-row">
-          {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
-            : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+          {!revealed ? <>
+            <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
         {/* Always-visible Easy/Difficult self-report buttons */}
         {isAdaptive && <div style={{ textAlign: 'center', margin: '10px 0 4px' }}>
@@ -4572,6 +4854,28 @@ function SquaringApp({ onBack }) {
     } catch (e) { submittedRef.current = false; console.error('Failed to check Squaring answer:', e) }
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    submittedRef.current = true
+    timer.stop()
+    try {
+      const r = await fetch(`${API}/squaring-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...question, userAnswer: '', solve: true }),
+      })
+      const data = await r.json()
+      setIsCorrect(false); setRevealed(true)
+      const display = data.display || data.correctAnswer || data.answer || ''
+      const explanation = data.explanation || ''
+      setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: '(solved)', correctAnswer: display, correct: false, time: 0 }])
+      if (isAdaptive) {
+        setAdaptScore(prev => Math.max(0, prev - 0.35))
+      }
+    } catch (e) { submittedRef.current = false; console.error('Failed to solve Squaring:', e) }
+  }
+
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
 
   // Tab between the four fields
@@ -4651,10 +4955,12 @@ function SquaringApp({ onBack }) {
             {numInput(valFinal, setValFinal, refFinal, null, 'Answer', question.answer)}
           </div>
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         <div className="button-row">
-          {!revealed ? <button onClick={handleSubmit} disabled={loading || !question || !isComplete()}>Submit</button>
-            : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+          {!revealed ? <>
+            <button onClick={handleSubmit} disabled={loading || !question || !isComplete()}>Submit</button>
+            <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
@@ -4892,6 +5198,28 @@ function RandomMixApp({ onBack }) {
     }
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed || !currentTopic) return
+    submittedRef.current = true
+    timer.stop()
+    try {
+      const payload = { ...question, userAnswer: '', solve: true }
+      const r = await fetch(`${API}/${currentTopic.api}/check`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const data = await r.json()
+      setIsCorrect(false); setRevealed(true)
+      const display = data.display || data.correctAnswer || data.answer || ''
+      const explanation = data.explanation || ''
+      setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+      setResults(prev => [...prev, {
+        question: `[${currentTopic.name}] ${getPromptForType(currentTopic.key, question) || question.prompt || '?'}`,
+        userAnswer: '(solved)', correctAnswer: display, correct: false, time: 0
+      }])
+    } catch { setFeedback('Error getting solution.') }
+  }
+
   const startQuiz = () => {
     const n = parseInt(numQInput) || 20
     setTotalQuestions(Math.max(5, Math.min(100, n)))
@@ -5040,9 +5368,10 @@ function RandomMixApp({ onBack }) {
               autoFocus
             />
             {!revealed && (
-              <button className="submit-btn" onClick={handleSubmit} disabled={answer.trim() === ''}>
-                Submit
-              </button>
+              <>
+                <button className="submit-btn" onClick={handleSubmit} disabled={answer.trim() === ''}>Submit</button>
+                <button className="submit-btn" onClick={handleSolve} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+              </>
             )}
             {revealed && (
               <button className="submit-btn" onClick={advance}>
@@ -5059,7 +5388,7 @@ function RandomMixApp({ onBack }) {
           </div>
 
           {feedback && (
-            <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false ? 'wrong' : ''}`}>
+            <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>
               {feedback}
             </div>
           )}
@@ -5164,6 +5493,28 @@ function SetsApp({ onBack }) {
     } catch (e) { console.error('Failed to check sets answer:', e) }
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    submittedRef.current = true
+    timer.stop()
+    try {
+      const r = await fetch(`${API}/sets-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...question, userAnswer: '', solve: true }),
+      })
+      const data = await r.json()
+      setIsCorrect(false); setRevealed(true)
+      const display = data.display || data.correctAnswer || data.answer || ''
+      const explanation = data.explanation || ''
+      setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: '(solved)', correctAnswer: display, correct: false, time: 0 }])
+      if (isAdaptive) {
+        setAdaptScore(prev => Math.max(0, prev - 0.35))
+      }
+    } catch (e) { submittedRef.current = false; console.error('Failed to solve sets:', e) }
+  }
+
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
   const diffLabels = { easy: 'Easy — List elements', medium: 'Medium — Cardinality', hard: 'Hard — 2-set Venn', extrahard: 'Extra Hard — 3-set Venn' }
   const curAdaptLevel = adaptiveLevel(adaptScore)
@@ -5202,10 +5553,12 @@ function SetsApp({ onBack }) {
           <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '20px 0', lineHeight: '1.6' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={question.type === 'list' ? 'e.g. {1, 3, 5} or empty' : 'e.g. 12'} onKeyDown={handleKeyDown} autoFocus />
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         <div className="button-row">
-          {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
-            : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+          {!revealed ? <>
+            <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
@@ -5294,6 +5647,28 @@ function SequencesApp({ onBack }) {
     } catch (e) { console.error('Failed to check sequences answer:', e) }
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    submittedRef.current = true
+    timer.stop()
+    try {
+      const r = await fetch(`${API}/sequences-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...question, answer: '', solve: true }),
+      })
+      const data = await r.json()
+      setIsCorrect(false); setRevealed(true)
+      const display = data.display || data.correctAnswer || data.answer || ''
+      const explanation = data.explanation || ''
+      setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: '(solved)', correctAnswer: display, correct: false, time: 0 }])
+      if (isAdaptive) {
+        setAdaptScore(prev => Math.max(0, prev - 0.35))
+      }
+    } catch (e) { submittedRef.current = false; console.error('Failed to solve sequences:', e) }
+  }
+
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
   const diffLabels = { easy: 'Easy — Arith. nth term', medium: 'Medium — Arith. sum', hard: 'Hard — Geom. nth term', extrahard: 'Extra Hard — Geom. sum' }
   const curAdaptLevel = adaptiveLevel(adaptScore)
@@ -5331,10 +5706,12 @@ function SequencesApp({ onBack }) {
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="e.g. 42 or 3/4" onKeyDown={handleKeyDown} autoFocus />
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         <div className="button-row">
-          {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
-            : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+          {!revealed ? <>
+            <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
@@ -5437,6 +5814,28 @@ function RatioApp({ onBack }) {
     } catch (e) { console.error('Failed to check ratio answer:', e) }
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    submittedRef.current = true
+    timer.stop()
+    try {
+      const r = await fetch(`${API}/ratio-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...question, answer: '', solve: true }),
+      })
+      const data = await r.json()
+      setIsCorrect(false); setRevealed(true)
+      const display = data.display || data.correctAnswer || data.answer || ''
+      const explanation = data.explanation || ''
+      setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: '(solved)', correctAnswer: display, correct: false, time: 0 }])
+      if (isAdaptive) {
+        setAdaptScore(prev => Math.max(0, prev - 0.35))
+      }
+    } catch (e) { submittedRef.current = false; console.error('Failed to solve ratio:', e) }
+  }
+
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
   const diffLabels = { easy: 'Easy — Simplify', medium: 'Medium — Divide', hard: 'Hard — Direct', extrahard: 'Extra Hard — Inverse' }
   const placeholders = { easy: 'e.g. 3:2', medium: 'e.g. 72, 48', hard: 'e.g. 32', extrahard: 'e.g. 8 or 8/3' }
@@ -5476,10 +5875,12 @@ function RatioApp({ onBack }) {
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={placeholders[isAdaptive ? adaptiveLevel(adaptScore) : difficulty] || 'Type your answer'} onKeyDown={handleKeyDown} autoFocus />
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         <div className="button-row">
-          {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
-            : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+          {!revealed ? <>
+            <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
@@ -5582,6 +5983,28 @@ function PercentApp({ onBack }) {
     } catch (e) { console.error('Failed to check percent answer:', e) }
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    submittedRef.current = true
+    timer.stop()
+    try {
+      const r = await fetch(`${API}/percent-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...question, userAnswer: '', solve: true }),
+      })
+      const data = await r.json()
+      setIsCorrect(false); setRevealed(true)
+      const display = data.display || data.correctAnswer || data.answer || ''
+      const explanation = data.explanation || ''
+      setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: '(solved)', correctAnswer: display, correct: false, time: 0 }])
+      if (isAdaptive) {
+        setAdaptScore(prev => Math.max(0, prev - 0.35))
+      }
+    } catch (e) { submittedRef.current = false; console.error('Failed to solve percent:', e) }
+  }
+
   const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!revealed) handleSubmit() } }
   const diffLabels = { easy: 'Easy — Find %', medium: 'Medium — Increase/Decrease', hard: 'Hard — Reverse %', extrahard: 'Extra Hard — Compound' }
 
@@ -5620,10 +6043,12 @@ function PercentApp({ onBack }) {
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={handleKeyDown} autoFocus />
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         <div className="button-row">
-          {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
-            : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
+          {!revealed ? <>
+            <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}
         </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
@@ -5752,6 +6177,27 @@ function IndicesApp({ onBack }) {
     } catch (e) { console.error('Failed to check indices answer:', e) }
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    timer.stop()
+    try {
+      const r = await fetch(`${API}/indices-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...question, answer: '', solve: true }),
+      })
+      const data = await r.json()
+      setIsCorrect(false); setRevealed(true)
+      const display = data.display || data.correctAnswer || data.answer || ''
+      const explanation = data.explanation || ''
+      setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+      setResults(prev => [...prev, { prompt: question.prompt, userAnswer: '(solved)', correctAnswer: display, correct: false, time: 0 }])
+      if (isAdaptive) {
+        setAdaptScore(prev => Math.max(0, prev - 0.35))
+      }
+    } catch (e) { console.error('Failed to solve indices:', e) }
+  }
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -5811,10 +6257,13 @@ function IndicesApp({ onBack }) {
             />
           </div>
         )}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         <div className="button-row">
           {!revealed ? (
-            <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            <>
+              <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+              <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+            </>
           ) : (
             <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>
           )}
@@ -5983,6 +6432,28 @@ function SurdsApp({ onBack }) {
     } catch (e) { console.error('Failed to check surds answer:', e) }
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    timer.stop()
+    const prompt = getPrompt(question)
+    try {
+      const r = await fetch(`${API}/surds-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...question, answer: '', solve: true }),
+      })
+      const data = await r.json()
+      setIsCorrect(false); setRevealed(true)
+      const display = data.display || data.correctAnswer || data.answer || ''
+      const explanation = data.explanation || ''
+      setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+      setResults(prev => [...prev, { prompt, userAnswer: '(solved)', correctAnswer: display, correct: false, time: 0 }])
+      if (isAdaptive) {
+        setAdaptScore(prev => Math.max(0, prev - 0.35))
+      }
+    } catch (e) { console.error('Failed to solve surds:', e) }
+  }
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -6041,10 +6512,13 @@ function SurdsApp({ onBack }) {
             />
           </div>
         )}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         <div className="button-row">
           {!revealed ? (
-            <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            <>
+              <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+              <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+            </>
           ) : (
             <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>
           )}
@@ -6252,6 +6726,30 @@ function FractionAddApp({ onBack }) {
     }
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    timer.stop()
+    const prompt = question.mixed
+      ? `${question.w1} ${question.n1}/${question.d1} + ${question.w2} ${question.n2}/${question.d2}`
+      : `${question.n1}/${question.d1} + ${question.n2}/${question.d2}`
+    try {
+      const r = await fetch(`${API}/fractionadd-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...question, ansNum: '', ansDen: '', solve: true })
+      })
+      const data = await r.json()
+      setIsCorrect(false); setRevealed(true)
+      const display = data.display || data.correctAnswer || data.answer || ''
+      const explanation = data.explanation || ''
+      setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+      setResults(prev => [...prev, { prompt, userAnswer: '(solved)', correctAnswer: display, correct: false, time: 0 }])
+      if (isAdaptive) {
+        setAdaptScore(prev => Math.max(0, prev - 0.35))
+      }
+    } catch (e) { console.error('Failed to solve fraction:', e) }
+  }
+
   /**
    * handleKeyDown(e): Handle Enter key to submit or advance.
    * Attached to the fraction input fields.
@@ -6355,11 +6853,14 @@ function FractionAddApp({ onBack }) {
           </div>
         )}
 
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
 
         <div className="button-row">
           {!revealed ? (
-            <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+            <>
+              <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
+              <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+            </>
           ) : (
             <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>
           )}
@@ -6645,7 +7146,7 @@ function TwinHuntApp({ onBack }) {
             </div>
           </div>
         </div>
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
       </>}
       {finished && <div className="welcome-box">
         <p className="welcome-text">Game complete!</p>
@@ -6820,6 +7321,14 @@ function SqrtApp({ onBack }) {
     await fetchQuestion(next)
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    const timeTaken = timer.stop()
+    setIsCorrect(false)
+    setRevealed(true)
+    setFeedback(`Solution: √${question.q} = (approximately)`)
+  }
+
   useEffect(() => {
     if (!revealed || isCorrect) return
     const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmitOrNext() } }
@@ -6862,8 +7371,11 @@ function SqrtApp({ onBack }) {
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
-        <div className="button-row"><button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button></div>
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        <div className="button-row">
+          {!revealed && <button onClick={handleSolve} disabled={loading || answer === ''} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
+          <button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button>
+        </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
       {finished && <div className="welcome-box">
@@ -6998,6 +7510,27 @@ function PolyMulApp({ onBack }) {
     setRevealed(true)
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    timer.stop()
+    try {
+      const r = await fetch(`${API}/polymul-api/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p1: question.p1, p2: question.p2, userCoeffs: [], solve: true }),
+      })
+      const data = await r.json()
+      setIsCorrect(false); setRevealed(true)
+      const display = data.correctDisplay || question.productDisplay || ''
+      const explanation = data.explanation || ''
+      setFeedback(`Solution: ${display}${explanation ? '\n' + explanation : ''}`)
+      setResults(prev => [...prev, { question: `(${question.p1Display})(${question.p2Display})`, userAnswer: '(solved)', correctAnswer: data.correctCoeffs?.join(', ') || display, correct: false, time: 0 }])
+      if (isAdaptive) {
+        setAdaptScore(prev => Math.max(0, prev - 0.35))
+      }
+    } catch (e) { console.error('Failed to solve polymul:', e) }
+  }
+
   /**
    * Auto-advance to next question after correct answer (uses useAutoAdvance hook)
    */
@@ -7076,11 +7609,12 @@ function PolyMulApp({ onBack }) {
             ))}
           </div>
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         <div className="button-row">
-          <button onClick={revealed ? advance : handleSubmit} disabled={loading || (!revealed && userCoeffs.some(c => c === ''))}>
-            {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
-          </button>
+          {!revealed ? <>
+            <button onClick={handleSubmit} disabled={loading || userCoeffs.some(c => c === '')}>Submit</button>
+            <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+          </> : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish' : 'Next'}</button>}
         </div>
         {results.length > 0 && <ResultsTable results={results} />}
       </>}
@@ -7229,6 +7763,15 @@ function PolyFactorApp({ onBack }) {
     setRevealed(true)
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    const timeTaken = timer.stop()
+    const { p, q, r, s } = question.factors
+    setIsCorrect(false)
+    setRevealed(true)
+    setFeedback(`Solution: (${p}x ${q >= 0 ? '+' : '−'} ${Math.abs(q)})(${r}x ${s >= 0 ? '+' : '−'} ${Math.abs(s)})`)
+  }
+
   /**
    * advance: Function for useAutoAdvance hook
    * Advances to next question or finishes quiz if all questions completed
@@ -7303,8 +7846,9 @@ function PolyFactorApp({ onBack }) {
             <span className="factor-group">)</span>
           </div>
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`} style={{whiteSpace:'pre-line'}}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{whiteSpace:'pre-line'}}>{feedback}</div>}
         <div className="button-row">
+          {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && (!userP || !userQ || !userR || !userS))}>
             {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
           </button>
@@ -7576,7 +8120,7 @@ function PrimeFactorApp({ onBack }) {
           {inputError && !revealed && <div className="feedback wrong" style={{ fontSize: '0.9rem', padding: '6px 14px', marginTop: 4 }}>{inputError}</div>}
           <NumPad value={currentInput} onChange={setCurrentInput} onSubmit={addFactor} disabled={revealed || remaining <= 1} />
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
         {revealed && <div className="button-row">
           <button onClick={() => advanceFnRef.current()}>{questionNumber >= totalQ ? 'Finish' : 'Next'}</button>
         </div>}
@@ -7727,6 +8271,19 @@ function QFormulaApp({ onBack }) {
     setRevealed(true)
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    const timeTaken = timer.stop()
+    // Format correct answer display based on root type
+    let correctStr = ''
+    if (question.roots.type === 'real_distinct') correctStr = `Roots: ${question.roots.r1} and ${question.roots.r2}`
+    else if (question.roots.type === 'real_equal') correctStr = `Root: ${question.roots.r1} (repeated)`
+    else correctStr = `Roots: ${question.roots.realPart} ± ${question.roots.imagPart}i`
+    setIsCorrect(false)
+    setRevealed(true)
+    setFeedback(`Solution: ${correctStr}`)
+  }
+
   /**
    * advanceFnRef: Mutable ref to advance function for useAutoAdvance hook
    * Advances to next question or finishes quiz if all questions completed
@@ -7805,8 +8362,9 @@ function QFormulaApp({ onBack }) {
             </>}
           </div>
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
+          {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && !userR1)}>
             {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
           </button>
@@ -7958,6 +8516,16 @@ function SimulApp({ onBack }) {
     setRevealed(true)
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    const timeTaken = timer.stop()
+    const s = question.solution
+    const display = is3x3 ? `(x, y, z) = (${s.x}, ${s.y}, ${s.z})` : `(x, y) = (${s.x}, ${s.y})`
+    setIsCorrect(false)
+    setRevealed(true)
+    setFeedback(`Solution: ${display}`)
+  }
+
   /**
    * advanceFnRef: Mutable ref to advance function for useAutoAdvance hook
    * Advances to next question or finishes quiz if all questions completed
@@ -8042,8 +8610,9 @@ function SimulApp({ onBack }) {
               <input className="answer-input coeff-input" type="text" value={userZ} onChange={valInput(setUserZ)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>}
           </div>
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
+          {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && (!userX || !userY || (is3x3 && !userZ)))}>
             {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
           </button>
@@ -8178,6 +8747,15 @@ function FuncEvalApp({ onBack }) {
     setRevealed(true)
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    const timeTaken = timer.stop()
+    const varStr = Object.entries(question.vars).map(([k, v]) => `${k}=${v}`).join(', ')
+    setIsCorrect(false)
+    setRevealed(true)
+    setFeedback(`Solution: f(${varStr}) = ${question.answer}`)
+  }
+
   /**
    * advanceFnRef: Mutable ref to advance function for useAutoAdvance hook
    * Advances to next question or finishes quiz if all questions completed
@@ -8245,8 +8823,9 @@ function FuncEvalApp({ onBack }) {
           </div>
           <NumPad value={answer} onChange={setAnswer} onSubmit={handleSubmit} disabled={revealed} />
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
+          {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && !answer)}>
             {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
           </button>
@@ -8383,6 +8962,14 @@ function LineEqApp({ onBack }) {
     setRevealed(true)
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    const timeTaken = timer.stop()
+    setIsCorrect(false)
+    setRevealed(true)
+    setFeedback(`Solution: y = ${question.answer.m}x ${question.answer.c >= 0 ? '+' : '−'} ${Math.abs(question.answer.c)}`)
+  }
+
   /**
    * advanceFnRef: Mutable ref to advance function for useAutoAdvance hook
    * Advances to next question or finishes quiz if all questions completed
@@ -8455,8 +9042,9 @@ function LineEqApp({ onBack }) {
               <input className="answer-input coeff-input" type="text" value={userC} onChange={valInput(setUserC)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
           </div>
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
         <div className="button-row">
+          {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && (!userM || !userC))}>
             {revealed ? (questionNumber >= totalQ ? 'Finish' : 'Next') : 'Submit'}
           </button>
@@ -9158,6 +9746,15 @@ function CustomApp({ onBack }) {
     setRevealed(true)
   }
 
+  const handleSolve = async () => {
+    if (!question || revealed) return
+    setIsCorrect(false)
+    setRevealed(true)
+    // For most puzzle types, display is available from question object
+    const display = question.display || question.answer || '(solution unavailable)'
+    setFeedback(`Solution: ${display}`)
+  }
+
   /**
    * advanceRef: Mutable ref to advance function for useAutoAdvance hook
    * Advances to next question or transitions to 'finished' phase if all questions completed
@@ -9456,8 +10053,9 @@ function CustomApp({ onBack }) {
         <div className="progress-pill center">Question {qIndex + 1}/{totalQ}</div>
         {renderQuestion()}
         {renderInputs()}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
         <div className="button-row">
+          {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading}>
             {revealed ? (qIndex + 1 >= totalQ ? 'Finish' : 'Next') : 'Submit'}
           </button>

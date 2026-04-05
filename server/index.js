@@ -5334,12 +5334,12 @@ function tatsavitQuestion(difficulty, level) {
         // Easy: constant × monomial, e.g. 3 × 4x = 12x
         const c = randomInt(2, 9), coeff = randomInt(2, 9);
         const answer = c * coeff;
-        return { id, type: 4, typeName: 'Monomial ×', prompt: `${c} × ${coeff}x = ?`, answerStr: `${answer}x`, answer, display: `${answer}x`, inputHint: 'coefficient only' };
+        return { id, type: 4, typeName: 'Monomial ×', prompt: `${c} × ${coeff}x = ?`, answerStr: `${answer}x`, answer, answerExp: 1, display: `${answer}x`, inputHint: 'e.g. 15x^2' };
       } else if (isMed) {
         // Medium: monomial × monomial, e.g. 3x × 5x = 15x²
         const a = randomInt(2, 9), b = randomInt(2, 9);
         const answer = a * b;
-        return { id, type: 4, typeName: 'Monomial ×', prompt: `${a}x × ${b}x = ?`, answerStr: `${answer}x²`, answer, display: `${answer}x²`, inputHint: 'coefficient only' };
+        return { id, type: 4, typeName: 'Monomial ×', prompt: `${a}x × ${b}x = ?`, answerStr: `${answer}x²`, answer, answerExp: 2, display: `${answer}x²`, inputHint: 'e.g. 15x^2' };
       } else {
         // Hard: e.g. 3x² × 4x³ = 12x⁵
         const a = randomInt(2, 7), b = randomInt(2, 7);
@@ -5348,7 +5348,7 @@ function tatsavitQuestion(difficulty, level) {
         const sup = (n) => String(n).split('').map(d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('');
         const t1 = p1 === 1 ? `${a}x` : `${a}x${sup(p1)}`;
         const t2 = p2 === 1 ? `${b}x` : `${b}x${sup(p2)}`;
-        return { id, type: 4, typeName: 'Monomial ×', prompt: `${t1} × ${t2} = ?`, answerStr: `${coeff}x${sup(exp)}`, answer: coeff, answerExp: exp, display: `${coeff}x${sup(exp)}`, inputHint: 'coefficient only' };
+        return { id, type: 4, typeName: 'Monomial ×', prompt: `${t1} × ${t2} = ?`, answerStr: `${coeff}x${sup(exp)}`, answer: coeff, answerExp: exp, display: `${coeff}x${sup(exp)}`, inputHint: 'e.g. 15x^2' };
       }
     }
     case 5: { // Percentage problems
@@ -5432,7 +5432,7 @@ app.get('/tatsavit-api/question', (req, res) => {
 });
 
 app.post('/tatsavit-api/check', express.json(), (req, res) => {
-  const { type, answer, ceilAnswer, display } = req.body;
+  const { type, answer, ceilAnswer, display, answerExp } = req.body;
   const userStr = (req.body.userAnswer || '').replace(/\s+/g, '').replace(/−/g, '-');
   const userNum = parseFloat(userStr);
   let correct = false;
@@ -5440,6 +5440,18 @@ app.post('/tatsavit-api/check', express.json(), (req, res) => {
   if (type === 3) {
     // Square root: accept floor OR ceiling
     correct = !isNaN(userNum) && (userNum === answer || userNum === ceilAnswer);
+  } else if (type === 4) {
+    // Monomial multiplication: accept coefficient only (e.g. "15") OR full expression (e.g. "15x^2", "6x")
+    const exprMatch = userStr.match(/^(-?\d+(?:\.\d+)?)x(?:\^(\d+))?$/);
+    if (exprMatch) {
+      const userCoeff = parseFloat(exprMatch[1]);
+      const userExpVal = exprMatch[2] ? parseInt(exprMatch[2]) : 1;
+      const expectedExp = answerExp || (display && display.includes('x²') ? 2 : display && display.includes('x') ? 1 : 0);
+      correct = Math.abs(userCoeff - answer) < 0.05 && userExpVal === expectedExp;
+    } else {
+      // Bare coefficient still accepted
+      correct = !isNaN(userNum) && Math.abs(userNum - answer) < 0.05;
+    }
   } else {
     // All other types: numeric comparison with small tolerance for percentages
     correct = !isNaN(userNum) && Math.abs(userNum - answer) < 0.05;

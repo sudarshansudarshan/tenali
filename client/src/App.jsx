@@ -170,13 +170,15 @@ function ResultsTable({ results }) {
  * @param {Function} props.onSubmit - (Optional) Callback when user presses submit key
  * @param {boolean} props.disabled - If true, all buttons are disabled
  */
-function NumPad({ value, onChange, onSubmit, disabled, showDecimal, showSlash }) {
+function NumPad({ value, onChange, onSubmit, disabled, showDecimal, showSlash, showCaret, showX }) {
   /**
    * press(key): Handle numpad key press
    * - '0'-'9': append to value
    * - '±': toggle negative sign (add or remove from start)
    * - '.': append decimal point (only if not already present)
    * - '/': append slash for fractions (only if not already present)
+   * - '^': append caret for exponents (only if not already present)
+   * - 'x': append variable x
    * - '⌫': delete last character (backspace)
    */
   const press = (key) => {
@@ -189,6 +191,10 @@ function NumPad({ value, onChange, onSubmit, disabled, showDecimal, showSlash })
       if (!value.includes('.')) onChange(value + '.')
     } else if (key === '/') {
       if (!value.includes('/')) onChange(value + '/')
+    } else if (key === '^') {
+      onChange(value + '^')
+    } else if (key === 'x') {
+      onChange(value + 'x')
     } else {
       onChange(value + key)
     }
@@ -216,6 +222,8 @@ function NumPad({ value, onChange, onSubmit, disabled, showDecimal, showSlash })
         <button type="button" className="numpad-key" onClick={() => press('0')} disabled={disabled}>0</button>
         {showDecimal && <button type="button" className="numpad-key numpad-special" onClick={() => press('.')} disabled={disabled}>.</button>}
         {showSlash && <button type="button" className="numpad-key numpad-special" onClick={() => press('/')} disabled={disabled}>/</button>}
+        {showCaret && <button type="button" className="numpad-key numpad-special" onClick={() => press('^')} disabled={disabled}>^</button>}
+        {showX && <button type="button" className="numpad-key numpad-special" onClick={() => press('x')} disabled={disabled}>x</button>}
         <button type="button" className="numpad-key numpad-special" onClick={() => press('⌫')} disabled={disabled}>⌫</button>
       </div>
     </div>
@@ -4418,7 +4426,7 @@ function TatsavitApp({ onBack }) {
           <div className="question-box" style={{ fontSize: '1.4rem', margin: '16px auto', lineHeight: '1.6' }}>{question.prompt}</div>
           {question.inputHint && <div style={{ fontSize: '0.78rem', color: 'var(--clr-dim)', marginBottom: 8, textAlign: 'center' }}>{question.inputHint}</div>}
           <input ref={inputRef} className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={handleKeyDown} autoFocus style={{ textAlign: 'center' }} />
-          <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} showDecimal />
+          <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} showDecimal showCaret showX />
         </div>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
         {showSlowHint && <div style={{ textAlign: 'center', margin: '8px 0', padding: '12px 16px', borderRadius: '10px', background: 'var(--clr-accent-soft)', border: '1px solid var(--clr-accent)', fontSize: '0.88rem' }}>

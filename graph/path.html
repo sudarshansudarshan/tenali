@@ -730,7 +730,8 @@ async function submitJourneyAnswer() {
     })
     const data = await r.json()
     journey.isCorrect = data.correct
-    journey.feedback = data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`
+    const displayAnswer = data.display || data.answer || ''
+    journey.feedback = data.correct ? `Correct!${displayAnswer ? ' ' + displayAnswer : ''}` : `Incorrect.${displayAnswer ? ' Answer: ' + displayAnswer : ''}`
 
     if (data.correct) {
       journey.totalCorrect++
@@ -770,6 +771,25 @@ function advanceStep() {
   }
 }
 
+function skipJourneyQuestion() {
+  if (journey.revealed) return
+  journey.revealed = true
+  journey.isCorrect = false
+  journey.feedback = 'Skipped'
+  journey.history.push(false)
+  if (journey.history.length > MASTERY_WINDOW) journey.history.shift()
+  journey.streak = 0
+  renderQuiz()
+}
+
+function reportJourneyDifficulty(wasDifficult) {
+  if (wasDifficult) {
+    journey.adaptScore = Math.max(0, journey.adaptScore - 0.5)
+  } else {
+    journey.adaptScore = Math.min(3, journey.adaptScore + 0.3)
+  }
+}
+
 function journeyNext() {
   if (checkMastery()) {
     advanceStep()
@@ -798,10 +818,23 @@ function numpadPress(key) {
 function handleQuizKey(e) {
   if (e.key === 'Enter') {
     e.preventDefault()
-    if (journey.revealed) journeyNext()
-    else submitJourneyAnswer()
+    if (journey.revealed) {
+      if (checkMastery()) advanceStep()
+      else journeyNext()
+    } else {
+      submitJourneyAnswer()
+    }
   }
 }
+
+// Global keydown so Enter works even when input is disabled after reveal
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && journey.revealed && document.getElementById('quizOverlay')?.style.display !== 'none') {
+    e.preventDefault()
+    if (checkMastery()) advanceStep()
+    else journeyNext()
+  }
+})
 
 function renderQuiz() {
   const overlay = document.getElementById('quizOverlay')
@@ -870,10 +903,18 @@ function renderQuiz() {
 
   html += '</div>' // end quiz-card
 
+  // Self-report buttons (always visible)
+  html += `<div style="text-align:center;margin:10px 0 4px;">
+    <span style="font-size:0.75rem;color:#888;margin-right:8px;">How are you feeling?</span>
+    <button onclick="reportJourneyDifficulty(false)" style="font-size:0.78rem;padding:5px 14px;border-radius:8px;margin-right:6px;background:transparent;border:1px solid #66bb6a;color:#66bb6a;cursor:pointer;">Too Easy</button>
+    <button onclick="reportJourneyDifficulty(true)" style="font-size:0.78rem;padding:5px 14px;border-radius:8px;background:transparent;border:1px solid #ef5350;color:#ef5350;cursor:pointer;">Too Hard</button>
+  </div>`
+
   // Buttons
   html += '<div class="quiz-btns">'
   if (!journey.revealed) {
     html += `<button class="submit-btn" onclick="submitJourneyAnswer()" ${!journey.answer.trim() ? 'disabled' : ''}>Submit</button>`
+    html += `<button class="quit-btn" onclick="skipJourneyQuestion()">Skip</button>`
   } else if (mastered) {
     html += `<button class="next-btn" onclick="advanceStep()">${journey.stepIndex >= totalSteps - 1 ? 'Finish Journey' : 'Next Topic →'}</button>`
   } else {

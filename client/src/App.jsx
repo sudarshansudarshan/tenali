@@ -4550,15 +4550,21 @@ function TatsavitApp({ onBack }) {
 
   const currentLevel = () => Math.min(8, Math.max(0, Math.floor(adaptLevelRef.current)))
 
+  // ─────── Per-type difficulty tracking ──────────────────
+  // Each of the 9 types has its own difficulty index 0-3 (easy/medium/hard/extrahard)
+  const TATSAVIT_DIFFS = ['easy', 'medium', 'hard', 'extrahard']
+  const [typeDiffMap, setTypeDiffMap] = useState({}) // { typeIndex: diffIdx 0-3 }
+  const getTypeDiff = (typeIdx) => typeDiffMap[typeIdx] ?? 0
+  const setTypeDiff = (typeIdx, fn) => setTypeDiffMap(prev => {
+    const cur = prev[typeIdx] ?? 0
+    const next = typeof fn === 'function' ? fn(cur) : fn
+    return { ...prev, [typeIdx]: Math.max(0, Math.min(3, next)) }
+  })
+
   // ─────── Difficulty label for adaptive within-type scaling ─────
-  // When adaptive, we scale within-type difficulty based on the adapt level:
-  // levels 0-2 → 'easy', 3-5 → 'medium', 6-7 → 'hard', 8 → 'extrahard'
   const adaptiveDifficulty = () => {
-    const lvl = currentLevel()
-    if (lvl <= 2) return 'easy'
-    if (lvl <= 5) return 'medium'
-    if (lvl <= 7) return 'hard'
-    return 'extrahard'
+    const typeIdx = question?.type ?? currentLevel()
+    return TATSAVIT_DIFFS[getTypeDiff(typeIdx)] || 'easy'
   }
 
   const loadQuestion = async () => {
@@ -4592,6 +4598,7 @@ function TatsavitApp({ onBack }) {
     setAdaptLevel(0)
     adaptLevelRef.current = 0
     streakRef.current = 0
+    setTypeDiffMap({})
     submittedRef.current = false
     advancedRef.current = false
   }
@@ -4651,19 +4658,19 @@ function TatsavitApp({ onBack }) {
   }
   const [showSlowHint, setShowSlowHint] = useState(false)
 
-  // Student self-reports difficulty — adjusts adaptive level on top of automatic progression
+  // Student self-reports difficulty — adjusts per-type difficulty (not global level)
   const [reportAck, setReportAck] = useState('')
   const reportDifficulty = (wasDifficult) => {
     if (!isAdaptive) { setShowSlowHint(false); return }
-    setAdaptLevel(prev => {
-      // "Difficult" → drop a full level; "Easy" → small bonus bump
-      const adjust = wasDifficult ? -1.0 : 0.2
-      const next = Math.max(0, Math.min(8, prev + adjust))
-      adaptLevelRef.current = next
-      return next
-    })
+    const typeIdx = question?.type ?? currentLevel()
+    if (wasDifficult) {
+      setTypeDiff(typeIdx, d => d - 1)
+    } else {
+      setTypeDiff(typeIdx, d => d + 1)
+    }
     setShowSlowHint(false)
-    setReportAck(wasDifficult ? 'Lowering difficulty...' : 'Raising difficulty...')
+    const typeName = TATSAVIT_TYPE_NAMES[typeIdx] || `Type ${typeIdx}`
+    setReportAck(wasDifficult ? `Lowering ${typeName} difficulty...` : `Raising ${typeName} difficulty...`)
     setTimeout(() => setReportAck(''), 1500)
   }
 
@@ -4700,24 +4707,30 @@ function TatsavitApp({ onBack }) {
       if (isAdaptive && timeTaken > slowThresh) {
         setShowSlowHint(true)
       }
-      // Adaptive progression — automatic adjustment (student self-report is additive on top)
+      // Adaptive progression — automatic adjustment
       if (isAdaptive) {
+        const typeIdx = question?.type ?? currentLevel()
+        // Adjust global level (which type appears next)
         setAdaptLevel(prev => {
           let next
           if (data.correct) {
             streakRef.current = streakRef.current >= 0 ? streakRef.current + 1 : 1
-            // Slow correct gets a smaller bump (they know it, but struggled)
             const bump = timeTaken > slowThresh ? 0.15 : (streakRef.current >= 3 ? 0.5 : 0.3)
             next = Math.min(8, prev + bump)
           } else {
             streakRef.current = streakRef.current <= 0 ? streakRef.current - 1 : -1
-            // Slow wrong gets bigger penalty
             const penalty = timeTaken > slowThresh ? 0.6 : 0.4
             next = Math.max(0, prev - penalty)
           }
           adaptLevelRef.current = next
           return next
         })
+        // Also adjust per-type difficulty (within-type scaling)
+        if (data.correct && streakRef.current >= 3) {
+          setTypeDiff(typeIdx, d => d + 1)
+        } else if (!data.correct && streakRef.current <= -2) {
+          setTypeDiff(typeIdx, d => d - 1)
+        }
       }
     } catch (e) {
       submittedRef.current = false
@@ -5106,7 +5119,7 @@ const DIFF_COLORS = { easy: '#4caf50', medium: '#ff9800', hard: '#f44336', extra
 function RandomMixApp({ onBack }) {
   const [phase, setPhase] = useState('setup') // setup | playing | finished
   const [skippedTopics, setSkippedTopics] = useState(new Set())
-  const [diffIndex, setDiffIndex] = useState(0) // index into DIFF_LEVELS
+  const [topicDiffMap, setTopicDiffMap] = useState({}) // { topicKey: diffIndex (0-3) }
   const [streak, setStreak] = useState(0) // positive = correct streak, negative = wrong streak
   const [question, setQuestion] = useState(null)
   const [currentTopic, setCurrentTopic] = useState(null)
@@ -5138,7 +5151,13 @@ function RandomMixApp({ onBack }) {
     return pool[Math.floor(Math.random() * pool.length)]
   }
 
-  const currentDifficulty = () => DIFF_LEVELS[Math.min(diffIndex, DIFF_LEVELS.length - 1)]
+  const getTopicDiff = (topicKey) => topicDiffMap[topicKey] ?? 0
+  const currentDifficulty = () => DIFF_LEVELS[Math.min(getTopicDiff(currentTopic?.key), DIFF_LEVELS.length - 1)]
+  const setTopicDiff = (topicKey, fn) => setTopicDiffMap(prev => {
+    const cur = prev[topicKey] ?? 0
+    const next = typeof fn === 'function' ? fn(cur) : fn
+    return { ...prev, [topicKey]: Math.max(0, Math.min(DIFF_LEVELS.length - 1, next)) }
+  })
 
   const loadQuestion = async () => {
     const topic = pickRandomTopic()
@@ -5149,7 +5168,7 @@ function RandomMixApp({ onBack }) {
     setLoading(true)
     setCurrentTopic(topic)
     try {
-      const diff = currentDifficulty()
+      const diff = DIFF_LEVELS[Math.min(getTopicDiff(topic.key), DIFF_LEVELS.length - 1)]
       const r = await fetch(`${API}/${topic.api}/question?difficulty=${diff}`)
       const data = await r.json()
       setQuestion(data)
@@ -5192,17 +5211,17 @@ function RandomMixApp({ onBack }) {
         setScore(s => s + 1)
         const newStreak = streak >= 0 ? streak + 1 : 1
         setStreak(newStreak)
-        // Level up after 3 correct in a row
-        if (newStreak >= 3 && diffIndex < DIFF_LEVELS.length - 1) {
-          setDiffIndex(d => d + 1)
+        // Level up this topic after 3 correct in a row
+        if (newStreak >= 3) {
+          setTopicDiff(currentTopic.key, d => d + 1)
           setStreak(0)
         }
       } else {
         const newStreak = streak <= 0 ? streak - 1 : -1
         setStreak(newStreak)
-        // Level down after 2 wrong in a row
-        if (newStreak <= -2 && diffIndex > 0) {
-          setDiffIndex(d => d - 1)
+        // Level down this topic after 2 wrong in a row
+        if (newStreak <= -2) {
+          setTopicDiff(currentTopic.key, d => d - 1)
           setStreak(0)
         }
       }
@@ -5272,14 +5291,16 @@ function RandomMixApp({ onBack }) {
       question: `[${currentTopic?.name || '?'}] ${getPromptForType(currentTopic?.key, question) || question.prompt || '?'}`,
       userAnswer: '(skipped)', correctAnswer: '—', correct: false, time: 0
     }])
-    if (diffIndex > 0) setDiffIndex(d => d - 1)
+    if (currentTopic) setTopicDiff(currentTopic.key, d => d - 1)
   }
 
   const reportDifficulty = (wasDifficult) => {
-    if (wasDifficult) {
-      if (diffIndex > 0) { setDiffIndex(d => d - 1); setStreak(0) }
-    } else {
-      if (diffIndex < DIFF_LEVELS.length - 1) { setDiffIndex(d => d + 1); setStreak(0) }
+    if (currentTopic) {
+      if (wasDifficult) {
+        setTopicDiff(currentTopic.key, d => d - 1); setStreak(0)
+      } else {
+        setTopicDiff(currentTopic.key, d => d + 1); setStreak(0)
+      }
     }
     // Both buttons skip to the next question
     if (!revealed) {
@@ -5318,7 +5339,7 @@ function RandomMixApp({ onBack }) {
     setScore(0)
     setQuestionNumber(0)
     setResults([])
-    setDiffIndex(0)
+    setTopicDiffMap({})
     setStreak(0)
     setSkippedTopics(new Set())
     setTopicStats({})
@@ -5485,11 +5506,11 @@ function RandomMixApp({ onBack }) {
           {revealed && isCorrect !== null && (
             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', marginTop: '0.3rem' }}>
               {isCorrect ? (
-                streak >= 2 && diffIndex < DIFF_LEVELS.length - 1
+                streak >= 2 && getTopicDiff(currentTopic?.key) < DIFF_LEVELS.length - 1
                   ? `🔥 ${streak} in a row! Levelling up next…`
                   : `✓ Streak: ${streak}`
               ) : (
-                streak <= -1 && diffIndex > 0
+                streak <= -1 && getTopicDiff(currentTopic?.key) > 0
                   ? `Levelling down next…`
                   : ''
               )}

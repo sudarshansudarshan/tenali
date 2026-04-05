@@ -5452,7 +5452,7 @@ app.post('/tatsavit-api/check', express.json(), (req, res) => {
 // 1. LINEAR EQUATIONS (lineareq-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function linearEqQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // ax + b = c
     const a = randomInt(2, 9);
@@ -5510,7 +5510,7 @@ app.post('/lineareq-api/check', express.json(), (req, res) => {
 // 2. DECIMALS (decimals-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function decimalsQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // add two decimals (1 dp)
     const a = (randomInt(1, 10) * 10 + randomInt(0, 9)) / 10;
@@ -5569,7 +5569,7 @@ function factorial(n) {
 }
 
 function permcombQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // nPr (n≤8, r≤3)
     const n = randomInt(4, 8);
@@ -5629,7 +5629,7 @@ app.post('/permcomb-api/check', express.json(), (req, res) => {
 // 4. LIMITS (limits-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function limitsQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // lim x→a of (bx+c) — direct substitution
     const a = randomInt(1, 5);
@@ -5683,7 +5683,7 @@ app.post('/limits-api/check', express.json(), (req, res) => {
 // 5. INVERSE TRIGONOMETRIC (invtrig-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function invtrigQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // standard values in degrees
     const values = [
@@ -5743,7 +5743,7 @@ app.post('/invtrig-api/check', express.json(), (req, res) => {
 // 6. REMAINDER & FACTOR THEOREM (remfactor-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function remfactorQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // f(x) = ax² + bx + c, find remainder when divided by (x-a)
     const a = randomInt(2, 5);
@@ -5805,7 +5805,7 @@ app.post('/remfactor-api/check', express.json(), (req, res) => {
 // 7. HERON'S FORMULA (heron-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function heronQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // semi-perimeter
     const a = randomInt(3, 10);
@@ -5864,7 +5864,7 @@ app.post('/heron-api/check', express.json(), (req, res) => {
 // 8. SHARES & DIVIDENDS (shares-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function sharesQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // dividend = shares × dividend_per_share
     const shares = randomInt(10, 100);
@@ -5920,7 +5920,7 @@ app.post('/shares-api/check', express.json(), (req, res) => {
 // 9. BANKING / RECURRING DEPOSITS (banking-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function bankingQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // SI = (P × R × T) / 100
     const P = randomInt(1000, 10000);
@@ -5977,7 +5977,7 @@ app.post('/banking-api/check', express.json(), (req, res) => {
 // 10. GST (gst-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function gstQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // GST amount = price × (rate/100)
     const price = randomInt(100, 1000);
@@ -6032,7 +6032,7 @@ app.post('/gst-api/check', express.json(), (req, res) => {
 // 11. SECTION FORMULA (section-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function sectionQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // midpoint
     const x1 = randomInt(-10, 10);
@@ -6106,7 +6106,7 @@ app.post('/section-api/check', express.json(), (req, res) => {
 // 12. LINEAR PROGRAMMING (linprog-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function linprogQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // evaluate Z at given vertex
     const a = randomInt(2, 5);
@@ -6180,7 +6180,7 @@ app.post('/linprog-api/check', express.json(), (req, res) => {
 // 13. CIRCULAR MEASURE (circmeasure-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function circmeasureQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // degrees to radians
     const angles = [30, 45, 60, 90, 180, 360];
@@ -6232,7 +6232,7 @@ app.post('/circmeasure-api/check', express.json(), (req, res) => {
 // 14. CONIC SECTIONS (conics-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function conicsQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // identify conic type
     const types = [
@@ -6292,7 +6292,7 @@ app.post('/conics-api/check', express.json(), (req, res) => {
 // 15. DIFFERENTIAL EQUATIONS (diffeq-api)
 // ═══════════════════════════════════════════════════════════════════════════
 function diffeqQuestion(difficulty) {
-  const id = uuid();
+  const id = `q-${Date.now()}-${Math.random()}`;
   if (difficulty === 'easy') {
     // find order
     const orders = [

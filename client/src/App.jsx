@@ -170,51 +170,52 @@ function ResultsTable({ results }) {
  * @param {Function} props.onSubmit - (Optional) Callback when user presses submit key
  * @param {boolean} props.disabled - If true, all buttons are disabled
  */
-function NumPad({ value, onChange, onSubmit, disabled }) {
+function NumPad({ value, onChange, onSubmit, disabled, showDecimal, showSlash }) {
   /**
    * press(key): Handle numpad key press
    * - '0'-'9': append to value
    * - '±': toggle negative sign (add or remove from start)
+   * - '.': append decimal point (only if not already present)
+   * - '/': append slash for fractions (only if not already present)
    * - '⌫': delete last character (backspace)
    */
   const press = (key) => {
     if (disabled) return
     if (key === '⌫') {
-      // Backspace: remove last character
       onChange(value.slice(0, -1))
     } else if (key === '±') {
-      // Toggle sign: add or remove leading minus
       onChange(value.startsWith('-') ? value.slice(1) : '-' + value)
+    } else if (key === '.') {
+      if (!value.includes('.')) onChange(value + '.')
+    } else if (key === '/') {
+      if (!value.includes('/')) onChange(value + '/')
     } else {
-      // Digit: append to current value
       onChange(value + key)
     }
   }
 
   return (
     <div className="numpad">
-      {/* Row 1-3 */}
       <div className="numpad-row">
         {['1', '2', '3'].map((k) => (
           <button key={k} type="button" className="numpad-key" onClick={() => press(k)} disabled={disabled}>{k}</button>
         ))}
       </div>
-      {/* Row 4-6 */}
       <div className="numpad-row">
         {['4', '5', '6'].map((k) => (
           <button key={k} type="button" className="numpad-key" onClick={() => press(k)} disabled={disabled}>{k}</button>
         ))}
       </div>
-      {/* Row 7-9 */}
       <div className="numpad-row">
         {['7', '8', '9'].map((k) => (
           <button key={k} type="button" className="numpad-key" onClick={() => press(k)} disabled={disabled}>{k}</button>
         ))}
       </div>
-      {/* Row ±, 0, ⌫ (special keys) */}
       <div className="numpad-row">
         <button type="button" className="numpad-key numpad-special" onClick={() => press('±')} disabled={disabled}>±</button>
         <button type="button" className="numpad-key" onClick={() => press('0')} disabled={disabled}>0</button>
+        {showDecimal && <button type="button" className="numpad-key numpad-special" onClick={() => press('.')} disabled={disabled}>.</button>}
+        {showSlash && <button type="button" className="numpad-key numpad-special" onClick={() => press('/')} disabled={disabled}>/</button>}
         <button type="button" className="numpad-key numpad-special" onClick={() => press('⌫')} disabled={disabled}>⌫</button>
       </div>
     </div>
@@ -2015,8 +2016,11 @@ function GKApp({ onBack }) {
   const [questionNumber, setQuestionNumber] = useState(0)
   // All result objects from this session
   const [results, setResults] = useState([])
-  // Array of previously seen question IDs (to avoid repeats)
-  const [seenIds, setSeenIds] = useState([])
+  // Persist seen GK question IDs in localStorage to avoid repeats across sessions
+  const GK_SEEN_KEY = 'tenali_gk_seen'
+  const loadGKSeen = () => { try { return JSON.parse(localStorage.getItem(GK_SEEN_KEY) || '[]') } catch { return [] } }
+  const saveGKSeen = (ids) => { try { localStorage.setItem(GK_SEEN_KEY, JSON.stringify(ids)) } catch {} }
+  const [seenIds, setSeenIds] = useState(loadGKSeen)
   // Number of questions to answer (as string for input field)
   const [numQuestions, setNumQuestions] = useState(String(DEFAULT_TOTAL))
   // Total questions to answer
@@ -2030,7 +2034,7 @@ function GKApp({ onBack }) {
 
   /**
    * loadQuestion(excludeIds?): Fetch next GK question from API
-   * Excludes previously seen questions to avoid repetition
+   * Excludes previously seen questions to avoid repetition (persisted in localStorage)
    * Stops if total questions reached
    */
   const loadQuestion = async (excludeIds) => {
@@ -2044,22 +2048,23 @@ function GKApp({ onBack }) {
     setFeedback('')
     setIsCorrect(null)
     setRevealed(false)
-    // Build query param to exclude previously seen questions
     const ids = excludeIds || seenIds
     const excludeParam = ids.length ? `?exclude=${ids.join(',')}` : ''
-    // Fetch from backend API
     const res = await fetch(`${API}/gk-api/question${excludeParam}`)
     const data = await res.json()
     setQuestion(data)
-    // Track this question ID so we don't ask it again
-    setSeenIds(prev => [...prev, data.id])
+    // Track this question ID so we don't ask it again (persist to localStorage)
+    const newSeen = [...ids, data.id]
+    setSeenIds(newSeen)
+    saveGKSeen(newSeen)
     setQuestionNumber((n) => n + 1)
     setLoading(false)
-    timer.start()  // Start timer for this question
+    timer.start()
   }
 
   /**
    * startQuiz(): Initialize GK quiz with question count
+   * Keeps existing seenIds from localStorage (only resets session state)
    */
   const startQuiz = () => {
     const count = Math.max(1, Math.min(100, Number(numQuestions) || DEFAULT_TOTAL))
@@ -2069,8 +2074,8 @@ function GKApp({ onBack }) {
     setScore(0)
     setQuestionNumber(0)
     setResults([])
-    setSeenIds([])
-    loadQuestion([])
+    // Don't clear seenIds — keep the localStorage history for no-repeat
+    loadQuestion(seenIds)
   }
 
   // Load first question only if started
@@ -3131,26 +3136,23 @@ function VocabApp({ onBack }) {
   const [totalQ, setTotalQ] = useState(DEFAULT_TOTAL)
   // Array of {question, userAnswer, correctAnswer, correct, time} result objects
   const [results, setResults] = useState([])
-  // Array of previously seen question IDs (to avoid repeats via API exclude parameter)
-  const [seenIds, setSeenIds] = useState([])
+  // Persist seen Vocab question IDs in localStorage to avoid repeats across sessions
+  const VOCAB_SEEN_KEY = 'tenali_vocab_seen'
+  const loadVocabSeen = () => { try { return JSON.parse(localStorage.getItem(VOCAB_SEEN_KEY) || '[]') } catch { return [] } }
+  const saveVocabSeen = (ids) => { try { localStorage.setItem(VOCAB_SEEN_KEY, JSON.stringify(ids)) } catch {} }
+  const [seenIds, setSeenIds] = useState(loadVocabSeen)
   // Timer instance for tracking time spent per question
   const timer = useTimer()
   const advanceFnRef = useRef(null)
 
   const effectiveDiff = () => {
     const eff = isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
-    // Map our standard 4 levels to vocab API format (it uses 'extra-hard' with hyphen)
     return eff === 'extrahard' ? 'extra-hard' : eff
   }
 
   /**
    * loadQuestion(excludeIds?): Fetch next vocabulary question from backend
-   * Endpoint: /vocab-api/question?difficulty={easy|medium|hard|extra-hard}&exclude={id1,id2,...}
-   * Features:
-   *   - Passes previously seen IDs to prevent question repetition
-   *   - Returns: {id, question: word, options: [def1, def2, def3, def4]}
-   *   - Tracks returned ID in seenIds to exclude on future requests
-   * Resets form state and starts timer for this question
+   * Persists seen IDs to localStorage for cross-session no-repeat
    */
   const loadQuestion = async (excludeIds) => {
     setLoading(true)
@@ -3159,23 +3161,20 @@ function VocabApp({ onBack }) {
     setIsCorrect(null)
     setRevealed(false)
     const ids = excludeIds || seenIds
-    // Build exclude parameter to prevent question repeats
     const excludeParam = ids.length ? `&exclude=${ids.join(',')}` : ''
     const res = await fetch(`${API}/vocab-api/question?difficulty=${effectiveDiff()}${excludeParam}`)
     const data = await res.json()
     setQuestion(data)
-    // Add this question's ID to seen list
-    setSeenIds(prev => [...prev, data.id])
+    const newSeen = [...ids, data.id]
+    setSeenIds(newSeen)
+    saveVocabSeen(newSeen)
     setLoading(false)
     timer.start()
   }
 
   /**
    * startQuiz(): Initialize vocabulary quiz
-   * Process:
-   *   1. Parse question count from user input (validate as positive number)
-   *   2. Reset all quiz state
-   *   3. Fetch first question
+   * Keeps localStorage history for no-repeat across sessions
    */
   const startQuiz = async () => {
     const count = numQuestions !== '' && Number(numQuestions) > 0 ? Number(numQuestions) : DEFAULT_TOTAL
@@ -3185,10 +3184,10 @@ function VocabApp({ onBack }) {
     setScore(0)
     setQuestionNumber(1)
     setResults([])
-    setSeenIds([])
+    // Keep seenIds from localStorage — don't clear
     setAdaptScore(0)
     adaptScoreRef.current = 0
-    await loadQuestion([])
+    await loadQuestion(seenIds)
   }
 
   /**
@@ -4269,11 +4268,26 @@ function TatsavitApp({ onBack }) {
     return () => window.removeEventListener('keydown', h)
   }, [revealed, isCorrect, questionNumber])
 
+  // Slow-answer threshold: if >15s and wrong, offer to drop difficulty
+  const SLOW_THRESHOLD = 15
+  const [showSlowHint, setShowSlowHint] = useState(false)
+
+  const dropDifficulty = () => {
+    if (!isAdaptive) return
+    setAdaptLevel(prev => {
+      const next = Math.max(0, prev - 1.0) // aggressive drop by 1 full level
+      adaptLevelRef.current = next
+      return next
+    })
+    setShowSlowHint(false)
+  }
+
   const handleSubmit = async () => {
     if (!question || revealed || !answer.trim()) return
     if (submittedRef.current) return
     submittedRef.current = true
     const timeTaken = timer.stop()
+    setShowSlowHint(false)
     try {
       const r = await fetch(`${API}/tatsavit-api/check`, {
         method: 'POST',
@@ -4296,17 +4310,24 @@ function TatsavitApp({ onBack }) {
           time: timeTaken,
         }])
       }
-      // Adaptive progression
+      // If slow + wrong and adaptive, offer to drop difficulty
+      if (isAdaptive && !data.correct && timeTaken > SLOW_THRESHOLD) {
+        setShowSlowHint(true)
+      }
+      // Adaptive progression — also factor in time for correct answers
       if (isAdaptive) {
         setAdaptLevel(prev => {
           let next
           if (data.correct) {
+            // Slow correct (>15s) gets a smaller bump
             streakRef.current = streakRef.current >= 0 ? streakRef.current + 1 : 1
-            const bump = streakRef.current >= 3 ? 0.5 : 0.3
+            const bump = timeTaken > SLOW_THRESHOLD ? 0.15 : (streakRef.current >= 3 ? 0.5 : 0.3)
             next = Math.min(8, prev + bump)
           } else {
             streakRef.current = streakRef.current <= 0 ? streakRef.current - 1 : -1
-            next = Math.max(0, prev - 0.4)
+            // Slow wrong gets a bigger penalty
+            const penalty = timeTaken > SLOW_THRESHOLD ? 0.6 : 0.4
+            next = Math.max(0, prev - penalty)
           }
           adaptLevelRef.current = next
           return next
@@ -4370,8 +4391,14 @@ function TatsavitApp({ onBack }) {
           <div className="question-box" style={{ fontSize: '1.4rem', margin: '16px auto', lineHeight: '1.6' }}>{question.prompt}</div>
           {question.inputHint && <div style={{ fontSize: '0.78rem', color: 'var(--clr-dim)', marginBottom: 8, textAlign: 'center' }}>{question.inputHint}</div>}
           <input ref={inputRef} className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={handleKeyDown} autoFocus style={{ textAlign: 'center' }} />
+          <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} showDecimal />
         </div>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
+        {showSlowHint && <div style={{ textAlign: 'center', margin: '8px 0', padding: '10px 16px', borderRadius: '10px', background: 'var(--clr-accent-soft)', border: '1px solid var(--clr-accent)', fontSize: '0.85rem' }}>
+          That took a while. Was it too hard?{' '}
+          <button onClick={dropDifficulty} style={{ fontSize: '0.82rem', padding: '4px 12px', borderRadius: '6px', marginLeft: '8px' }}>Yes, make it easier</button>
+          <button onClick={() => setShowSlowHint(false)} style={{ fontSize: '0.82rem', padding: '4px 12px', borderRadius: '6px', marginLeft: '6px', background: 'var(--clr-surface)', color: 'var(--clr-text)' }}>No, I'm fine</button>
+        </div>}
         <div className="button-row">
           {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
             : <button onClick={advance}>{questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question'}</button>}

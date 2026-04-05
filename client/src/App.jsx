@@ -4268,14 +4268,17 @@ function TatsavitApp({ onBack }) {
     return () => window.removeEventListener('keydown', h)
   }, [revealed, isCorrect, questionNumber])
 
-  // Slow-answer threshold: if >15s and wrong, offer to drop difficulty
+  // Slow-answer threshold: if student takes >15s, ask if it was easy or difficult
   const SLOW_THRESHOLD = 15
   const [showSlowHint, setShowSlowHint] = useState(false)
 
-  const dropDifficulty = () => {
-    if (!isAdaptive) return
+  // Student self-reports difficulty — adjusts adaptive level on top of automatic progression
+  const reportDifficulty = (wasDifficult) => {
+    if (!isAdaptive) { setShowSlowHint(false); return }
     setAdaptLevel(prev => {
-      const next = Math.max(0, prev - 1.0) // aggressive drop by 1 full level
+      // "Difficult" → drop a full level; "Easy" → small bonus bump
+      const adjust = wasDifficult ? -1.0 : 0.2
+      const next = Math.max(0, Math.min(8, prev + adjust))
       adaptLevelRef.current = next
       return next
     })
@@ -4310,22 +4313,22 @@ function TatsavitApp({ onBack }) {
           time: timeTaken,
         }])
       }
-      // If slow + wrong and adaptive, offer to drop difficulty
-      if (isAdaptive && !data.correct && timeTaken > SLOW_THRESHOLD) {
+      // If slow (>15s) and adaptive, ask the student if it was easy or difficult
+      if (isAdaptive && timeTaken > SLOW_THRESHOLD) {
         setShowSlowHint(true)
       }
-      // Adaptive progression — also factor in time for correct answers
+      // Adaptive progression — automatic adjustment (student self-report is additive on top)
       if (isAdaptive) {
         setAdaptLevel(prev => {
           let next
           if (data.correct) {
-            // Slow correct (>15s) gets a smaller bump
             streakRef.current = streakRef.current >= 0 ? streakRef.current + 1 : 1
+            // Slow correct gets a smaller bump (they know it, but struggled)
             const bump = timeTaken > SLOW_THRESHOLD ? 0.15 : (streakRef.current >= 3 ? 0.5 : 0.3)
             next = Math.min(8, prev + bump)
           } else {
             streakRef.current = streakRef.current <= 0 ? streakRef.current - 1 : -1
-            // Slow wrong gets a bigger penalty
+            // Slow wrong gets bigger penalty
             const penalty = timeTaken > SLOW_THRESHOLD ? 0.6 : 0.4
             next = Math.max(0, prev - penalty)
           }
@@ -4394,10 +4397,10 @@ function TatsavitApp({ onBack }) {
           <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} showDecimal />
         </div>}
         {feedback && <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>}
-        {showSlowHint && <div style={{ textAlign: 'center', margin: '8px 0', padding: '10px 16px', borderRadius: '10px', background: 'var(--clr-accent-soft)', border: '1px solid var(--clr-accent)', fontSize: '0.85rem' }}>
-          That took a while. Was it too hard?{' '}
-          <button onClick={dropDifficulty} style={{ fontSize: '0.82rem', padding: '4px 12px', borderRadius: '6px', marginLeft: '8px' }}>Yes, make it easier</button>
-          <button onClick={() => setShowSlowHint(false)} style={{ fontSize: '0.82rem', padding: '4px 12px', borderRadius: '6px', marginLeft: '6px', background: 'var(--clr-surface)', color: 'var(--clr-text)' }}>No, I'm fine</button>
+        {showSlowHint && <div style={{ textAlign: 'center', margin: '8px 0', padding: '12px 16px', borderRadius: '10px', background: 'var(--clr-accent-soft)', border: '1px solid var(--clr-accent)', fontSize: '0.88rem' }}>
+          <div style={{ marginBottom: '8px' }}>Was the previous question easy or difficult for you?</div>
+          <button onClick={() => reportDifficulty(false)} style={{ fontSize: '0.84rem', padding: '6px 16px', borderRadius: '8px', marginRight: '8px', background: 'var(--clr-correct)', color: '#fff' }}>Easy</button>
+          <button onClick={() => reportDifficulty(true)} style={{ fontSize: '0.84rem', padding: '6px 16px', borderRadius: '8px', background: 'var(--clr-wrong)', color: '#fff' }}>Difficult</button>
         </div>}
         <div className="button-row">
           {!revealed ? <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>

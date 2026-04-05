@@ -152,7 +152,19 @@ select option.none-opt { color: #ef5350; font-weight: 600; }
 }
 .quiz-card .q-feedback.correct { color: #66bb6a; }
 .quiz-card .q-feedback.wrong { color: #ef5350; }
-.quiz-card .q-feedback.solve { color: #42a5f5; text-align: left; line-height: 1.6; }
+.quiz-card .q-feedback.solve {
+  color: #e8e0d8; text-align: center; line-height: 1.8; font-weight: 400;
+  background: #2c2622; border: 1.5px solid #e8864a; border-radius: 16px;
+  padding: 24px 28px; max-width: 400px; margin: 14px auto 0;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+}
+.quiz-card .q-feedback.solve .solve-answer {
+  font-size: 1.4rem; font-weight: 700; color: #e8864a; margin-bottom: 14px;
+}
+.quiz-card .q-feedback.solve .solve-explain {
+  text-align: left; font-size: 0.86rem; line-height: 1.75; color: #a89e94;
+  border-top: 1px solid rgba(255,245,230,0.10); padding-top: 12px;
+}
 
 .quiz-card .q-numpad {
   display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 14px;
@@ -919,8 +931,19 @@ function renderQuiz() {
 
   // Feedback
   if (journey.feedback) {
-    const cls = journey.isCorrect ? 'correct' : (journey.feedback.startsWith('Solution:') ? 'solve' : 'wrong')
-    html += `<div class="q-feedback ${cls}" style="white-space:pre-line">${journey.feedback}</div>`
+    const isSolve = !journey.isCorrect && journey.feedback.startsWith('Solution:')
+    if (isSolve) {
+      const lines = journey.feedback.split('\n')
+      const ansLine = lines[0].replace('Solution: ', '').trim()
+      const explainLines = lines.slice(1).join('\n').trim()
+      html += `<div class="q-feedback solve">`
+      html += `<div class="solve-answer">${ansLine}</div>`
+      if (explainLines) html += `<div class="solve-explain" style="white-space:pre-line">${explainLines}</div>`
+      html += `</div>`
+    } else {
+      const cls = journey.isCorrect ? 'correct' : 'wrong'
+      html += `<div class="q-feedback ${cls}">${journey.feedback}</div>`
+    }
   }
 
   // Mastery bar for current step

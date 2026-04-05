@@ -170,6 +170,30 @@ function ResultsTable({ results }) {
  * @param {Function} props.onSubmit - (Optional) Callback when user presses submit key
  * @param {boolean} props.disabled - If true, all buttons are disabled
  */
+
+/**
+ * renderFeedback — Renders feedback text. For solve feedback, renders a
+ * structured card with highlighted answer and formatted explanation.
+ * For normal correct/wrong feedback, renders inline text.
+ */
+function renderFeedback(feedback, isCorrect) {
+  if (!feedback) return null
+  const isSolve = isCorrect === false && feedback.startsWith('Solution:')
+  if (!isSolve) {
+    return <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`}>{feedback}</div>
+  }
+  // Parse solve feedback: "Solution: ANSWER\nExplanation..."
+  const lines = feedback.split('\n')
+  const answerLine = lines[0].replace('Solution: ', '').trim()
+  const explanationLines = lines.slice(1).join('\n').trim()
+  return (
+    <div className="feedback solve">
+      <div className="solve-answer">{answerLine}</div>
+      {explanationLines && <div className="solve-explanation">{explanationLines}</div>}
+    </div>
+  )
+}
+
 function NumPad({ value, onChange, onSubmit, disabled, showDecimal, showSlash, showCaret, showX }) {
   /**
    * press(key): Handle numpad key press
@@ -679,9 +703,7 @@ function AdaptiveTablesApp({ studentName }) {
                     </div>
                   )}
                 </form>
-                {feedback && (
-                  <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>
-                )}
+                {renderFeedback(feedback, isCorrect)}
                 {!revealed && (
                   <div className="button-row">
                     <button onClick={handleSolve} disabled={!answer} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
@@ -1100,9 +1122,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
                     </div>
                   )}
                 </form>
-                {feedback && (
-                  <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>
-                )}
+                {renderFeedback(feedback, isCorrect)}
                 {!revealed && (
                   <div className="button-row">
                     <button onClick={handleSolve} disabled={!answer} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
@@ -1629,9 +1649,7 @@ function AdaptiveMixedApp({ studentName }) {
                   </div>
                 )}
               </form>
-              {feedback && (
-                <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>
-              )}
+              {renderFeedback(feedback, isCorrect)}
               {!revealed && (
                 <div className="button-row">
                   <button onClick={handleSolve} disabled={!answer.trim()} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
@@ -2257,7 +2275,7 @@ function GKApp({ onBack }) {
             })}
           </div>
         )}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmitOrNext} disabled={loading || !selected}>Submit</button>
@@ -2482,7 +2500,7 @@ function AdditionApp({ onBack }) {
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmitOrNext} disabled={loading || answer === ''}>Submit</button>
@@ -2729,7 +2747,7 @@ function BasicArithApp({ onBack }) {
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} />
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmitOrNext} disabled={loading || answer === ''}>Submit</button>
@@ -2991,7 +3009,7 @@ function QuadraticApp({ onBack }) {
         </div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="y = ?" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmitOrNext} disabled={loading || answer === ''}>Submit</button>
@@ -3275,7 +3293,7 @@ function MultiplyApp({ onBack }) {
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmitOrNext} disabled={loading || answer === ''}>Submit</button>
@@ -3570,7 +3588,7 @@ function VocabApp({ onBack }) {
             })}
           </div>
         )}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmitOrNext} disabled={loading || !selected}>Submit</button>
@@ -3797,7 +3815,7 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
             <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '20px 0', lineHeight: '1.6' }}>{question.prompt}</div>
             <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={getPlaceholder()} onKeyDown={handleKeyDown} autoFocus />
           </div>}
-          {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+          {renderFeedback(feedback, isCorrect)}
           <div className="button-row">
             {!revealed ? <>
               <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
@@ -4184,7 +4202,7 @@ function DotProdApp({ onBack }) {
         {question && <div style={{ textAlign: 'center' }}>
           {renderQuestion()}
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? (
             <>
@@ -4724,7 +4742,7 @@ function TatsavitApp({ onBack }) {
           <input ref={inputRef} className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={handleKeyDown} autoFocus style={{ textAlign: 'center' }} />
           <NumPad value={answer} onChange={v => !revealed && setAnswer(v)} disabled={revealed} showDecimal showCaret showX />
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         {showSlowHint && <div style={{ textAlign: 'center', margin: '8px 0', padding: '12px 16px', borderRadius: '10px', background: 'var(--clr-accent-soft)', border: '1px solid var(--clr-accent)', fontSize: '0.88rem' }}>
           <div style={{ marginBottom: '8px' }}>Was the previous question easy or difficult for you?</div>
           <button onClick={() => reportDifficulty(false)} style={{ fontSize: '0.84rem', padding: '6px 16px', borderRadius: '8px', marginRight: '8px', background: 'var(--clr-correct)', color: '#fff' }}>Easy</button>
@@ -4955,7 +4973,7 @@ function SquaringApp({ onBack }) {
             {numInput(valFinal, setValFinal, refFinal, null, 'Answer', question.answer)}
           </div>
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmit} disabled={loading || !question || !isComplete()}>Submit</button>
@@ -5387,11 +5405,7 @@ function RandomMixApp({ onBack }) {
             <button onClick={() => reportDifficulty(true)} style={{ fontSize: '0.78rem', padding: '5px 14px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--clr-wrong)', color: 'var(--clr-wrong)', cursor: 'pointer' }}>Too Hard</button>
           </div>
 
-          {feedback && (
-            <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>
-              {feedback}
-            </div>
-          )}
+          {renderFeedback(feedback, isCorrect)}
 
           {revealed && isCorrect !== null && (
             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', marginTop: '0.3rem' }}>
@@ -5553,7 +5567,7 @@ function SetsApp({ onBack }) {
           <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '20px 0', lineHeight: '1.6' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={question.type === 'list' ? 'e.g. {1, 3, 5} or empty' : 'e.g. 12'} onKeyDown={handleKeyDown} autoFocus />
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
@@ -5706,7 +5720,7 @@ function SequencesApp({ onBack }) {
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="e.g. 42 or 3/4" onKeyDown={handleKeyDown} autoFocus />
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
@@ -5875,7 +5889,7 @@ function RatioApp({ onBack }) {
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder={placeholders[isAdaptive ? adaptiveLevel(adaptScore) : difficulty] || 'Type your answer'} onKeyDown={handleKeyDown} autoFocus />
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
@@ -6043,7 +6057,7 @@ function PercentApp({ onBack }) {
           <div className="question-prompt" style={{ fontSize: '1.4rem', margin: '20px 0' }}>{question.prompt}</div>
           <input className="answer-input" type="text" value={answer} onChange={e => { if (!revealed) setAnswer(e.target.value) }} disabled={revealed} placeholder="Type your answer" onKeyDown={handleKeyDown} autoFocus />
         </div>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmit} disabled={loading || !answer.trim()}>Submit</button>
@@ -6257,7 +6271,7 @@ function IndicesApp({ onBack }) {
             />
           </div>
         )}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? (
             <>
@@ -6512,7 +6526,7 @@ function SurdsApp({ onBack }) {
             />
           </div>
         )}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? (
             <>
@@ -6853,7 +6867,7 @@ function FractionAddApp({ onBack }) {
           </div>
         )}
 
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
 
         <div className="button-row">
           {!revealed ? (
@@ -7146,7 +7160,7 @@ function TwinHuntApp({ onBack }) {
             </div>
           </div>
         </div>
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
       </>}
       {finished && <div className="welcome-box">
         <p className="welcome-text">Game complete!</p>
@@ -7371,7 +7385,7 @@ function SqrtApp({ onBack }) {
         <div className="question-box">{loading || !question ? 'Loading question…' : `${question.prompt} = ?`}</div>
         <input className="answer-input" type="text" value={answer} onChange={(e) => { if (!revealed) { const v = e.target.value; if (v === '' || v === '-' || /^-?\d+$/.test(v)) setAnswer(v) } }} disabled={revealed} placeholder="Type your answer" />
         <NumPad value={answer} onChange={(v) => !revealed && setAnswer(v)} disabled={revealed} />
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed && <button onClick={handleSolve} disabled={loading || answer === ''} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={handleSubmitOrNext} disabled={loading || (!revealed && answer === '')}>{revealed ? (questionNumber >= totalQ ? 'Finish Quiz' : 'Next Question') : 'Submit'}</button>
@@ -7609,7 +7623,7 @@ function PolyMulApp({ onBack }) {
             ))}
           </div>
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed ? <>
             <button onClick={handleSubmit} disabled={loading || userCoeffs.some(c => c === '')}>Submit</button>
@@ -7846,7 +7860,7 @@ function PolyFactorApp({ onBack }) {
             <span className="factor-group">)</span>
           </div>
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{whiteSpace:'pre-line'}}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading || (!revealed && (!userP || !userQ || !userR || !userS))}>
@@ -8120,7 +8134,7 @@ function PrimeFactorApp({ onBack }) {
           {inputError && !revealed && <div className="feedback wrong" style={{ fontSize: '0.9rem', padding: '6px 14px', marginTop: 4 }}>{inputError}</div>}
           <NumPad value={currentInput} onChange={setCurrentInput} onSubmit={addFactor} disabled={revealed || remaining <= 1} />
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         {revealed && <div className="button-row">
           <button onClick={() => advanceFnRef.current()}>{questionNumber >= totalQ ? 'Finish' : 'Next'}</button>
         </div>}
@@ -8362,7 +8376,7 @@ function QFormulaApp({ onBack }) {
             </>}
           </div>
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && !userR1)}>
@@ -8610,7 +8624,7 @@ function SimulApp({ onBack }) {
               <input className="answer-input coeff-input" type="text" value={userZ} onChange={valInput(setUserZ)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>}
           </div>
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && (!userX || !userY || (is3x3 && !userZ)))}>
@@ -8823,7 +8837,7 @@ function FuncEvalApp({ onBack }) {
           </div>
           <NumPad value={answer} onChange={setAnswer} onSubmit={handleSubmit} disabled={revealed} />
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && !answer)}>
@@ -9042,7 +9056,7 @@ function LineEqApp({ onBack }) {
               <input className="answer-input coeff-input" type="text" value={userC} onChange={valInput(setUserC)} disabled={revealed} onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }} /></div>
           </div>
         </>}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceFnRef.current() : handleSubmit} disabled={loading || (!revealed && (!userM || !userC))}>
@@ -10053,7 +10067,7 @@ function CustomApp({ onBack }) {
         <div className="progress-pill center">Question {qIndex + 1}/{totalQ}</div>
         {renderQuestion()}
         {renderInputs()}
-        {feedback && <div className={`feedback ${isCorrect ? 'correct' : isCorrect === false && feedback.startsWith('Solution:') ? 'solve' : 'wrong'}`} style={{ whiteSpace: 'pre-line' }}>{feedback}</div>}
+        {renderFeedback(feedback, isCorrect)}
         <div className="button-row">
           {!revealed && <button onClick={handleSolve} disabled={loading} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>}
           <button onClick={revealed ? () => advanceRef.current() : handleSubmit} disabled={loading}>

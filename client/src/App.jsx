@@ -4268,8 +4268,31 @@ function TatsavitApp({ onBack }) {
     return () => window.removeEventListener('keydown', h)
   }, [revealed, isCorrect, questionNumber])
 
-  // Slow-answer threshold: if student takes >15s, ask if it was easy or difficult
-  const SLOW_THRESHOLD = 15
+  // Per-type slow-answer thresholds (seconds) — if student exceeds this, ask easy/difficult
+  // Each type has a base threshold; harder within-type difficulty adds a buffer
+  const SLOW_THRESHOLDS = [
+    8,   // 0: Single-digit tables (should be near-instant recall)
+    10,  // 1: Tables up to 20 (slightly harder mental math)
+    12,  // 2: Squares (squaring 2-digit numbers)
+    15,  // 3: Square roots (estimation, trial and error)
+    12,  // 4: Monomial multiplication (coefficients + exponents)
+    20,  // 5: Percentages (multi-step: fraction of a number)
+    10,  // 6: Addition (up to 3-digit)
+    10,  // 7: Subtraction (up to 3-digit)
+    12,  // 8: Negative arithmetic (sign tracking adds load)
+  ]
+  // Harder within-type difficulty gets extra seconds
+  const diffBuffer = () => {
+    const d = isAdaptive ? adaptiveDifficulty() : difficulty
+    if (d === 'hard') return 3
+    if (d === 'extrahard') return 5
+    if (d === 'medium') return 1
+    return 0
+  }
+  const getSlowThreshold = () => {
+    const type = question?.type ?? 0
+    return (SLOW_THRESHOLDS[type] || 15) + diffBuffer()
+  }
   const [showSlowHint, setShowSlowHint] = useState(false)
 
   // Student self-reports difficulty — adjusts adaptive level on top of automatic progression
@@ -4313,8 +4336,9 @@ function TatsavitApp({ onBack }) {
           time: timeTaken,
         }])
       }
-      // If slow (>15s) and adaptive, ask the student if it was easy or difficult
-      if (isAdaptive && timeTaken > SLOW_THRESHOLD) {
+      // If slow and adaptive, ask the student if it was easy or difficult
+      const slowThresh = getSlowThreshold()
+      if (isAdaptive && timeTaken > slowThresh) {
         setShowSlowHint(true)
       }
       // Adaptive progression — automatic adjustment (student self-report is additive on top)
@@ -4324,12 +4348,12 @@ function TatsavitApp({ onBack }) {
           if (data.correct) {
             streakRef.current = streakRef.current >= 0 ? streakRef.current + 1 : 1
             // Slow correct gets a smaller bump (they know it, but struggled)
-            const bump = timeTaken > SLOW_THRESHOLD ? 0.15 : (streakRef.current >= 3 ? 0.5 : 0.3)
+            const bump = timeTaken > slowThresh ? 0.15 : (streakRef.current >= 3 ? 0.5 : 0.3)
             next = Math.min(8, prev + bump)
           } else {
             streakRef.current = streakRef.current <= 0 ? streakRef.current - 1 : -1
             // Slow wrong gets bigger penalty
-            const penalty = timeTaken > SLOW_THRESHOLD ? 0.6 : 0.4
+            const penalty = timeTaken > slowThresh ? 0.6 : 0.4
             next = Math.max(0, prev - penalty)
           }
           adaptLevelRef.current = next

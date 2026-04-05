@@ -6363,6 +6363,10 @@ app.get('/path', (_req, res) => {
   res.sendFile(path.join(__dirname, '..', 'graph', 'path.html'));
 });
 
+app.get('/enhanced', (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'enhanced', 'index.html'));
+});
+
 /**
  * CATCH-ALL ROUTE
  * ═══════════════════════════════════════════════════════════════════════════

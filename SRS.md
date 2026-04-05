@@ -1,6 +1,6 @@
 # Tenali — Complete Software Specification
 
-**Version:** 2.0 | **Date:** April 5, 2026 | **Author:** Sudarshan Iyengar, IIT Ropar
+**Version:** 3.0 | **Date:** April 5, 2026 | **Author:** Sudarshan Iyengar, IIT Ropar
 
 > This document is a complete, formal specification of the Tenali educational quiz platform. An LLM given only this document should be able to recreate the entire project from scratch.
 
@@ -370,6 +370,19 @@ POST /{type}-api/check
 - Polynomial coefficients: exact array match
 - GK/Vocab: case-insensitive letter match (A/B/C/D)
 
+### Solve Middleware (Server-Side)
+
+An Express middleware intercepts ALL `*-api/check` POST requests. When `req.body.solve === true`:
+1. Monkey-patches `res.json()` to intercept the response
+2. Adds `solved: true` to the response
+3. Generates a contextual `explanation` string based on question type:
+   - **basicarith-api:** Step-by-step arithmetic with operation context (e.g., "When multiplying a positive by a negative, the result is negative.")
+   - **Generic with a, b, op:** Shows "Write the problem → Calculate → Result"
+   - **All other types:** Falls back to "The answer is {display}."
+4. Returns the modified response with `{ ...original, solved: true, explanation: "..." }`
+
+Regular (non-solve) requests pass through unmodified.
+
 ### `GET /api/health`
 Returns `{ ok: true, questions: <gk_count> }`
 
@@ -669,7 +682,7 @@ All use `const id = \`q-${Date.now()}-${Math.random()}\`` and have 4 difficulty 
 
 ## 11. Client Architecture
 
-The entire client is a single React component file (`App.jsx`, ~10,000 lines) with:
+The entire client is a single React component file (`App.jsx`, ~10,000+ lines) with:
 - Global constants
 - Reusable hooks (useTimer, useAutoAdvance)
 - Reusable components (NumPad, ResultsTable, QuizLayout)
@@ -677,6 +690,21 @@ The entire client is a single React component file (`App.jsx`, ~10,000 lines) wi
 - Specialized apps (AdaptiveTablesApp, ScaffoldedTablesApp, TatsavitApp, PolyMulApp, PolyFactorApp, PrimeFactorApp, SimulApp, QFormulaApp, GKApp, VocabApp, RandomMixApp, CustomApp, TwinHuntApp)
 - Home component
 - App shell with theme toggle and routing
+
+### Cross-Cutting Features (Present in ALL Quiz Apps)
+
+**Solve Button:** Every quiz app has a `handleSolve()` function and a "Solve" button (styled: transparent background, accent-color border) next to Submit. When clicked:
+1. Calls the check API with `{ ...question, userAnswer: '', solve: true }`
+2. Server middleware intercepts, computes correct answer, generates step-by-step explanation
+3. Client reveals the answer with explanation in a blue `.feedback.solve` styled box
+4. Question recorded as "(solved)" in results, not counted as correct
+5. Does not affect adaptive score or streak
+
+**Self-Report Difficulty Buttons:** All adaptive puzzle apps show always-visible "Too Easy" (green outline) / "Too Hard" (red outline) buttons. Adjustment values vary by app type:
+- makeQuizApp: ±0.5/0.3 on adaptScore (0-3 scale)
+- TatsavitApp: ±1.0/0.2 on adaptLevel (0-8 scale) + auto-prompt on slow answers
+- RandomMixApp: ±1 step on diffIndex (0-3 index)
+- Journey quiz: ±0.5/0.3 on adaptScore (0-3 scale)
 
 ### Global Constants
 ```javascript
@@ -769,6 +797,17 @@ adaptiveLevel(score) → ADAPT_DIFFS[Math.min(3, Math.floor(score))]
 // 0-0.99 → easy, 1-1.99 → medium, 2-2.99 → hard, 3.0 → extrahard
 ```
 
+**Solve Button:**
+All makeQuizApp instances have a "Solve" button (blue accent outline) next to Submit. `handleSolve()` calls the check API with `{ ...question, userAnswer: '', solve: true }`, reveals the correct answer with an explanation, and records the question as "(solved)" in results (not counted as correct). Feedback uses the `.feedback.solve` CSS class (blue theme, left-aligned, pre-line whitespace).
+
+**Self-Report Difficulty Buttons:**
+When `isAdaptive`, always-visible "Too Easy" / "Too Hard" buttons appear below Submit:
+```javascript
+reportDifficulty(wasDifficult):
+  if wasDifficult: adaptScore = Math.max(0, prev - 0.5)
+  if !wasDifficult: adaptScore = Math.min(3, prev + 0.3)
+```
+
 **14 apps created via makeQuizApp:**
 SurdsApp, IndicesApp, SequencesApp, RatioApp, PercentApp, SetsApp, TrigApp, IneqApp, CoordGeomApp, ProbApp, StatsApp (and more — each with specific `apiPath`, `title`, `subtitle`).
 
@@ -815,6 +854,8 @@ return 'learning'
 
 **Persistence:** `localStorage['tenali-tables-{studentName}']` saves `{ currentTable }`
 
+**Solve Button:** Available alongside Submit — calls check API with `solve: true` to reveal answer with explanation.
+
 ---
 
 ## 17. ScaffoldedTablesApp
@@ -837,6 +878,8 @@ ERRORS_TO_RESTORE = 3
 Starts with 3 reference tables visible. Tables removed one at a time when student gets 5 consecutive fast+correct answers. Tables restored if 3+ errors in rolling window.
 
 **Persistence:** `localStorage['tenali-scaffold-{studentName}']` saves `{ currentTable, showTable }`
+
+**Solve Button:** Available alongside Submit — calls check API with `solve: true` to reveal answer with explanation.
 
 ---
 
@@ -887,10 +930,17 @@ const getSlowThreshold = () => (SLOW_THRESHOLDS[question?.type ?? 0] || 15) + di
 ```
 
 ### Self-Report System
-When `timeTaken > slowThreshold` (any answer, correct or wrong):
-- Shows "Was the previous question easy or difficult?"
+**Always-visible buttons** (when isAdaptive): "Too Easy" / "Too Hard" below Submit:
+- **Too Easy:** adaptLevel += 0.2
+- **Too Hard:** adaptLevel -= 1.0
+
+**Auto-prompt** when `timeTaken > slowThreshold` (any answer, correct or wrong):
+- Shows "Was the previous question easy or difficult?" in an accent-colored box
 - **Easy response:** adaptLevel += 0.2
 - **Difficult response:** adaptLevel -= 1.0
+
+### Solve Button
+`handleSolve()` calls `/tatsavit-api/check` with `{ ...question, userAnswer: '', solve: true }`, reveals the answer with explanation, does not affect score or adaptive level. Displayed alongside Submit button with blue accent outline styling.
 
 ### Adaptive Progression
 ```javascript
@@ -933,6 +983,15 @@ if (streak <= -2 && diffIndex > 0) { diffIndex--; streak = 0 }
 
 **Skip Logic:** Students can skip topics. Skipped topic doesn't count as a question.
 
+**Solve Button:** `handleSolve()` calls check API with `{ ...question, userAnswer: '', solve: true }`, reveals answer with explanation. Recorded as "(solved)" in results.
+
+**Self-Report Buttons:** Always-visible "Too Easy" / "Too Hard" buttons adjust difficulty:
+```javascript
+reportDifficulty(wasDifficult):
+  if wasDifficult && diffIndex > 0: diffIndex--; streak = 0
+  if !wasDifficult && diffIndex < 3: diffIndex++; streak = 0
+```
+
 ---
 
 ## 20. CustomApp (Custom Lesson Builder)
@@ -954,6 +1013,8 @@ selected.forEach((key, i) => {
 **Random ordering:** randomly pick from selected types for each question.
 
 **handleSubmit:** 26+ switch cases covering all puzzle types with their specific validation logic and API calls.
+
+**handleSolve:** Calls the relevant check API with `solve: true`, reveals the answer with explanation. Available alongside Submit in all puzzle types.
 
 **renderInputs:** Different input methods per puzzle type:
 - Single text input: most puzzles
@@ -1201,6 +1262,7 @@ GK and Vocab load seen IDs on init, add new IDs after each question, and pass th
 - `.correct-row` / `.wrong-row` — result highlighting
 - `.checkbox-pill` — difficulty selector pills
 - `.adaptive-bar` — colored difficulty indicator
+- `.feedback.solve` — solution display: `background: rgba(66,165,245,0.12); color: #42a5f5; text-align: left; line-height: 1.6;` — shows step-by-step explanations with pre-line whitespace
 
 ### Responsive Breakpoints
 - `@media (max-width: 700px)` — tablet adjustments
@@ -1322,7 +1384,20 @@ MASTERY_NEEDED = 3      // 3 correct out of last 5 to advance
 6. If not mastered: continue same step with new question
 7. After all steps: show completion screen with stats
 
-**Quiz overlay UI:** Header with step name, progress bar, step pills, question card, numpad (0-9, ±, ., ⌫), submit button, feedback, mastery progress bar.
+**Quiz overlay UI:** Header with step name, progress bar, step pills, question card, numpad (0-9, ±, ., ⌫), buttons (Submit, Solve, Skip), feedback, mastery progress bar, self-report buttons.
+
+**Solve Button:** `solveJourneyQuestion()` calls check API with `{ ...question, userAnswer: '', solve: true }`. Reveals answer with explanation, counts as incorrect for mastery, displayed with blue `.solve` styling.
+
+**Skip Button:** `skipJourneyQuestion()` marks question as unanswered/incorrect, shows "Skipped" feedback, pushes `false` to mastery history.
+
+**Self-Report Buttons:** Always-visible "Too Easy" / "Too Hard" buttons adjust `adaptScore`:
+```javascript
+reportJourneyDifficulty(wasDifficult):
+  if wasDifficult: adaptScore = Math.max(0, adaptScore - 0.5)
+  if !wasDifficult: adaptScore = Math.min(3, adaptScore + 0.3)
+```
+
+**Enter Key Fix:** Global `document.addEventListener('keydown')` listener ensures Enter works after answer reveal (since the input becomes `disabled` and can't capture keyboard events).
 
 ---
 

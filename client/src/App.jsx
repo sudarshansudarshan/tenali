@@ -974,6 +974,16 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   advanceFnRef.current = () => { if (!promotionPrompt) nextQuestion() }
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
+  // Enter key accepts promotion when prompt is showing
+  useEffect(() => {
+    if (!promotionPrompt) return
+    const handleKey = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); acceptPromotion() }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [promotionPrompt])
+
   useEffect(() => {
     if (!revealed || isCorrect || promotionPrompt) return
     const handleKey = (e) => {

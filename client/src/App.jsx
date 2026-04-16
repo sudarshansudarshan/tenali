@@ -1405,7 +1405,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
                 </div>
                 <div style={{
                   display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center',
-                  fontSize: '1.1rem', fontFamily: 'monospace', fontWeight: 700, color: '#222'
+                  fontSize: '1.1rem', fontFamily: 'monospace', fontWeight: 700, color: 'var(--clr-text)'
                 }}>
                   {products.map((p, i) => (
                     <span key={i} style={{
@@ -1432,9 +1432,9 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
                   alignItems: 'center'
                 }}>
                   {rows.map(m => (
-                    <div key={m} style={{ display: 'flex', color: '#333', whiteSpace: 'pre' }}>
+                    <div key={m} style={{ display: 'flex', color: 'var(--clr-text)', whiteSpace: 'pre' }}>
                       <span style={{ minWidth: '4.5ch', textAlign: 'right' }}>{currentTable} × {String(m).padStart(2, '\u2007')}</span>
-                      <span style={{ color: '#222', fontWeight: 700, marginLeft: '0.4ch' }}> = {pad(currentTable * m)}</span>
+                      <span style={{ color: 'var(--clr-text)', fontWeight: 700, marginLeft: '0.4ch' }}> = {pad(currentTable * m)}</span>
                     </div>
                   ))}
                 </div>
@@ -1455,9 +1455,9 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
                 fontSize: '1.05rem', fontFamily: 'monospace', fontWeight: 600
               }}>
                 {rows.map(m => (
-                  <div key={m} style={{ display: 'flex', color: '#333', whiteSpace: 'pre' }}>
+                  <div key={m} style={{ display: 'flex', color: 'var(--clr-text)', whiteSpace: 'pre' }}>
                     <span style={{ minWidth: '4.5ch', textAlign: 'right' }}>{currentTable} × {String(m).padStart(2, '\u2007')}</span>
-                    <span style={{ color: '#222', fontWeight: 700, marginLeft: '0.4ch' }}> = {pad(currentTable * m)}</span>
+                    <span style={{ color: 'var(--clr-text)', fontWeight: 700, marginLeft: '0.4ch' }}> = {pad(currentTable * m)}</span>
                   </div>
                 ))}
               </div>
@@ -2057,7 +2057,7 @@ function YazdanTablesApp({ studentName }) {
                   padding: '10px 14px', borderRadius: '10px', background: 'var(--clr-surface)', border: '2px solid var(--clr-border)',
                   fontFamily: 'monospace', fontSize: '1rem', fontWeight: 700, textAlign: 'center', minWidth: '90px'
                 }}>
-                  <div style={{ color: '#333' }}>{currentTable} × {c.multiplier}</div>
+                  <div style={{ color: 'var(--clr-text)' }}>{currentTable} × {c.multiplier}</div>
                   <div style={{ color: 'var(--clr-accent)', fontSize: '1.2rem' }}>= {c.product}</div>
                 </div>
               ))}

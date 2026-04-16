@@ -1262,9 +1262,9 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
             margin: '0.4rem 0', padding: '0.5rem', borderRadius: '8px',
             background: 'var(--clr-surface)', border: '1px solid var(--clr-border)'
           }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 1rem', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 2rem', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>
               {Array.from({ length: 10 }, (_, i) => i + 1).map(m => (
-                <div key={m} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 4px', fontWeight: 500, color: 'var(--clr-text)' }}>
+                <div key={m} style={{ display: 'flex', gap: '6px', padding: '2px 4px', fontWeight: 500, color: 'var(--clr-text)' }}>
                   <span>{currentTable} × {m}</span>
                   <span style={{ color: 'var(--clr-accent)' }}>= {currentTable * m}</span>
                 </div>
@@ -1278,9 +1278,9 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
             background: 'var(--clr-surface)', border: '1px solid var(--clr-border)'
           }}>
             <div style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--clr-text-soft)', marginBottom: '4px', fontWeight: 600 }}>shuffled</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 1rem', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 2rem', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>
               {shuffledRows.map(m => (
-                <div key={m} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 4px', fontWeight: 500, color: 'var(--clr-text)' }}>
+                <div key={m} style={{ display: 'flex', gap: '6px', padding: '2px 4px', fontWeight: 500, color: 'var(--clr-text)' }}>
                   <span>{currentTable} × {m}</span>
                   <span style={{ color: 'var(--clr-accent)' }}>= {currentTable * m}</span>
                 </div>

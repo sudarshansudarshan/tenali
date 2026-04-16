@@ -833,8 +833,6 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   // 4 = products only (13,26,39...) + reverse Q (13×?=39)
   // 5 = no table at all
   const [level, setLevel] = useState(1)
-  // For Level 2: which side to show — 'left' (13×1, 13×2...) or 'right' (=13, =26...)
-  const [partialSide, setPartialSide] = useState('left')
 
   // ── Quiz Runtime State ───────────────────────────────────────────────
   const [question, setQuestion] = useState(null)
@@ -850,6 +848,9 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   const [statusMsg, setStatusMsg] = useState('')
   const [shuffledRows, setShuffledRows] = useState([])
   const [mastered, setMastered] = useState(false)
+  // Level 1: answer opacity (dims over time, disappears on typing)
+  const [answerOpacity, setAnswerOpacity] = useState(1)
+  const [hasTyped, setHasTyped] = useState(false)
 
   // ── Promotion Prompt State ─────────────────────────────────────────────
   const [promotionPrompt, setPromotionPrompt] = useState(null)
@@ -916,7 +917,8 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     setFastStreak(0)
     setMastered(false)
     setPromotionPrompt(null)
-    setPartialSide(Math.random() < 0.5 ? 'left' : 'right')
+    setHasTyped(false)
+    setAnswerOpacity(1)
     setStatusMsg('Level 1: See the answer, then type it!')
     const q = generateQuestion(tbl, 1)
     setQuestion(q)
@@ -943,29 +945,43 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     setFeedback('')
     setIsCorrect(null)
     setRevealed(false)
+    setHasTyped(false)
+    setAnswerOpacity(1)
     setStartTime(Date.now())
     setQuestionNum(n => n + 1)
     // Reshuffle for levels that show partial/shuffled tables
     if (level === 2 || level === 3) {
       setShuffledRows(generateNewShuffledRows(q.multiplier))
     }
-    if (level === 2) {
-      setPartialSide(Math.random() < 0.5 ? 'left' : 'right')
-    }
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
-  advanceFnRef.current = () => nextQuestion()
+  // Level 1: dim the answer gradually over 3 seconds
+  useEffect(() => {
+    if (level !== 1 || !question || revealed || hasTyped) return
+    setAnswerOpacity(1)
+    const interval = setInterval(() => {
+      setAnswerOpacity(prev => {
+        const next = prev - 0.05
+        if (next <= 0) { clearInterval(interval); return 0 }
+        return next
+      })
+    }, 150) // 20 steps × 150ms = 3 seconds to fully dim
+    return () => clearInterval(interval)
+  }, [level, question, revealed, hasTyped])
+
+  // Don't auto-advance when promotion prompt is showing
+  advanceFnRef.current = () => { if (!promotionPrompt) nextQuestion() }
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
   useEffect(() => {
-    if (!revealed || isCorrect) return
+    if (!revealed || isCorrect || promotionPrompt) return
     const handleKey = (e) => {
       if (e.key === 'Enter') { e.preventDefault(); nextQuestion() }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [revealed, isCorrect, questionNum])
+  }, [revealed, isCorrect, questionNum, promotionPrompt])
 
   /**
    * handleSubmit(e): Process answer and level progression
@@ -1043,7 +1059,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
    * Level descriptions for promotion prompts
    */
   const levelInfo = {
-    2: { title: 'Partial Table', desc: 'Only 5 rows, and you\'ll see either the equations or the answers — not both!' },
+    2: { title: 'Half Table', desc: 'Only 5 rows shown — half the table to work with!' },
     3: { title: 'Shuffled Tables', desc: 'Full equations but shuffled randomly each time.' },
     4: { title: 'Reverse Challenge', desc: 'Just the products (13, 26, 39...) shown. You answer: 13 × ? = 39' },
     5: { title: 'No Table!', desc: 'No reference at all — answer from memory!' },
@@ -1061,10 +1077,11 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     } else {
       setLevel(promo.to)
       setFastStreak(0)
+      setHasTyped(false)
+      setAnswerOpacity(1)
       const q = generateQuestion(currentTable, promo.to)
       setQuestion(q)
       if (promo.to === 2 || promo.to === 3) setShuffledRows(generateNewShuffledRows(q.multiplier))
-      if (promo.to === 2) setPartialSide(Math.random() < 0.5 ? 'left' : 'right')
       setStatusMsg(`Level ${promo.to}: ${levelInfo[promo.to].title}`)
       setAnswer('')
       setFeedback('')
@@ -1126,7 +1143,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     }
     animate()
     return () => { if (frame) cancelAnimationFrame(frame) }
-  }, [showCelebration])
+  }, [showCelebration, appPhase])
 
   /**
    * renderRefTable(): Render ordered reference table (Phase 1)
@@ -1353,7 +1370,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
             color: 'var(--clr-text)', fontFamily: 'var(--font-display)'
           }}>
             {level === 1
-              ? <>{question.table} × {question.multiplier} = {question.product}</>
+              ? <>{question.table} × {question.multiplier} = <span style={{ opacity: answerOpacity, transition: 'opacity 0.15s' }}>{question.product}</span></>
               : question.reverse
                 ? <>{question.table} × <span style={{ color: 'var(--clr-accent)' }}>?</span> = {question.product}</>
                 : <>{question.table} × {question.multiplier} = <span style={{ color: 'var(--clr-accent)' }}>?</span></>
@@ -1391,7 +1408,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
             )
           }
 
-          // Level 2: partial table — show only left OR right side (5 rows)
+          // Level 2: half table — 5 complete rows in a single column
           if (level === 2) {
             const rows = shuffledRows.slice(0, 5)
             return (
@@ -1400,15 +1417,14 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
                 background: 'var(--clr-surface)', border: '1px solid var(--clr-border)'
               }}>
                 <div style={{
-                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 1.5rem',
-                  fontSize: '1.05rem', fontFamily: 'monospace', fontWeight: 600
+                  display: 'flex', flexDirection: 'column', gap: '4px',
+                  fontSize: '1.05rem', fontFamily: 'monospace', fontWeight: 600,
+                  alignItems: 'center'
                 }}>
                   {rows.map(m => (
                     <div key={m} style={{ display: 'flex', color: '#333', whiteSpace: 'pre' }}>
-                      {partialSide === 'left'
-                        ? <span>{currentTable} × {String(m).padStart(2, '\u2007')}</span>
-                        : <span style={{ color: '#222', fontWeight: 700 }}>= {pad(currentTable * m)}</span>
-                      }
+                      <span style={{ minWidth: '4.5ch', textAlign: 'right' }}>{currentTable} × {String(m).padStart(2, '\u2007')}</span>
+                      <span style={{ color: '#222', fontWeight: 700, marginLeft: '0.4ch' }}> = {pad(currentTable * m)}</span>
                     </div>
                   ))}
                 </div>
@@ -1449,7 +1465,15 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
                 type="text"
                 inputMode="numeric"
                 value={answer}
-                onChange={e => { if (/^-?\d*$/.test(e.target.value)) setAnswer(e.target.value) }}
+                onChange={e => {
+                  if (/^-?\d*$/.test(e.target.value)) {
+                    setAnswer(e.target.value)
+                    if (level === 1 && !hasTyped && e.target.value) {
+                      setHasTyped(true)
+                      setAnswerOpacity(0)
+                    }
+                  }
+                }}
                 placeholder="?"
                 disabled={revealed}
                 autoFocus

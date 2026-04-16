@@ -1257,37 +1257,33 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
         )}
 
         {/* Reference table — compact, right below the question */}
-        {quizPhase === 1 && (
-          <div style={{
-            margin: '0.4rem 0', padding: '0.5rem', borderRadius: '8px',
-            background: 'var(--clr-surface)', border: '1px solid var(--clr-border)'
-          }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 2rem', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>
-              {Array.from({ length: 10 }, (_, i) => i + 1).map(m => (
-                <div key={m} style={{ display: 'flex', gap: '6px', padding: '2px 4px', fontWeight: 500, color: 'var(--clr-text)' }}>
-                  <span>{currentTable} × {m}</span>
-                  <span style={{ color: 'var(--clr-accent)' }}>= {currentTable * m}</span>
-                </div>
-              ))}
+        {(quizPhase === 1 || quizPhase === 2) && (() => {
+          const rows = quizPhase === 1
+            ? Array.from({ length: 10 }, (_, i) => i + 1)
+            : shuffledRows
+          const pad = (n) => String(n).padStart(String(currentTable * 10).length, '\u2007')
+          return (
+            <div style={{
+              margin: '0.4rem 0', padding: '0.6rem 0.8rem', borderRadius: '8px',
+              background: 'var(--clr-surface)', border: '1px solid var(--clr-border)'
+            }}>
+              {quizPhase === 2 && (
+                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--clr-text-soft)', marginBottom: '4px', fontWeight: 600 }}>shuffled</div>
+              )}
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 1.5rem',
+                fontSize: '1.05rem', fontFamily: 'monospace', fontWeight: 600
+              }}>
+                {rows.map(m => (
+                  <div key={m} style={{ display: 'flex', color: '#333', whiteSpace: 'pre' }}>
+                    <span style={{ minWidth: '4.5ch', textAlign: 'right' }}>{currentTable} × {String(m).padStart(2, '\u2007')}</span>
+                    <span style={{ color: '#222', fontWeight: 700, marginLeft: '0.4ch' }}> = {pad(currentTable * m)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-        {quizPhase === 2 && (
-          <div style={{
-            margin: '0.4rem 0', padding: '0.5rem', borderRadius: '8px',
-            background: 'var(--clr-surface)', border: '1px solid var(--clr-border)'
-          }}>
-            <div style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--clr-text-soft)', marginBottom: '4px', fontWeight: 600 }}>shuffled</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 2rem', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>
-              {shuffledRows.map(m => (
-                <div key={m} style={{ display: 'flex', gap: '6px', padding: '2px 4px', fontWeight: 500, color: 'var(--clr-text)' }}>
-                  <span>{currentTable} × {m}</span>
-                  <span style={{ color: 'var(--clr-accent)' }}>= {currentTable * m}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Answer input + buttons — at the bottom */}
         {question && (

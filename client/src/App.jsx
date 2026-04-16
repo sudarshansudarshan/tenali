@@ -1230,72 +1230,114 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
           style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 9999 }}
         />
       )}
-      <div className="card">
-        <h1>{studentName}'s Tables</h1>
-        <div className="top-mini-row">
-          <span className="score-pill">Score {score}</span>
-          <span className="progress-pill">Q {questionNum}</span>
-          <span className="timer-pill">{currentTable}× table</span>
-          <span className="timer-pill" style={{ background: quizPhase === 3 ? 'var(--clr-accent)' : 'var(--clr-surface)' }}>
+      <div className="card" style={{ padding: '0.75rem', maxWidth: '400px' }}>
+        {/* Compact header row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--clr-text-soft)' }}>
+            {currentTable}x | Q{questionNum} | {score} correct
+          </span>
+          <span style={{
+            fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '8px',
+            background: quizPhase === 3 ? 'var(--clr-accent)' : 'var(--clr-surface)',
+            color: quizPhase === 3 ? '#fff' : 'var(--clr-text-soft)',
+            border: '1px solid var(--clr-border)'
+          }}>
             Phase {quizPhase}/3
           </span>
         </div>
+
+        {/* Question — always on top, big and prominent */}
+        {question && (
+          <div style={{
+            textAlign: 'center', fontSize: '2rem', fontWeight: 800, padding: '0.5rem 0',
+            color: 'var(--clr-text)', fontFamily: 'var(--font-display)'
+          }}>
+            {question.table} × {question.multiplier} = ?
+          </div>
+        )}
+
+        {/* Reference table — compact, right below the question */}
+        {quizPhase === 1 && (
+          <div style={{
+            margin: '0.4rem 0', padding: '0.5rem', borderRadius: '8px',
+            background: 'var(--clr-surface)', border: '1px solid var(--clr-border)'
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 1rem', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>
+              {Array.from({ length: 10 }, (_, i) => i + 1).map(m => (
+                <div key={m} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 4px', fontWeight: 500, color: 'var(--clr-text)' }}>
+                  <span>{currentTable} × {m}</span>
+                  <span style={{ color: 'var(--clr-accent)' }}>= {currentTable * m}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {quizPhase === 2 && (
+          <div style={{
+            margin: '0.4rem 0', padding: '0.5rem', borderRadius: '8px',
+            background: 'var(--clr-surface)', border: '1px solid var(--clr-border)'
+          }}>
+            <div style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--clr-text-soft)', marginBottom: '4px', fontWeight: 600 }}>shuffled</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 1rem', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>
+              {shuffledRows.map(m => (
+                <div key={m} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 4px', fontWeight: 500, color: 'var(--clr-text)' }}>
+                  <span>{currentTable} × {m}</span>
+                  <span style={{ color: 'var(--clr-accent)' }}>= {currentTable * m}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Answer input + buttons — at the bottom */}
+        {question && (
+          <div style={{ marginTop: '0.4rem' }}>
+            <form onSubmit={handleSubmit}>
+              <input
+                ref={inputRef}
+                className="answer-input"
+                type="text"
+                inputMode="numeric"
+                value={answer}
+                onChange={e => { if (/^-?\d*$/.test(e.target.value)) setAnswer(e.target.value) }}
+                placeholder="?"
+                disabled={revealed}
+                autoFocus
+                style={{ fontSize: '1.5rem', textAlign: 'center', width: '100%', padding: '0.6rem' }}
+              />
+              {!revealed && (
+                <div className="button-row" style={{ marginTop: '0.4rem' }}>
+                  <button type="submit" disabled={!answer} style={{ width: '100%', padding: '0.6rem' }}>Check</button>
+                </div>
+              )}
+            </form>
+            {renderFeedback(feedback, isCorrect)}
+            {revealed && !mastered && (
+              <div className="button-row" style={{ marginTop: '0.3rem' }}>
+                <button onClick={() => nextQuestion()} style={{ width: '100%', padding: '0.6rem' }}>Next</button>
+              </div>
+            )}
+            {revealed && mastered && (
+              <div className="button-row" style={{ marginTop: '0.3rem' }}>
+                <button onClick={() => nextQuestion()} style={{ width: '100%', padding: '0.6rem' }}>See Results</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Status message — subtle, at the bottom */}
         {statusMsg && (
-          <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--clr-text-soft)', margin: '4px 0 8px', fontWeight: 500 }}>
+          <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--clr-text-soft)', margin: '0.5rem 0 0', fontWeight: 500 }}>
             {statusMsg}
           </p>
         )}
 
-        <div className={showRefTable ? 'tables-layout' : ''}>
-          {quizPhase === 1 && renderRefTable()}
-          {quizPhase === 2 && renderShuffledRefTable()}
-
-          <div className="tables-quiz-area">
-            {question && (
-              <>
-                <div className="question-box">
-                  {question.table} × {question.multiplier} = ?
-                </div>
-                <form onSubmit={handleSubmit}>
-                  <input
-                    ref={inputRef}
-                    className="answer-input"
-                    type="text"
-                    inputMode="numeric"
-                    value={answer}
-                    onChange={e => { if (/^-?\d*$/.test(e.target.value)) setAnswer(e.target.value) }}
-                    placeholder="?"
-                    disabled={revealed}
-                    autoFocus
-                  />
-                  {!revealed && (
-                    <div className="button-row">
-                      <button type="submit" disabled={!answer}>Check</button>
-                    </div>
-                  )}
-                </form>
-                {renderFeedback(feedback, isCorrect)}
-                {revealed && !mastered && (
-                  <div className="button-row">
-                    <button onClick={() => nextQuestion()}>Next</button>
-                  </div>
-                )}
-                {revealed && mastered && (
-                  <div className="button-row">
-                    <button onClick={() => nextQuestion()}>See Results</button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+        <div style={{ textAlign: 'center', marginTop: '0.75rem' }}>
           <button
             onClick={() => setAppPhase('choosing')}
-            style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)', fontSize: '0.85rem', padding: '0.4rem 1rem' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--clr-text-soft)', fontSize: '0.75rem', padding: '0.3rem', cursor: 'pointer', textDecoration: 'underline' }}
           >
-            Back to Table Selection
+            Change table
           </button>
         </div>
       </div>

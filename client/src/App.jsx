@@ -1260,7 +1260,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
         {(quizPhase === 1 || quizPhase === 2) && (() => {
           const rows = quizPhase === 1
             ? Array.from({ length: 10 }, (_, i) => i + 1)
-            : shuffledRows
+            : shuffledRows.slice(0, 5)
           const pad = (n) => String(n).padStart(String(currentTable * 10).length, '\u2007')
           return (
             <div style={{

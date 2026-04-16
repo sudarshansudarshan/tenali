@@ -1116,7 +1116,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
             maxWidth: '320px',
             margin: '0 auto'
           }}>
-            {[2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+            {Array.from({ length: 18 }, (_, i) => i + 2).map(n => (
               <button
                 key={n}
                 onClick={() => selectTable(n)}
@@ -1145,7 +1145,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
 
   // ══════════ RENDER: FINISHED (MASTERED) ══════════
   if (appPhase === 'finished') {
-    const nextTable = currentTable < 9 ? currentTable + 1 : null
+    const nextTable = currentTable < 19 ? currentTable + 1 : null
     return (
       <div className="app-shell">
         {showCelebration && (

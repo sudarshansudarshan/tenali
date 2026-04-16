@@ -2095,8 +2095,19 @@ function App() {
   // Check if current URL matches a specific student page
   const pathname = window.location.pathname.replace(/\/$/, '').toLowerCase()
 
-  // Route: /taittiriya → Taittiriya's 3-phase scaffolded tables app
-  // Phase 1: ordered ref table → Phase 2: shuffled ref table → Phase 3: no table → mastery
+  // Route: /tables → Generic 5-level scaffolded tables app
+  if (pathname === '/tables') {
+    return (
+      <>
+        <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+        <ScaffoldedTablesApp studentName="Student" />
+      </>
+    )
+  }
+
+  // Route: /taittiriya → Taittiriya's 5-level scaffolded tables app
   if (pathname === '/taittiriya') {
     return (
       <>

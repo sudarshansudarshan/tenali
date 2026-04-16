@@ -813,77 +813,64 @@ function AdaptiveTablesApp({ studentName }) {
  * @param {string} props.studentName - Student's display name
  */
 function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
-  // localStorage key for persisting this student's scaffolding state
   const storageKey = `tenali-scaffold-${studentName}`
 
   // ── Constants ────────────────────────────────────────────────────────
-  const TOTAL_QUESTIONS = 30          // Fixed questions per session
-  const SCAFFOLD_WINDOW = 8           // Rolling window size for error tracking
-  const FAST_MS = 4000                // "Fast" answer threshold (ms)
-  const CONSECUTIVE_FAST_TO_REMOVE = 5 // Fast+correct streak needed to remove a table
-  const ERRORS_TO_RESTORE = 3         // Errors in window to trigger table restoration
+  const FAST_MS = 5000                 // "Fast" answer threshold (ms)
+  const PHASE1_FAST_STREAK = 5         // Fast+correct streak to move from Phase 1 → 2
+  const PHASE2_FAST_STREAK = 5         // Fast+correct streak to move from Phase 2 → 3
+  const PHASE3_MASTERY_STREAK = 10     // Consecutive correct+fast in Phase 3 to master table
 
-  // ── Phase State ──────────────────────────────────────────────────────
-  // 'playing' → 'finished' (no setup phase — auto-starts immediately)
-  const [phase, setPhase] = useState('playing')
+  // ── App State ────────────────────────────────────────────────────────
+  // 'choosing' → 'playing' → 'finished'
+  const [appPhase, setAppPhase] = useState('choosing')
+  const [currentTable, setCurrentTable] = useState(null)
 
-  // ── Persisted State: restored from localStorage ──
-  // Remembers which table AND how many reference tables were visible last session
-  const [currentTable, setCurrentTable] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey))
-      if (saved && saved.currentTable >= 2) return saved.currentTable
-    } catch {}
-    return defaultTable
-  })
+  // ── Quiz Phase: 1 = ordered table shown, 2 = shuffled table shown, 3 = no table
+  const [quizPhase, setQuizPhase] = useState(1)
 
   // ── Quiz Runtime State ───────────────────────────────────────────────
-  const [question, setQuestion] = useState(null)       // Current {table, multiplier, answer}
-  const [answer, setAnswer] = useState('')              // User's typed answer
-  const [feedback, setFeedback] = useState('')          // Feedback message
-  const [isCorrect, setIsCorrect] = useState(null)      // Correctness of last answer
-  const [revealed, setRevealed] = useState(false)        // Whether answer has been shown
-  const [questionNum, setQuestionNum] = useState(0)      // Current question (1-based)
-  const [score, setScore] = useState(0)                  // Correct answers count
-  const [startTime, setStartTime] = useState(null)       // Timestamp when question appeared
-  const [results, setResults] = useState([])             // Per-question results log
-
-  // ── Scaffolding State ────────────────────────────────────────────────
-  // Whether the reference table for the current multiplication table is shown
-  // Restored from localStorage — if student was doing well last time, table stays hidden
-  const [showTable, setShowTable] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey))
-      if (saved && typeof saved.showTable === 'boolean') return saved.showTable
-    } catch {}
-    return true // Default: table shown for new students
-  })
-  // Consecutive fast+correct answers (resets on slow or wrong)
+  const [question, setQuestion] = useState(null)
+  const [answer, setAnswer] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [isCorrect, setIsCorrect] = useState(null)
+  const [revealed, setRevealed] = useState(false)
+  const [questionNum, setQuestionNum] = useState(0)
+  const [score, setScore] = useState(0)
+  const [startTime, setStartTime] = useState(null)
+  const [results, setResults] = useState([])
   const [fastStreak, setFastStreak] = useState(0)
-  // Rolling window of recent answers for error tracking
-  const [recentWindow, setRecentWindow] = useState([])
-  // Status message shown below header
   const [statusMsg, setStatusMsg] = useState('')
+  const [shuffledRows, setShuffledRows] = useState([])
+  const [mastered, setMastered] = useState(false)
+
+  // ── Celebration State ──────────────────────────────────────────────────
+  const [showCelebration, setShowCelebration] = useState(false)
 
   // ── Refs ──────────────────────────────────────────────────────────────
   const inputRef = useRef(null)
   const advanceFnRef = useRef(null)
+  const celebrationRef = useRef(null)
 
   /**
-   * save(tbl, tableVisible): Persist current table and show/hide state to localStorage
+   * shuffleArray: Fisher-Yates shuffle
    */
-  const save = (tbl, tableVisible) => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify({
-        currentTable: tbl,
-        showTable: tableVisible ?? showTable
-      }))
-    } catch {}
+  const shuffleArray = (arr) => {
+    const a = [...arr]
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]]
+    }
+    return a
   }
 
   /**
+   * generateNewShuffledRows: Create a shuffled array of multipliers 1-10
+   */
+  const generateNewShuffledRows = () => shuffleArray(Array.from({ length: 10 }, (_, i) => i + 1))
+
+  /**
    * generateQuestion(tbl): Create a random multiplication question
-   * Returns {table, multiplier, answer}
    */
   const generateQuestion = (tbl) => {
     const multiplier = Math.floor(Math.random() * 10) + 1
@@ -891,63 +878,35 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   }
 
   /**
-   * startSession(): Start/restart a 30-question session
-   * Resets quiz state but preserves visibleTables from localStorage
-   * (if student was doing well, tables stay hidden)
+   * selectTable(tbl): User picks a table from the chooser screen
    */
-  const startSession = () => {
-    setPhase('playing')
-    setQuestionNum(0)
+  const selectTable = (tbl) => {
+    setCurrentTable(tbl)
+    setAppPhase('playing')
+    setQuizPhase(1)
+    setQuestionNum(1)
     setScore(0)
     setResults([])
-    setRecentWindow([])
     setFastStreak(0)
-    setStatusMsg(showTable ? 'Reference table shown — let\'s go!' : 'No table — you\'ve got this!')
-
-    const q = generateQuestion(currentTable)
+    setMastered(false)
+    setStatusMsg('Phase 1: Use the reference table to help you!')
+    const q = generateQuestion(tbl)
     setQuestion(q)
     setAnswer('')
     setFeedback('')
     setIsCorrect(null)
     setRevealed(false)
     setStartTime(Date.now())
-    setQuestionNum(1)
+    setShuffledRows(generateNewShuffledRows())
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
-  // Auto-start on first mount: generate first question immediately
-  useEffect(() => {
-    if (phase === 'playing' && !question) {
-      const q = generateQuestion(currentTable)
-      setQuestion(q)
-      setAnswer('')
-      setFeedback('')
-      setIsCorrect(null)
-      setRevealed(false)
-      setStartTime(Date.now())
-      setQuestionNum(1)
-      setStatusMsg(showTable ? 'Reference table shown — let\'s go!' : 'No table — you\'ve got this!')
-      setTimeout(() => inputRef.current?.focus(), 50)
-    }
-  }, [])
-
   /**
-   * nextQuestion(): Advance to the next question or finish the quiz
-   * On finish: if student scored ≥80% AND table was hidden (mastered),
-   * auto-advance to the next multiplication table for the next session.
+   * nextQuestion(): Advance to the next question
    */
   const nextQuestion = () => {
-    if (questionNum >= TOTAL_QUESTIONS) {
-      // Check if student mastered this table: good score + table was hidden
-      const finalScore = score // score is already updated by this point
-      const mastered = !showTable && finalScore >= Math.floor(TOTAL_QUESTIONS * 0.8)
-      if (mastered && currentTable < 20) {
-        const nextTbl = currentTable + 1
-        setCurrentTable(nextTbl)
-        setShowTable(true) // Show table for the new table (fresh start)
-        save(nextTbl, true)
-      }
-      setPhase('finished')
+    if (mastered) {
+      setAppPhase('finished')
       return
     }
     const q = generateQuestion(currentTable)
@@ -958,6 +917,10 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     setRevealed(false)
     setStartTime(Date.now())
     setQuestionNum(n => n + 1)
+    // Shuffle rows for every new question in Phase 2
+    if (quizPhase === 2) {
+      setShuffledRows(generateNewShuffledRows())
+    }
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
@@ -978,13 +941,11 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   }, [revealed, isCorrect, questionNum])
 
   /**
-   * handleSubmit(e): Process answer submission with scaffolding logic
+   * handleSubmit(e): Process answer submission with phase progression logic
    *
-   * Scaffolding adaptation:
-   *   1. If answer is correct AND fast (< FAST_MS): increment fastStreak
-   *   2. If fastStreak reaches CONSECUTIVE_FAST_TO_REMOVE: remove one table
-   *   3. If errors in rolling window reach ERRORS_TO_RESTORE: add one table back
-   *   4. Wrong or slow answers reset fastStreak
+   * Phase 1 → 2: After PHASE1_FAST_STREAK consecutive fast+correct answers
+   * Phase 2 → 3: After PHASE2_FAST_STREAK consecutive fast+correct answers
+   * Phase 3 mastery: After PHASE3_MASTERY_STREAK consecutive correct+fast answers → done
    */
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -993,18 +954,17 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     const userAns = parseInt(answer, 10)
     const correct = userAns === question.answer
     const elapsed = Date.now() - startTime
+    const fast = elapsed < FAST_MS
 
     setIsCorrect(correct)
     setRevealed(true)
     if (correct) setScore(s => s + 1)
 
-    // Feedback with timing
     const fb = correct
       ? `Correct! ${question.table} × ${question.multiplier} = ${question.answer} (${(elapsed / 1000).toFixed(1)}s)`
       : `${question.table} × ${question.multiplier} = ${question.answer} (you said ${userAns || '?'})`
     setFeedback(fb)
 
-    // Record result
     setResults(r => [...r, {
       prompt: `${question.table} × ${question.multiplier}`,
       userAnswer: answer || '?',
@@ -1013,63 +973,95 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
       time: (elapsed / 1000).toFixed(1)
     }])
 
-    // ── SCAFFOLDING LOGIC ──────────────────────────────────────────────
-    // Update rolling window
-    const newWindow = [...recentWindow, { correct, timeMs: elapsed }].slice(-SCAFFOLD_WINDOW)
-    setRecentWindow(newWindow)
-
-    // Count errors in rolling window
-    const errorsInWindow = newWindow.filter(r => !r.correct).length
-
-    if (correct && elapsed < FAST_MS) {
-      // Fast + correct → build streak
+    // ── PHASE PROGRESSION LOGIC ──────────────────────────────────────
+    if (correct && fast) {
       const newStreak = fastStreak + 1
       setFastStreak(newStreak)
 
-      if (newStreak >= CONSECUTIVE_FAST_TO_REMOVE && showTable) {
-        // Hide the table — student doesn't need it anymore
-        setShowTable(false)
-        setFastStreak(0)
-        save(currentTable, false)
-        setStatusMsg('Table hidden — you\'re on your own!')
-        return
-      }
-
-      // Show streak progress toward hiding
-      if (showTable) {
-        setStatusMsg(`Streak: ${newStreak}/${CONSECUTIVE_FAST_TO_REMOVE} fast answers to hide the table`)
+      if (quizPhase === 1) {
+        if (newStreak >= PHASE1_FAST_STREAK) {
+          setQuizPhase(2)
+          setFastStreak(0)
+          setShuffledRows(generateNewShuffledRows())
+          setStatusMsg('Phase 2: Table is shuffled now! Can you still find the answers?')
+        } else {
+          setStatusMsg(`Phase 1: Streak ${newStreak}/${PHASE1_FAST_STREAK} to unlock shuffled mode`)
+        }
+      } else if (quizPhase === 2) {
+        if (newStreak >= PHASE2_FAST_STREAK) {
+          setQuizPhase(3)
+          setFastStreak(0)
+          setStatusMsg('Phase 3: No table! You\'re on your own now!')
+        } else {
+          setStatusMsg(`Phase 2: Streak ${newStreak}/${PHASE2_FAST_STREAK} to go table-free`)
+        }
       } else {
-        setStatusMsg(`Excellent — no table needed! (${(elapsed / 1000).toFixed(1)}s)`)
+        // Phase 3
+        if (newStreak >= PHASE3_MASTERY_STREAK) {
+          setMastered(true)
+          setShowCelebration(true)
+          setStatusMsg(`MASTERED! ${PHASE3_MASTERY_STREAK} in a row, fast and correct!`)
+        } else {
+          setStatusMsg(`Phase 3: ${newStreak}/${PHASE3_MASTERY_STREAK} consecutive fast+correct to master!`)
+        }
       }
     } else {
       // Wrong or slow → reset streak
       setFastStreak(0)
-
-      // Check if we need to restore the table
-      if (errorsInWindow >= ERRORS_TO_RESTORE && !showTable) {
-        setShowTable(true)
-        setRecentWindow([]) // Clear window after restoration to give fresh start
-        save(currentTable, true)
-        setStatusMsg('Table restored. Take your time!')
-      } else if (!correct) {
-        setStatusMsg(`Keep trying! ${showTable ? 'Use the table to help.' : ''}`)
+      if (!correct) {
+        setStatusMsg(`Incorrect. ${quizPhase < 3 ? 'Check the table and try again!' : 'Keep going!'}`)
       } else {
-        // Correct but slow
-        setStatusMsg(`Correct but a bit slow (${(elapsed / 1000).toFixed(1)}s). Try to be faster!`)
+        setStatusMsg(`Correct but slow (${(elapsed / 1000).toFixed(1)}s). Try to answer in under ${FAST_MS / 1000}s!`)
       }
     }
   }
 
-  const handleSolve = () => {
-    if (!question || revealed) return
-    setIsCorrect(false)
-    setRevealed(true)
-    setFeedback(`Solution: ${question.table} × ${question.multiplier} = ${question.answer}`)
-  }
+  /**
+   * Confetti celebration effect — launches when student masters a table
+   */
+  useEffect(() => {
+    if (!showCelebration || !celebrationRef.current) return
+    const canvas = celebrationRef.current
+    const ctx = canvas.getContext('2d')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    const colors = ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd', '#01a3a4', '#f368e0', '#ff9f43', '#00d2d3']
+    const confetti = Array.from({ length: 150 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      w: Math.random() * 12 + 6,
+      h: Math.random() * 8 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vx: (Math.random() - 0.5) * 4,
+      vy: Math.random() * 3 + 2,
+      rot: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 10
+    }))
+    let frame
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      let allDone = true
+      confetti.forEach(c => {
+        c.x += c.vx
+        c.y += c.vy
+        c.rot += c.rotSpeed
+        c.vy += 0.05
+        if (c.y < canvas.height + 50) allDone = false
+        ctx.save()
+        ctx.translate(c.x, c.y)
+        ctx.rotate((c.rot * Math.PI) / 180)
+        ctx.fillStyle = c.color
+        ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h)
+        ctx.restore()
+      })
+      if (!allDone) frame = requestAnimationFrame(animate)
+    }
+    animate()
+    return () => { if (frame) cancelAnimationFrame(frame) }
+  }, [showCelebration])
 
   /**
-   * renderRefTable(): Render the reference table for the current multiplication table
-   * Only shows the single table being practiced (e.g., "2 × Table")
+   * renderRefTable(): Render ordered reference table (Phase 1)
    */
   const renderRefTable = () => (
     <div className="ref-table">
@@ -1086,31 +1078,103 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   )
 
   /**
-   * computeAvgTime(): Calculate average time per question from results
+   * renderShuffledRefTable(): Render shuffled reference table (Phase 2)
    */
+  const renderShuffledRefTable = () => (
+    <div className="ref-table">
+      <div className="ref-table-title">{currentTable} × Table (shuffled)</div>
+      <div className="ref-table-rows">
+        {shuffledRows.map(m => (
+          <div key={m} className="ref-table-row">
+            <span>{currentTable} × {m}</span>
+            <span>= {currentTable * m}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+
   const computeAvgTime = () => {
     if (results.length === 0) return '0.0'
     const totalTime = results.reduce((sum, r) => sum + parseFloat(r.time), 0)
     return (totalTime / results.length).toFixed(1)
   }
 
-  // ══════════ RENDER: FINISHED PHASE ══════════
-  if (phase === 'finished') {
+  // ══════════ RENDER: TABLE CHOOSER ══════════
+  if (appPhase === 'choosing') {
     return (
       <div className="app-shell">
         <div className="card">
-          <h1>{studentName}'s Results</h1>
+          <h1>{studentName}'s Tables</h1>
+          <p style={{ textAlign: 'center', color: 'var(--clr-text-soft)', margin: '0.5rem 0 1.5rem' }}>
+            Pick a table to practice:
+          </p>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '0.75rem',
+            maxWidth: '320px',
+            margin: '0 auto'
+          }}>
+            {[2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+              <button
+                key={n}
+                onClick={() => selectTable(n)}
+                style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 700,
+                  padding: '1rem',
+                  borderRadius: '12px',
+                  border: '2px solid var(--clr-accent)',
+                  background: 'var(--clr-surface)',
+                  color: 'var(--clr-accent)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={e => { e.target.style.background = 'var(--clr-accent)'; e.target.style.color = '#fff' }}
+                onMouseLeave={e => { e.target.style.background = 'var(--clr-surface)'; e.target.style.color = 'var(--clr-accent)' }}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ══════════ RENDER: FINISHED (MASTERED) ══════════
+  if (appPhase === 'finished') {
+    const nextTable = currentTable < 9 ? currentTable + 1 : null
+    return (
+      <div className="app-shell">
+        {showCelebration && (
+          <canvas
+            ref={celebrationRef}
+            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 9999 }}
+          />
+        )}
+        <div className="card">
+          <h1 style={{ fontSize: '2rem' }}>
+            {studentName} MASTERED {currentTable}x!
+          </h1>
           <div className="welcome-box">
-            <p className="welcome-text">Session complete!</p>
-            <p className="final-score">Score: {score}/{TOTAL_QUESTIONS}</p>
+            <p style={{ fontSize: '3rem', margin: '0.5rem 0' }}>
+              {['🎉','🏆','⭐','🌟','🎊'][Math.floor(Math.random() * 5)]}
+            </p>
+            <p className="welcome-text" style={{ fontSize: '1.3rem', color: 'var(--clr-accent)' }}>
+              Fantastic work! You nailed {PHASE3_MASTERY_STREAK} in a row!
+            </p>
+            <p className="final-score">Score: {score}/{questionNum}</p>
             <p style={{ fontSize: '1.1rem', margin: '0.5rem 0', color: 'var(--clr-accent)' }}>
               Average time: {computeAvgTime()}s per question
             </p>
-            <p style={{ opacity: 0.7, fontSize: '0.9rem' }}>
-              Next session: {currentTable}× table {showTable ? '(with reference table)' : '(no table)'}
-            </p>
-            {/* Results table */}
-            <div className="results-table" style={{ marginTop: '1rem' }}>
+            {nextTable && (
+              <p style={{ fontSize: '1.1rem', margin: '1rem 0 0.5rem', fontWeight: 600 }}>
+                Ready to try the {nextTable}x table next?
+              </p>
+            )}
+            <div className="results-table" style={{ marginTop: '1rem', maxHeight: '250px', overflowY: 'auto' }}>
               <table>
                 <thead>
                   <tr>
@@ -1136,7 +1200,19 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
                 </tbody>
               </table>
             </div>
-            <button onClick={startSession} style={{ marginTop: '1rem' }}>Play Again</button>
+            <div className="button-row" style={{ marginTop: '1rem', gap: '0.5rem', display: 'flex', justifyContent: 'center' }}>
+              {nextTable && (
+                <button onClick={() => { setShowCelebration(false); selectTable(nextTable) }}>
+                  Start {nextTable}x Table
+                </button>
+              )}
+              <button
+                onClick={() => { setShowCelebration(false); setAppPhase('choosing') }}
+                style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}
+              >
+                Pick Another Table
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1144,14 +1220,25 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   }
 
   // ══════════ RENDER: PLAYING PHASE ══════════
+  const showRefTable = quizPhase === 1 || quizPhase === 2
+
   return (
     <div className="app-shell">
+      {showCelebration && (
+        <canvas
+          ref={celebrationRef}
+          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 9999 }}
+        />
+      )}
       <div className="card">
         <h1>{studentName}'s Tables</h1>
         <div className="top-mini-row">
           <span className="score-pill">Score {score}</span>
-          <span className="progress-pill">Q {questionNum}/{TOTAL_QUESTIONS}</span>
+          <span className="progress-pill">Q {questionNum}</span>
           <span className="timer-pill">{currentTable}× table</span>
+          <span className="timer-pill" style={{ background: quizPhase === 3 ? 'var(--clr-accent)' : 'var(--clr-surface)' }}>
+            Phase {quizPhase}/3
+          </span>
         </div>
         {statusMsg && (
           <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--clr-text-soft)', margin: '4px 0 8px', fontWeight: 500 }}>
@@ -1159,11 +1246,10 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
           </p>
         )}
 
-        <div className={showTable ? 'tables-layout' : ''}>
-          {/* Reference table — only the current table being practiced */}
-          {showTable && renderRefTable()}
+        <div className={showRefTable ? 'tables-layout' : ''}>
+          {quizPhase === 1 && renderRefTable()}
+          {quizPhase === 2 && renderShuffledRefTable()}
 
-          {/* Quiz area */}
           <div className="tables-quiz-area">
             {question && (
               <>
@@ -1189,21 +1275,28 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
                   )}
                 </form>
                 {renderFeedback(feedback, isCorrect)}
-                {!revealed && (
+                {revealed && !mastered && (
                   <div className="button-row">
-                    <button onClick={handleSolve} disabled={!answer} style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>Solve</button>
+                    <button onClick={() => nextQuestion()}>Next</button>
                   </div>
                 )}
-                {revealed && (
+                {revealed && mastered && (
                   <div className="button-row">
-                    <button onClick={() => nextQuestion()}>
-                      {questionNum >= TOTAL_QUESTIONS ? 'Finish' : 'Next'}
-                    </button>
+                    <button onClick={() => nextQuestion()}>See Results</button>
                   </div>
                 )}
               </>
             )}
           </div>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <button
+            onClick={() => setAppPhase('choosing')}
+            style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)', fontSize: '0.85rem', padding: '0.4rem 1rem' }}
+          >
+            Back to Table Selection
+          </button>
         </div>
       </div>
     </div>
@@ -1786,15 +1879,15 @@ function App() {
   // Check if current URL matches a specific student page
   const pathname = window.location.pathname.replace(/\/$/, '').toLowerCase()
 
-  // Route: /taittiriya → Taittiriya's scaffolded tables app
-  // Uses ScaffoldedTablesApp: 30 questions, 3 reference tables that disappear as student improves
+  // Route: /taittiriya → Taittiriya's 3-phase scaffolded tables app
+  // Phase 1: ordered ref table → Phase 2: shuffled ref table → Phase 3: no table → mastery
   if (pathname === '/taittiriya') {
     return (
       <>
         <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
-        <ScaffoldedTablesApp studentName="Taittiriya" defaultTable={3} />
+        <ScaffoldedTablesApp studentName="Taittiriya" />
       </>
     )
   }

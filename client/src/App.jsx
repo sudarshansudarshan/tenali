@@ -817,17 +817,24 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
 
   // ── Constants ────────────────────────────────────────────────────────
   const FAST_MS = 5000                 // "Fast" answer threshold (ms)
-  const PHASE1_FAST_STREAK = 5         // Fast+correct streak to move from Phase 1 → 2
-  const PHASE2_FAST_STREAK = 5         // Fast+correct streak to move from Phase 2 → 3
-  const PHASE3_MASTERY_STREAK = 10     // Consecutive correct+fast in Phase 3 to master table
+  const LEVEL_STREAK = 5              // Fast+correct streak to unlock next level
+  const MASTERY_STREAK = 10           // Consecutive correct+fast in Level 5 to master table
+  const TOTAL_LEVELS = 5
 
   // ── App State ────────────────────────────────────────────────────────
   // 'choosing' → 'playing' → 'finished'
   const [appPhase, setAppPhase] = useState('choosing')
   const [currentTable, setCurrentTable] = useState(null)
 
-  // ── Quiz Phase: 1 = ordered table shown, 2 = shuffled table shown, 3 = no table
-  const [quizPhase, setQuizPhase] = useState(1)
+  // ── Level:
+  // 1 = show answer (13×2=26, student types 26)
+  // 2 = partial table (5 rows, left or right column only)
+  // 3 = shuffled full table (5 rows)
+  // 4 = products only (13,26,39...) + reverse Q (13×?=39)
+  // 5 = no table at all
+  const [level, setLevel] = useState(1)
+  // For Level 2: which side to show — 'left' (13×1, 13×2...) or 'right' (=13, =26...)
+  const [partialSide, setPartialSide] = useState('left')
 
   // ── Quiz Runtime State ───────────────────────────────────────────────
   const [question, setQuestion] = useState(null)
@@ -843,6 +850,9 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   const [statusMsg, setStatusMsg] = useState('')
   const [shuffledRows, setShuffledRows] = useState([])
   const [mastered, setMastered] = useState(false)
+
+  // ── Promotion Prompt State ─────────────────────────────────────────────
+  const [promotionPrompt, setPromotionPrompt] = useState(null)
 
   // ── Celebration State ──────────────────────────────────────────────────
   const [showCelebration, setShowCelebration] = useState(false)
@@ -865,16 +875,32 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   }
 
   /**
-   * generateNewShuffledRows: Create a shuffled array of multipliers 1-10
+   * generateNewShuffledRows(mustInclude): Create shuffled multipliers 1-10,
+   * guaranteeing mustInclude is in the first 5 if provided
    */
-  const generateNewShuffledRows = () => shuffleArray(Array.from({ length: 10 }, (_, i) => i + 1))
+  const generateNewShuffledRows = (mustInclude) => {
+    const all = shuffleArray(Array.from({ length: 10 }, (_, i) => i + 1))
+    if (mustInclude && !all.slice(0, 5).includes(mustInclude)) {
+      // Swap mustInclude into the first 5
+      const idx = all.indexOf(mustInclude)
+      const swapIdx = Math.floor(Math.random() * 5)
+      ;[all[swapIdx], all[idx]] = [all[idx], all[swapIdx]]
+    }
+    return all
+  }
 
   /**
-   * generateQuestion(tbl): Create a random multiplication question
+   * generateQuestion(tbl, lvl): Create a question appropriate for the level
+   * Level 1,2,3,5: normal → "13 × 3 = ?" answer = 39
+   * Level 4: reverse → "13 × ? = 39" answer = 3 (student finds the multiplier)
    */
-  const generateQuestion = (tbl) => {
+  const generateQuestion = (tbl, lvl) => {
     const multiplier = Math.floor(Math.random() * 10) + 1
-    return { table: tbl, multiplier, answer: tbl * multiplier }
+    const product = tbl * multiplier
+    if (lvl === 4) {
+      return { table: tbl, multiplier, product, answer: multiplier, reverse: true }
+    }
+    return { table: tbl, multiplier, product, answer: product, reverse: false }
   }
 
   /**
@@ -883,21 +909,23 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   const selectTable = (tbl) => {
     setCurrentTable(tbl)
     setAppPhase('playing')
-    setQuizPhase(1)
+    setLevel(1)
     setQuestionNum(1)
     setScore(0)
     setResults([])
     setFastStreak(0)
     setMastered(false)
-    setStatusMsg('Phase 1: Use the reference table to help you!')
-    const q = generateQuestion(tbl)
+    setPromotionPrompt(null)
+    setPartialSide(Math.random() < 0.5 ? 'left' : 'right')
+    setStatusMsg('Level 1: See the answer, then type it!')
+    const q = generateQuestion(tbl, 1)
     setQuestion(q)
     setAnswer('')
     setFeedback('')
     setIsCorrect(null)
     setRevealed(false)
     setStartTime(Date.now())
-    setShuffledRows(generateNewShuffledRows())
+    setShuffledRows(generateNewShuffledRows(q.multiplier))
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
@@ -909,7 +937,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
       setAppPhase('finished')
       return
     }
-    const q = generateQuestion(currentTable)
+    const q = generateQuestion(currentTable, level)
     setQuestion(q)
     setAnswer('')
     setFeedback('')
@@ -917,20 +945,19 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     setRevealed(false)
     setStartTime(Date.now())
     setQuestionNum(n => n + 1)
-    // Shuffle rows for every new question in Phase 2
-    if (quizPhase === 2) {
-      setShuffledRows(generateNewShuffledRows())
+    // Reshuffle for levels that show partial/shuffled tables
+    if (level === 2 || level === 3) {
+      setShuffledRows(generateNewShuffledRows(q.multiplier))
+    }
+    if (level === 2) {
+      setPartialSide(Math.random() < 0.5 ? 'left' : 'right')
     }
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
-  // Update advance ref for useAutoAdvance hook
   advanceFnRef.current = () => nextQuestion()
-
-  // Auto-advance after correct answer (1.5s delay)
   useAutoAdvance(revealed, advanceFnRef, isCorrect)
 
-  // Enter key to advance after wrong answer
   useEffect(() => {
     if (!revealed || isCorrect) return
     const handleKey = (e) => {
@@ -941,11 +968,12 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   }, [revealed, isCorrect, questionNum])
 
   /**
-   * handleSubmit(e): Process answer submission with phase progression logic
+   * handleSubmit(e): Process answer and level progression
    *
-   * Phase 1 → 2: After PHASE1_FAST_STREAK consecutive fast+correct answers
-   * Phase 2 → 3: After PHASE2_FAST_STREAK consecutive fast+correct answers
-   * Phase 3 mastery: After PHASE3_MASTERY_STREAK consecutive correct+fast answers → done
+   * L1 → L2: After LEVEL_STREAK consecutive fast+correct
+   * L2 → L3: After LEVEL_STREAK consecutive fast+correct
+   * L3 → L4: After LEVEL_STREAK consecutive fast+correct
+   * L4 mastery: After MASTERY_STREAK consecutive fast+correct
    */
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -960,60 +988,100 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     setRevealed(true)
     if (correct) setScore(s => s + 1)
 
+    // Build feedback string
+    const qStr = question.reverse
+      ? `${question.table} × ${question.answer} = ${question.product}`
+      : `${question.table} × ${question.multiplier} = ${question.product}`
     const fb = correct
-      ? `Correct! ${question.table} × ${question.multiplier} = ${question.answer} (${(elapsed / 1000).toFixed(1)}s)`
-      : `${question.table} × ${question.multiplier} = ${question.answer} (you said ${userAns || '?'})`
+      ? `Correct! ${qStr} (${(elapsed / 1000).toFixed(1)}s)`
+      : `${qStr} (you said ${userAns || '?'})`
     setFeedback(fb)
 
+    const promptStr = question.reverse
+      ? `${question.table} × ? = ${question.product}`
+      : `${question.table} × ${question.multiplier}`
     setResults(r => [...r, {
-      prompt: `${question.table} × ${question.multiplier}`,
+      prompt: promptStr,
       userAnswer: answer || '?',
       correctAnswer: String(question.answer),
       correct,
       time: (elapsed / 1000).toFixed(1)
     }])
 
-    // ── PHASE PROGRESSION LOGIC ──────────────────────────────────────
+    // ── LEVEL PROGRESSION LOGIC ──────────────────────────────────────
     if (correct && fast) {
       const newStreak = fastStreak + 1
       setFastStreak(newStreak)
 
-      if (quizPhase === 1) {
-        if (newStreak >= PHASE1_FAST_STREAK) {
-          setQuizPhase(2)
-          setFastStreak(0)
-          setShuffledRows(generateNewShuffledRows())
-          setStatusMsg('Phase 2: Table is shuffled now! Can you still find the answers?')
+      if (level < 5) {
+        if (newStreak >= LEVEL_STREAK) {
+          setPromotionPrompt({ from: level, to: level + 1 })
+          setStatusMsg('You\'re ready to level up!')
         } else {
-          setStatusMsg(`Phase 1: Streak ${newStreak}/${PHASE1_FAST_STREAK} to unlock shuffled mode`)
-        }
-      } else if (quizPhase === 2) {
-        if (newStreak >= PHASE2_FAST_STREAK) {
-          setQuizPhase(3)
-          setFastStreak(0)
-          setStatusMsg('Phase 3: No table! You\'re on your own now!')
-        } else {
-          setStatusMsg(`Phase 2: Streak ${newStreak}/${PHASE2_FAST_STREAK} to go table-free`)
+          setStatusMsg(`Level ${level}: Streak ${newStreak}/${LEVEL_STREAK}`)
         }
       } else {
-        // Phase 3
-        if (newStreak >= PHASE3_MASTERY_STREAK) {
-          setMastered(true)
-          setShowCelebration(true)
-          setStatusMsg(`MASTERED! ${PHASE3_MASTERY_STREAK} in a row, fast and correct!`)
+        // Level 5
+        if (newStreak >= MASTERY_STREAK) {
+          setPromotionPrompt({ from: 5, to: 'mastered' })
+          setStatusMsg('You\'re ready to level up!')
         } else {
-          setStatusMsg(`Phase 3: ${newStreak}/${PHASE3_MASTERY_STREAK} consecutive fast+correct to master!`)
+          setStatusMsg(`Level 5: ${newStreak}/${MASTERY_STREAK} to master!`)
         }
       }
     } else {
-      // Wrong or slow → reset streak
       setFastStreak(0)
       if (!correct) {
-        setStatusMsg(`Incorrect. ${quizPhase < 3 ? 'Check the table and try again!' : 'Keep going!'}`)
+        setStatusMsg(`Incorrect. ${level <= 4 ? 'Check the reference and try again!' : 'Keep going!'}`)
       } else {
-        setStatusMsg(`Correct but slow (${(elapsed / 1000).toFixed(1)}s). Try to answer in under ${FAST_MS / 1000}s!`)
+        setStatusMsg(`Correct but slow (${(elapsed / 1000).toFixed(1)}s). Under ${FAST_MS / 1000}s to count!`)
       }
     }
+  }
+
+  /**
+   * Level descriptions for promotion prompts
+   */
+  const levelInfo = {
+    2: { title: 'Partial Table', desc: 'Only 5 rows, and you\'ll see either the equations or the answers — not both!' },
+    3: { title: 'Shuffled Tables', desc: 'Full equations but shuffled randomly each time.' },
+    4: { title: 'Reverse Challenge', desc: 'Just the products (13, 26, 39...) shown. You answer: 13 × ? = 39' },
+    5: { title: 'No Table!', desc: 'No reference at all — answer from memory!' },
+    mastered: { title: 'Table Mastered!', desc: 'You can see your results or keep practicing.' }
+  }
+
+  const acceptPromotion = () => {
+    const promo = promotionPrompt
+    setPromotionPrompt(null)
+    if (promo.to === 'mastered') {
+      setMastered(true)
+      setShowCelebration(true)
+      setStatusMsg(`MASTERED! ${MASTERY_STREAK} in a row!`)
+      setAppPhase('finished')
+    } else {
+      setLevel(promo.to)
+      setFastStreak(0)
+      const q = generateQuestion(currentTable, promo.to)
+      setQuestion(q)
+      if (promo.to === 2 || promo.to === 3) setShuffledRows(generateNewShuffledRows(q.multiplier))
+      if (promo.to === 2) setPartialSide(Math.random() < 0.5 ? 'left' : 'right')
+      setStatusMsg(`Level ${promo.to}: ${levelInfo[promo.to].title}`)
+      setAnswer('')
+      setFeedback('')
+      setIsCorrect(null)
+      setRevealed(false)
+      setStartTime(Date.now())
+      setQuestionNum(n => n + 1)
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }
+  }
+
+  const declinePromotion = () => {
+    const promo = promotionPrompt
+    setPromotionPrompt(null)
+    setFastStreak(0)
+    setStatusMsg(`Staying at Level ${promo.from}. Keep practicing!`)
+    nextQuestion()
   }
 
   /**
@@ -1219,9 +1287,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     )
   }
 
-  // ══════════ RENDER: PLAYING PHASE ══════════
-  const showRefTable = quizPhase === 1 || quizPhase === 2
-
+  // ══════════ RENDER: PLAYING ══════════
   return (
     <div className="app-shell">
       {showCelebration && (
@@ -1238,38 +1304,126 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
           </span>
           <span style={{
             fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '8px',
-            background: quizPhase === 3 ? 'var(--clr-accent)' : 'var(--clr-surface)',
-            color: quizPhase === 3 ? '#fff' : 'var(--clr-text-soft)',
+            background: level === 5 ? 'var(--clr-accent)' : 'var(--clr-surface)',
+            color: level === 5 ? '#fff' : 'var(--clr-text-soft)',
             border: '1px solid var(--clr-border)'
           }}>
-            Phase {quizPhase}/3
+            Level {level}/{TOTAL_LEVELS}
           </span>
         </div>
 
-        {/* Question — always on top, big and prominent */}
-        {question && (
+        {/* Promotion prompt */}
+        {promotionPrompt && (
+          <div style={{
+            textAlign: 'center', padding: '1.5rem 1rem', margin: '0.5rem 0',
+            borderRadius: '12px', background: 'var(--clr-surface)', border: '2px solid var(--clr-accent)'
+          }}>
+            <p style={{ fontSize: '1.5rem', margin: '0 0 0.3rem' }}>
+              {promotionPrompt.to === 'mastered' ? '🏆' : '🎉'}
+            </p>
+            <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--clr-text)', margin: '0 0 0.3rem' }}>
+              {promotionPrompt.to === 'mastered'
+                ? `${MASTERY_STREAK} in a row! You mastered it!`
+                : `Ready for Level ${promotionPrompt.to}?`}
+            </p>
+            <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--clr-accent)', margin: '0 0 0.2rem' }}>
+              {levelInfo[promotionPrompt.to]?.title}
+            </p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--clr-text-soft)', margin: '0 0 1rem' }}>
+              {levelInfo[promotionPrompt.to]?.desc}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button onClick={acceptPromotion} style={{ padding: '0.6rem 1.2rem', fontSize: '1rem', fontWeight: 700 }}>
+                {promotionPrompt.to === 'mastered' ? 'See Results' : 'Level Up!'}
+              </button>
+              <button onClick={declinePromotion} style={{
+                padding: '0.6rem 1.2rem', fontSize: '1rem', background: 'transparent',
+                border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)'
+              }}>
+                {promotionPrompt.to === 'mastered' ? 'Keep Practicing' : 'Stay Here'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Question — on top, big */}
+        {!promotionPrompt && question && (
           <div style={{
             textAlign: 'center', fontSize: '2rem', fontWeight: 800, padding: '0.5rem 0',
             color: 'var(--clr-text)', fontFamily: 'var(--font-display)'
           }}>
-            {question.table} × {question.multiplier} = ?
+            {level === 1
+              ? <>{question.table} × {question.multiplier} = {question.product}</>
+              : question.reverse
+                ? <>{question.table} × <span style={{ color: 'var(--clr-accent)' }}>?</span> = {question.product}</>
+                : <>{question.table} × {question.multiplier} = <span style={{ color: 'var(--clr-accent)' }}>?</span></>
+            }
           </div>
         )}
 
-        {/* Reference table — compact, right below the question */}
-        {(quizPhase === 1 || quizPhase === 2) && (() => {
-          const rows = quizPhase === 1
-            ? Array.from({ length: 10 }, (_, i) => i + 1)
-            : shuffledRows.slice(0, 5)
+        {/* Reference table — varies by level */}
+        {!promotionPrompt && level >= 2 && level <= 4 && (() => {
           const pad = (n) => String(n).padStart(String(currentTable * 10).length, '\u2007')
+
+          // Level 4: products only
+          if (level === 4) {
+            const products = Array.from({ length: 10 }, (_, i) => currentTable * (i + 1))
+            return (
+              <div style={{
+                margin: '0.4rem 0', padding: '0.5rem 0.8rem', borderRadius: '8px',
+                background: 'var(--clr-surface)', border: '1px solid var(--clr-border)', textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--clr-text-soft)', marginBottom: '4px', fontWeight: 600 }}>
+                  {currentTable}x products
+                </div>
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center',
+                  fontSize: '1.1rem', fontFamily: 'monospace', fontWeight: 700, color: '#222'
+                }}>
+                  {products.map((p, i) => (
+                    <span key={i} style={{
+                      padding: '2px 8px', borderRadius: '6px',
+                      background: 'var(--clr-bg)', border: '1px solid var(--clr-border)'
+                    }}>{p}</span>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+
+          // Level 2: partial table — show only left OR right side (5 rows)
+          if (level === 2) {
+            const rows = shuffledRows.slice(0, 5)
+            return (
+              <div style={{
+                margin: '0.4rem 0', padding: '0.6rem 0.8rem', borderRadius: '8px',
+                background: 'var(--clr-surface)', border: '1px solid var(--clr-border)'
+              }}>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 1.5rem',
+                  fontSize: '1.05rem', fontFamily: 'monospace', fontWeight: 600
+                }}>
+                  {rows.map(m => (
+                    <div key={m} style={{ display: 'flex', color: '#333', whiteSpace: 'pre' }}>
+                      {partialSide === 'left'
+                        ? <span>{currentTable} × {String(m).padStart(2, '\u2007')}</span>
+                        : <span style={{ color: '#222', fontWeight: 700 }}>= {pad(currentTable * m)}</span>
+                      }
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+
+          // Level 3: shuffled full table (5 rows, both sides)
+          const rows = shuffledRows.slice(0, 5)
           return (
             <div style={{
               margin: '0.4rem 0', padding: '0.6rem 0.8rem', borderRadius: '8px',
               background: 'var(--clr-surface)', border: '1px solid var(--clr-border)'
             }}>
-              {quizPhase === 2 && (
-                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--clr-text-soft)', marginBottom: '4px', fontWeight: 600 }}>shuffled</div>
-              )}
+              <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--clr-text-soft)', marginBottom: '4px', fontWeight: 600 }}>shuffled</div>
               <div style={{
                 display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 1.5rem',
                 fontSize: '1.05rem', fontFamily: 'monospace', fontWeight: 600
@@ -1285,8 +1439,8 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
           )
         })()}
 
-        {/* Answer input + buttons — at the bottom */}
-        {question && (
+        {/* Answer input */}
+        {!promotionPrompt && question && (
           <div style={{ marginTop: '0.4rem' }}>
             <form onSubmit={handleSubmit}>
               <input
@@ -1321,8 +1475,8 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
           </div>
         )}
 
-        {/* Status message — subtle, at the bottom */}
-        {statusMsg && (
+        {/* Status message */}
+        {!promotionPrompt && statusMsg && (
           <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--clr-text-soft)', margin: '0.5rem 0 0', fontWeight: 500 }}>
             {statusMsg}
           </p>

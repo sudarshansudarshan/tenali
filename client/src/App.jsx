@@ -1962,7 +1962,7 @@ function YazdanTablesApp({ studentName }) {
     return (
       <div className="app-shell">
         <div className="card">
-          <h1>Tenali's Tables Desk</h1>
+          <h1>{studentName}'s Levels (Tables)</h1>
           <p style={{ textAlign: 'center', color: 'var(--clr-text-soft)', margin: '0.5rem 0 1.5rem' }}>
             Pick a table to master:
           </p>

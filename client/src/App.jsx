@@ -4019,6 +4019,423 @@ function AdaptiveMixedApp({ studentName }) {
 }
 
 /**
+ * SuperTablesApp — 10-level progressive multiplication mastery
+ *
+ * Levels:
+ *  1. Sequential Recall (horizontal 5+5 split, 20 questions)
+ *  2. Random Recall (horizontal 5+5 split, 20 questions)
+ *  3. Timed Answer Visibility (answer fades after 2s)
+ *  4. Partial Shuffled Table (5 visible entries)
+ *  5. Missing Digit Identification (type full answer)
+ *  6. Multiple Choice Questions (4 options)
+ *  7. Match the Following (3 pairs per round)
+ *  8. Adaptive MCQ (tracks weak spots via sessionStorage)
+ *  9. Direct Input (no assistance)
+ * 10. Fill in the Blank (missing multiplier or answer)
+ */
+function SuperTablesApp() {
+  // ── helpers ───────────────────────────────────────────
+  const stShuffle = (arr) => {
+    const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a;
+  }
+  const stGenTable = (n) => Array.from({ length: 10 }, (_, i) => ({ multiplier: i + 1, expression: `${n} × ${i + 1}`, answer: n * (i + 1) }))
+  const stDistractors = (correct, tbl) => {
+    const tblAns = Array.from({ length: 10 }, (_, i) => tbl * (i + 1))
+    const s = new Set()
+    tblAns.forEach(a => { if (a !== correct) s.add(a) });
+    [correct - 1, correct + 1, correct - tbl, correct + tbl, correct - 10, correct + 10].forEach(v => { if (v > 0 && v !== correct) s.add(v) })
+    const picked = stShuffle([...s]).slice(0, 3)
+    while (picked.length < 3) picked.push(correct + picked.length + 1)
+    return stShuffle([correct, ...picked])
+  }
+  const stMask = (answer) => {
+    const s = String(answer); const pos = Math.floor(Math.random() * s.length)
+    return s.slice(0, pos) + '*' + s.slice(pos + 1)
+  }
+  // adaptive tracking
+  const stGetAdaptive = () => { try { return JSON.parse(sessionStorage.getItem('st_adaptive') || '{}') } catch { return {} } }
+  const stSetAdaptive = (d) => { sessionStorage.setItem('st_adaptive', JSON.stringify(d)) }
+  const stRecord = (tbl, mul, ok, ms) => {
+    const d = stGetAdaptive(); const k = `${tbl}x${mul}`
+    if (!d[k]) d[k] = { wrong: 0, totalTime: 0, attempts: 0 }
+    d[k].attempts++; d[k].totalTime += ms; if (!ok) d[k].wrong++
+    stSetAdaptive(d)
+  }
+  const stWeak = (tbl) => {
+    const d = stGetAdaptive(); const w = []
+    for (let m = 1; m <= 10; m++) { const info = d[`${tbl}x${m}`]; if (info && (info.wrong > 0 || info.totalTime / info.attempts > 5000)) w.push({ m, sc: info.wrong * 2 + info.totalTime / info.attempts / 1000 }) }
+    return w.sort((a, b) => b.sc - a.sc).map(x => x.m)
+  }
+
+  // ── shared styles ─────────────────────────────────────
+  const S = {
+    page: { minHeight: '100vh', padding: '24px', fontFamily: 'system-ui, -apple-system, sans-serif' },
+    center: { textAlign: 'center' },
+    title: { fontSize: '2.5rem', fontWeight: 900, marginBottom: 8 },
+    subtitle: { fontSize: '1.1rem', opacity: 0.6, marginBottom: 32 },
+    card: { background: 'var(--card-bg, #fff)', borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: 32, maxWidth: 560, margin: '0 auto' },
+    btn: { border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 700, cursor: 'pointer', fontSize: '1rem', transition: 'all .15s' },
+    btnPrimary: { background: '#6366f1', color: '#fff' },
+    btnSecondary: { background: '#e5e7eb', color: '#374151' },
+    input: { width: 100, textAlign: 'center', fontSize: '1.5rem', fontWeight: 700, border: '2px solid #a5b4fc', borderRadius: 12, padding: '8px 16px', outline: 'none' },
+    optionBtn: { border: '2px solid #c7d2fe', borderRadius: 12, padding: '12px', fontWeight: 700, fontSize: '1.2rem', cursor: 'pointer', background: '#eef2ff', transition: 'all .15s', color: '#3730a3' },
+    grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
+    tableWrap: { overflowX: 'auto', marginBottom: 24 },
+    table: { margin: '0 auto', borderCollapse: 'collapse' },
+    th: { padding: '8px 12px', fontSize: '0.85rem', fontWeight: 600, color: '#4338ca', background: '#eef2ff', border: '1px solid #c7d2fe' },
+    td: { padding: '8px 12px', textAlign: 'center', fontWeight: 700, fontSize: '1.1rem', border: '1px solid #c7d2fe', background: 'var(--card-bg, #fff)' },
+    qLabel: { fontSize: '0.85rem', opacity: 0.5, fontWeight: 500, marginBottom: 8 },
+    qText: { fontSize: '1.8rem', fontWeight: 800, textAlign: 'center', marginBottom: 24, color: 'var(--text-color, #1e1b4b)' },
+    fbOk: { marginTop: 16, padding: 16, borderRadius: 12, textAlign: 'center', background: '#ecfdf5', border: '1px solid #86efac' },
+    fbNo: { marginTop: 16, padding: 16, borderRadius: 12, textAlign: 'center', background: '#fef2f2', border: '1px solid #fca5a5' },
+    back: { background: 'none', border: 'none', color: '#6366f1', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem', padding: 0 },
+    levelCard: { display: 'flex', alignItems: 'flex-start', gap: 16, background: 'var(--card-bg, #fff)', border: '2px solid var(--border-color, #e5e7eb)', borderRadius: 16, padding: 20, textAlign: 'left', cursor: 'pointer', transition: 'all .15s', width: '100%' },
+    badge: { fontSize: '0.7rem', fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: 99, display: 'inline-block' },
+    numGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, maxWidth: 360, margin: '0 auto' },
+    numBtn: { aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card-bg, #fff)', border: '2px solid var(--border-color, #e5e7eb)', borderRadius: 12, fontSize: '1.2rem', fontWeight: 700, cursor: 'pointer', transition: 'all .15s' },
+    matchCol: { flex: 1, display: 'flex', flexDirection: 'column', gap: 12 },
+    matchBtn: (active, matched) => ({ padding: '12px 16px', borderRadius: 12, fontWeight: 700, fontSize: '1.1rem', border: '2px solid', cursor: matched ? 'default' : 'pointer', opacity: matched ? 0.5 : 1, transition: 'all .15s',
+      borderColor: matched ? '#86efac' : active ? '#6366f1' : '#d1d5db',
+      background: matched ? '#ecfdf5' : active ? '#eef2ff' : 'var(--card-bg, #fff)',
+      color: matched ? '#15803d' : active ? '#3730a3' : 'var(--text-color, #374151)' }),
+    ansCol: (sel, matched) => ({ padding: '12px 16px', borderRadius: 12, fontWeight: 700, fontSize: '1.1rem', border: '2px solid', cursor: matched ? 'default' : sel ? 'pointer' : 'not-allowed', opacity: matched ? 0.5 : 1, transition: 'all .15s',
+      borderColor: matched ? '#86efac' : sel ? '#f59e0b' : '#d1d5db',
+      background: matched ? '#ecfdf5' : sel ? '#fffbeb' : 'var(--card-bg, #fff)',
+      color: matched ? '#15803d' : sel ? '#92400e' : 'var(--text-color, #9ca3af)' }),
+  }
+
+  // ── state ─────────────────────────────────────────────
+  const [screen, setScreen] = useState('home')
+  const [tableNum, setTableNum] = useState(null)
+  const [levelInfo, setLevelInfo] = useState(null)
+  const [idx, setIdx] = useState(0)
+  const [score, setScore] = useState(0)
+  const [fb, setFb] = useState(null)
+  const [phase, setPhase] = useState('show') // for L3
+  const [selected, setSelected] = useState(null) // for L7
+  const [matched, setMatched] = useState([]) // for L7
+  const [wrong7, setWrong7] = useState(false)
+  const [startTime, setStartTime] = useState(Date.now())
+  const inputRef = useRef(null)
+
+  // computed data
+  const [questions, setQuestions] = useState([])
+  const [visible, setVisible] = useState([])
+  const [options, setOptions] = useState([])
+  const [rounds, setRounds] = useState([])
+  const [roundIdx, setRoundIdx] = useState(0)
+  const [shuffledAns, setShuffledAns] = useState([])
+
+  const LEVELS = [
+    { id: 1, name: 'Sequential Recall', desc: 'Answer in order with the table visible', icon: '📋' },
+    { id: 2, name: 'Random Recall', desc: 'Random questions with the table visible', icon: '🔀' },
+    { id: 3, name: 'Timed Visibility', desc: 'See the answer briefly, then recall it', icon: '⏱️' },
+    { id: 4, name: 'Partial Table', desc: 'Only 5 entries visible', icon: '🧩' },
+    { id: 5, name: 'Missing Digit', desc: 'One digit hidden — type full answer', icon: '🔍' },
+    { id: 6, name: 'Multiple Choice', desc: 'Pick from 4 options', icon: '🅰️' },
+    { id: 7, name: 'Match Pairs', desc: 'Match 3 questions to answers', icon: '🔗' },
+    { id: 8, name: 'Adaptive MCQ', desc: 'Focuses on your weak spots', icon: '🧠' },
+    { id: 9, name: 'Direct Input', desc: 'No help — type from memory', icon: '✍️' },
+    { id: 10, name: 'Fill in the Blank', desc: 'Find the missing value', icon: '📝' },
+  ]
+
+  const totalQ = levelInfo ? (levelInfo.id <= 2 ? 20 : levelInfo.id === 4 ? 5 : levelInfo.id === 7 ? rounds.length * 3 : 10) : 10
+
+  // ── setup level on play ───────────────────────────────
+  const startPlay = (num) => {
+    setTableNum(num); setScreen('play'); setIdx(0); setScore(0); setFb(null); setPhase('show')
+    setSelected(null); setMatched([]); setWrong7(false); setRoundIdx(0); setStartTime(Date.now())
+    const tbl = stGenTable(num)
+    const first = tbl.slice(0, 5), second = tbl.slice(5)
+    const lid = levelInfo.id
+    if (lid === 1) { setQuestions([...first, ...first, ...second, ...second]); setVisible(first) }
+    else if (lid === 2) { setQuestions([...stShuffle([...first, ...first]), ...stShuffle([...second, ...second])]); setVisible(first) }
+    else if (lid === 3) { setQuestions(stShuffle(tbl)) }
+    else if (lid === 4) { const v = stShuffle(tbl).slice(0, 5); setVisible(v); setQuestions(stShuffle(v)) }
+    else if (lid === 5) { setQuestions(stShuffle(tbl).map(e => ({ ...e, masked: stMask(e.answer) }))) }
+    else if (lid === 6) { const q = stShuffle(tbl); setQuestions(q); setOptions(stDistractors(q[0].answer, num)) }
+    else if (lid === 7) {
+      const sh = stShuffle(tbl); const r = []
+      for (let i = 0; i < sh.length; i += 3) { const g = sh.slice(i, i + 3); if (g.length === 3) r.push(g) }
+      if (r.length === 0) r.push(sh.slice(0, 3))
+      setRounds(r); setShuffledAns(stShuffle(r[0].map(e => e.answer)))
+    } else if (lid === 8) {
+      const weak = stWeak(num); const weakE = weak.slice(0, 5).map(m => tbl.find(e => e.multiplier === m)).filter(Boolean)
+      const others = stShuffle(tbl.filter(e => !weak.includes(e.multiplier)))
+      const mix = [...weakE]; for (const o of others) { if (mix.length >= 10) break; if (!mix.find(m => m.multiplier === o.multiplier)) mix.push(o) }
+      while (mix.length < 10) mix.push(tbl[mix.length % 10])
+      const q = stShuffle(mix); setQuestions(q); setOptions(stDistractors(q[0].answer, num))
+    } else if (lid === 9) { setQuestions(stShuffle(tbl)) }
+    else if (lid === 10) { setQuestions(stShuffle(tbl).map(e => ({ ...e, blankType: Math.random() > 0.5 ? 'multiplier' : 'answer' }))) }
+  }
+
+  const goHome = () => { setScreen('home'); setLevelInfo(null); setTableNum(null) }
+  const cur = questions[Math.min(idx, questions.length - 1)] || { expression: '', answer: 0, multiplier: 1 }
+  const lid = levelInfo ? levelInfo.id : 0
+
+  // options update on idx change for MCQ levels
+  useEffect(() => {
+    if (screen !== 'play' || !tableNum) return
+    if ((lid === 6 || lid === 8) && questions[idx]) setOptions(stDistractors(questions[idx].answer, tableNum))
+  }, [idx, screen])
+
+  // L3 timed phases
+  useEffect(() => {
+    if (lid !== 3 || screen !== 'play') return
+    if (phase === 'show') { const t = setTimeout(() => setPhase('fading'), 2000); return () => clearTimeout(t) }
+    if (phase === 'fading') { const t = setTimeout(() => setPhase('ask'), 800); return () => clearTimeout(t) }
+  }, [phase, idx, lid, screen])
+
+  // L7 auto-advance after matching all 3
+  useEffect(() => {
+    if (lid !== 7 || matched.length !== 3) return
+    const t = setTimeout(() => {
+      const next = roundIdx + 1
+      if (next < rounds.length) { setRoundIdx(next); setMatched([]); setSelected(null); setWrong7(false); setShuffledAns(stShuffle(rounds[next].map(e => e.answer))) }
+      else { setRoundIdx(next) }
+    }, 800)
+    return () => clearTimeout(t)
+  }, [matched, lid])
+
+  useEffect(() => { setStartTime(Date.now()) }, [idx])
+  useEffect(() => { if (inputRef.current) inputRef.current.focus() }, [idx, fb, phase])
+
+  // ── answer handlers ───────────────────────────────────
+  const handleInput = (e) => {
+    e.preventDefault()
+    const val = parseInt(e.target.elements.ans.value, 10)
+    if (isNaN(val)) return
+    let correctAns = cur.answer
+    if (lid === 10) correctAns = cur.blankType === 'multiplier' ? cur.multiplier : cur.answer
+    const ok = val === correctAns
+    if (ok) setScore(s => s + 1)
+    if (lid === 8) stRecord(tableNum, cur.multiplier, ok, Date.now() - startTime)
+    setFb({ ok, correctAns })
+    e.target.elements.ans.value = ''
+  }
+  const handlePick = (ans) => {
+    const ok = ans === cur.answer
+    if (ok) setScore(s => s + 1)
+    if (lid === 8) stRecord(tableNum, cur.multiplier, ok, Date.now() - startTime)
+    setFb({ ok, correctAns: cur.answer })
+  }
+  const advance = () => {
+    setFb(null)
+    if (lid === 3) setPhase('show')
+    if (lid <= 2 && idx < 19) {
+      const half = idx < 9 ? 0 : 1
+      const tbl = stGenTable(tableNum)
+      if (idx === 9) setVisible(tbl.slice(5))
+    }
+    setIdx(i => i + 1)
+  }
+  // L1/L2 visible half
+  const displayHalf = lid <= 2 ? (idx < 10 ? stGenTable(tableNum).slice(0, 5) : stGenTable(tableNum).slice(5)) : []
+
+  const done = lid === 7 ? (roundIdx >= rounds.length) : (idx >= totalQ && fb === null)
+
+  // ── render helpers ────────────────────────────────────
+  const renderTable = (entries, tblNum, hideM) => {
+    const filtered = hideM != null ? entries.filter(e => e.multiplier !== hideM) : entries
+    return (
+      <div style={S.tableWrap}>
+        <table style={S.table}>
+          <thead><tr>{filtered.map((e, i) => <th key={i} style={S.th}>{tblNum} × {e.multiplier}</th>)}</tr></thead>
+          <tbody><tr>{filtered.map((e, i) => <td key={i} style={S.td}>{e.answer}</td>)}</tr></tbody>
+        </table>
+      </div>
+    )
+  }
+
+  const renderFeedback = () => (
+    <div style={fb.ok ? S.fbOk : S.fbNo}>
+      <p style={{ fontWeight: 700, fontSize: '1.1rem', color: fb.ok ? '#15803d' : '#dc2626', margin: 0 }}>
+        {fb.ok ? '✓ Correct!' : `✗ The answer is ${fb.correctAns}`}
+      </p>
+      <button onClick={advance} style={{ ...S.btn, ...S.btnPrimary, marginTop: 12 }}>Next →</button>
+    </div>
+  )
+
+  const renderInput = () => (
+    <form onSubmit={handleInput} style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+      <input ref={inputRef} name="ans" type="number" style={S.input} placeholder="?" autoComplete="off" />
+      <button type="submit" style={{ ...S.btn, ...S.btnPrimary }}>Submit</button>
+    </form>
+  )
+
+  const renderScore = () => {
+    const pct = Math.round((score / totalQ) * 100)
+    return (
+      <div style={{ ...S.card, textAlign: 'center' }}>
+        <div style={{ fontSize: '3.5rem', marginBottom: 12 }}>{pct === 100 ? '🏆' : pct >= 80 ? '🌟' : pct >= 50 ? '👍' : '💪'}</div>
+        <h2 style={{ margin: '0 0 8px', fontSize: '1.5rem' }}>Level Complete!</h2>
+        <p style={{ fontSize: '2.8rem', fontWeight: 900, color: '#6366f1', margin: '0 0 4px' }}>{score}/{totalQ}</p>
+        <p style={{ opacity: 0.5, marginBottom: 24 }}>{pct}% correct</p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+          <button onClick={() => startPlay(tableNum)} style={{ ...S.btn, ...S.btnPrimary }}>Try Again</button>
+          <button onClick={goHome} style={{ ...S.btn, ...S.btnSecondary }}>Menu</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── SCREENS ───────────────────────────────────────────
+  // HOME
+  if (screen === 'home') {
+    return (
+      <div style={S.page}>
+        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+          <div style={S.center}>
+            <h1 style={S.title}>SuperTables</h1>
+            <p style={S.subtitle}>Master multiplication through 10 progressive levels</p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {LEVELS.map(l => (
+              <button key={l.id} onClick={() => { setLevelInfo(l); setScreen('pickTable') }}
+                style={S.levelCard}
+                onMouseOver={e => e.currentTarget.style.borderColor = '#a5b4fc'}
+                onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border-color, #e5e7eb)'}>
+                <span style={{ fontSize: '1.8rem' }}>{l.icon}</span>
+                <div>
+                  <span style={S.badge}>Level {l.id}</span>
+                  <h3 style={{ margin: '6px 0 2px', fontSize: '1.1rem', fontWeight: 700 }}>{l.name}</h3>
+                  <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.5 }}>{l.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // PICK TABLE
+  if (screen === 'pickTable') {
+    return (
+      <div style={S.page}>
+        <div style={{ maxWidth: 480, margin: '0 auto' }}>
+          <button onClick={goHome} style={S.back}>← Back to levels</button>
+          <div style={{ ...S.center, marginTop: 16, marginBottom: 24 }}>
+            <div style={{ fontSize: '2.5rem' }}>{levelInfo.icon}</div>
+            <h2 style={{ margin: '8px 0 4px', fontSize: '1.4rem', fontWeight: 700 }}>Level {levelInfo.id}: {levelInfo.name}</h2>
+            <p style={{ opacity: 0.5 }}>Choose a multiplication table</p>
+          </div>
+          <div style={S.numGrid}>
+            {Array.from({ length: 20 }, (_, i) => i + 1).map(n => (
+              <button key={n} onClick={() => startPlay(n)} style={S.numBtn}
+                onMouseOver={e => { e.currentTarget.style.background = '#6366f1'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#6366f1' }}
+                onMouseOut={e => { e.currentTarget.style.background = 'var(--card-bg, #fff)'; e.currentTarget.style.color = 'var(--text-color, #374151)'; e.currentTarget.style.borderColor = 'var(--border-color, #e5e7eb)' }}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // PLAY
+  // Level 7 special
+  if (lid === 7) {
+    if (done) return <div style={S.page}>{renderScore()}</div>
+    const rd = rounds[Math.min(roundIdx, rounds.length - 1)]
+    return (
+      <div style={S.page}>
+        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+            <button onClick={goHome} style={S.back}>← Menu</button>
+            <span style={S.badge}>Level 7 · Table of {tableNum}</span>
+          </div>
+          <div style={S.card}>
+            <p style={S.qLabel}>Round {roundIdx + 1} of {rounds.length}</p>
+            <h2 style={{ textAlign: 'center', fontSize: '1.2rem', marginBottom: 16, fontWeight: 700 }}>Match each question to its answer</h2>
+            {wrong7 && <p style={{ textAlign: 'center', color: '#dc2626', fontSize: '0.85rem', fontWeight: 600 }}>Not a match — try again!</p>}
+            <div style={{ display: 'flex', gap: 24 }}>
+              <div style={S.matchCol}>
+                {rd.map((e, i) => (
+                  <button key={i} disabled={matched.includes(i)} onClick={() => { setSelected(i); setWrong7(false) }}
+                    style={S.matchBtn(selected === i, matched.includes(i))}>{e.expression}</button>
+                ))}
+              </div>
+              <div style={S.matchCol}>
+                {shuffledAns.map((ans, i) => {
+                  const isM = matched.some(mi => rd[mi].answer === ans)
+                  return (
+                    <button key={i} disabled={isM || selected === null} onClick={() => {
+                      if (selected === null) return
+                      if (rd[selected].answer === ans) { setMatched(m => [...m, selected]); setScore(s => s + 1); setSelected(null) }
+                      else setWrong7(true)
+                    }} style={S.ansCol(selected !== null, isM)}>{ans}</button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Generic play screen for other levels
+  if (done) return <div style={S.page}>{renderScore()}</div>
+
+  const qText = lid === 5 ? `${cur.expression} = ${cur.masked}`
+    : lid === 10 ? (cur.blankType === 'multiplier' ? `${tableNum} × ___ = ${cur.answer}` : `${tableNum} × ${cur.multiplier} = ___`)
+    : `${cur.expression} = ?`
+
+  return (
+    <div style={S.page}>
+      <div style={{ maxWidth: 600, margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <button onClick={goHome} style={S.back}>← Menu</button>
+          <div><span style={S.badge}>Level {lid}</span> <span style={{ fontSize: '0.85rem', opacity: 0.6 }}>Table of {tableNum}</span></div>
+          <div style={{ width: 60 }} />
+        </div>
+
+        {/* Table display for L1, L2 */}
+        {lid <= 2 && renderTable(displayHalf, tableNum)}
+
+        {/* Table display for L4 */}
+        {lid === 4 && renderTable(visible, tableNum)}
+
+        <div style={S.card}>
+          <p style={S.qLabel}>Question {idx + 1} of {totalQ}</p>
+          <div style={S.qText}>{qText}</div>
+
+          {/* L3: show/fade answer */}
+          {lid === 3 && phase !== 'ask' && (
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#6366f1', transition: 'opacity 0.7s', opacity: phase === 'fading' ? 0 : 1 }}>{cur.answer}</span>
+            </div>
+          )}
+
+          {/* L5 hint */}
+          {lid === 5 && <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.85rem', marginBottom: 12 }}>Type the complete answer</p>}
+
+          {/* L8 hint */}
+          {lid === 8 && <p style={{ textAlign: 'center', opacity: 0.4, fontSize: '0.75rem', marginBottom: 12 }}>Adaptive — focuses on your weak spots</p>}
+
+          {/* Input or MCQ */}
+          {fb ? renderFeedback() : (
+            (lid === 6 || lid === 8) ? (
+              <div style={S.grid2}>
+                {options.map((o, i) => (
+                  <button key={i} onClick={() => handlePick(o)} style={S.optionBtn}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.background = '#e0e7ff' }}
+                    onMouseOut={e => { e.currentTarget.style.borderColor = '#c7d2fe'; e.currentTarget.style.background = '#eef2ff' }}>
+                    {o}
+                  </button>
+                ))}
+              </div>
+            ) : (lid === 3 && phase !== 'ask') ? null : renderInput()
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
  * App Component (Main Shell)
  * Root component that handles:
  * - Theme toggle (dark/light mode) with localStorage persistence
@@ -4148,6 +4565,18 @@ function App() {
   // Route: /extendedeuclid → Extended Euclidean algorithm quiz
   if (pathname === '/extendedeuclid') {
     return <ExtendedEuclidApp />
+  }
+
+  // Route: /supertables → 10-level progressive multiplication mastery
+  if (pathname === '/supertables') {
+    return (
+      <>
+        <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+        <SuperTablesApp />
+      </>
+    )
   }
 
   // ========== ROUTING: MODE-BASED (HOME MENU + QUIZZES) ==========

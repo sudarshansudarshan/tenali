@@ -4082,14 +4082,15 @@ function SuperTables1App() {
     const d = getStore(); const k = `${tbl}x${mul}`
     return d[k] ? (d[k].streak || 0) : 0
   }
-  const getSlowest3 = (tbl) => {
+  const getSlowest = (tbl) => {
     const scored = []
     for (let m = 1; m <= 10; m++) {
       const avg = getAvg(tbl, m)
       scored.push({ m, avg: avg !== null ? avg : 99999 })
     }
     scored.sort((a, b) => b.avg - a.avg)
-    return scored.slice(0, 3).map(s => s.m)
+    const count = Math.random() < 0.5 ? 2 : 3 // uniformly 2 or 3
+    return scored.slice(0, count).map(s => s.m)
   }
   const allUnder5s = (tbl) => {
     for (let m = 1; m <= 10; m++) {
@@ -4107,7 +4108,7 @@ function SuperTables1App() {
 
   // ── Pick next question adaptively ──
   const pickNext = (tbl) => {
-    const slow = getSlowest3(tbl)
+    const slow = getSlowest(tbl)
     // 60% chance to pick from slowest 3, 40% random
     if (slow.length > 0 && Math.random() < 0.6) {
       return slow[Math.floor(Math.random() * slow.length)]
@@ -4226,7 +4227,7 @@ function SuperTables1App() {
     maxTime = Math.max(maxTime, 1)
     const chartH = 100
     const barW = `${100 / 10}%`
-    const slow3 = new Set(getSlowest3(tableNum))
+    const slow3 = new Set(getSlowest(tableNum))
     return (
       <div style={{ marginTop: 20, padding: '12px 0 0' }}>
         <p style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: 'var(--clr-text-soft)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -4302,7 +4303,7 @@ function SuperTables1App() {
 
   // ── DRILL ──
   if (screen === 'drill') {
-    const slow3 = new Set(getSlowest3(tableNum))
+    const slow3 = new Set(getSlowest(tableNum))
     const table = genTable(tableNum)
     const correct = tableNum * currentMul
 
@@ -4318,19 +4319,8 @@ function SuperTables1App() {
                 {phase === 1 ? 'Phase 1 — With Lookup' : 'Phase 2 — From Memory'}
               </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-soft)' }}>Q #{questionsAnswered + 1}</div>
-              {phase === 1 && (
-                <button onClick={goPhase2} style={{
-                  marginTop: 4, padding: '4px 10px', fontSize: '0.7rem', fontWeight: 700,
-                  borderRadius: 6, border: '1px solid var(--clr-border)', background: 'var(--clr-surface)',
-                  color: 'var(--clr-text-soft)', cursor: 'pointer', transition: 'all var(--transition)',
-                  fontFamily: 'var(--font-body)',
-                }}
-                  onMouseOver={e => { e.currentTarget.style.background = 'var(--clr-correct)'; e.currentTarget.style.color = '#fff' }}
-                  onMouseOut={e => { e.currentTarget.style.background = 'var(--clr-surface)'; e.currentTarget.style.color = 'var(--clr-text-soft)' }}
-                >Phase 2 →</button>
-              )}
+            <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-soft)', textAlign: 'right' }}>
+              Q #{questionsAnswered + 1}
             </div>
           </div>
 
@@ -4359,6 +4349,21 @@ function SuperTables1App() {
                   </tbody>
                 </table>
               ))}
+              {/* Phase 2 button — prominently below the lookup table */}
+              <div style={{ textAlign: 'center', marginTop: 12 }}>
+                <button onClick={goPhase2} style={{
+                  padding: '10px 28px', fontSize: '1rem', fontWeight: 700,
+                  borderRadius: 'var(--radius-sm)', border: '2px solid var(--clr-accent)',
+                  background: 'var(--clr-card)', color: 'var(--clr-accent)',
+                  cursor: 'pointer', transition: 'all var(--transition)',
+                  fontFamily: 'var(--font-body)',
+                }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'var(--clr-accent)'; e.currentTarget.style.color = '#fff' }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'var(--clr-card)'; e.currentTarget.style.color = 'var(--clr-accent)' }}
+                >
+                  Ready? Go to Phase 2 →
+                </button>
+              </div>
             </div>
           )}
 

@@ -4082,16 +4082,24 @@ function SuperTables1App() {
     const d = getStore(); const k = `${tbl}x${mul}`
     return d[k] ? (d[k].streak || 0) : 0
   }
-  const getSlowest = (tbl) => {
+  // Eligible multipliers: 2–9 (skip ×1 and ×10, too easy)
+  const ELIGIBLE = [2, 3, 4, 5, 6, 7, 8, 9]
+  const FAST_THRESHOLD_MS = 3000 // under 3s = "super fast", ready to swap out
+  const MIN_CORRECT_TO_JUDGE = 3  // need at least 3 correct answers to judge speed
+
+  const getSlowest3 = (tbl) => {
     const scored = []
-    for (let m = 1; m <= 10; m++) {
+    for (const m of ELIGIBLE) {
       const avg = getAvg(tbl, m)
       scored.push({ m, avg: avg !== null ? avg : 99999 })
     }
-    scored.sort((a, b) => b.avg - a.avg)
-    const count = Math.random() < 0.5 ? 2 : 3 // uniformly 2 or 3
-    return scored.slice(0, count).map(s => s.m)
+    // If no data yet, pick 3 at random from eligible
+    const hasData = scored.some(s => s.avg !== 99999)
+    if (!hasData) return shuffle(scored.map(s => s.m)).slice(0, 3)
+    scored.sort((a, b) => b.avg - a.avg) // slowest first
+    return scored.slice(0, 3).map(s => s.m)
   }
+
   const allUnder5s = (tbl) => {
     for (let m = 1; m <= 10; m++) {
       const avg = getAvg(tbl, m)
@@ -4106,43 +4114,51 @@ function SuperTables1App() {
     return true
   }
 
-  // ── Cycling queue: rotate through slowest 2 or 3 repeatedly, then re-evaluate ──
+  // ── Cycling: fixate on 3 facts, swap out one at a time when it gets fast ──
   const cycleQueueRef = useRef([])
-  const currentSlowSetRef = useRef([]) // the current slow set being drilled
-  const cycleRoundsRef = useRef(0) // how many full rotations done on current set
-  const ROUNDS_BEFORE_REEVAL = 3 // drill same set 3 full rounds before re-picking
-
-  const lastAskedRef = useRef(null) // track last asked multiplier to avoid consecutive repeats
+  const currentSlowSetRef = useRef([]) // always exactly 3 facts being drilled
+  const lastAskedRef = useRef(null)
 
   const pickNext = (tbl) => {
-    // If queue is empty, either re-shuffle the same set or re-evaluate
     if (cycleQueueRef.current.length === 0) {
-      if (currentSlowSetRef.current.length > 0 && cycleRoundsRef.current < ROUNDS_BEFORE_REEVAL) {
-        // Re-shuffle the SAME slow set for another round
-        cycleRoundsRef.current += 1
+      if (currentSlowSetRef.current.length === 3) {
+        // After a full rotation: check if any fact got "super fast"
+        const set = [...currentSlowSetRef.current]
+        let fastestIdx = -1, fastestAvg = Infinity
+        for (let i = 0; i < set.length; i++) {
+          const d = getStore(); const k = `${tbl}x${set[i]}`
+          const times = d[k] ? d[k].times : []
+          if (times.length >= MIN_CORRECT_TO_JUDGE) {
+            const avg = stTrimmedMean(times)
+            if (avg < fastestAvg) { fastestAvg = avg; fastestIdx = i }
+          }
+        }
+        // If the fastest is under threshold, swap it out with a random eligible fact
+        if (fastestIdx !== -1 && fastestAvg < FAST_THRESHOLD_MS) {
+          const currentSet = new Set(set)
+          const candidates = ELIGIBLE.filter(m => !currentSet.has(m))
+          if (candidates.length > 0) {
+            set[fastestIdx] = candidates[Math.floor(Math.random() * candidates.length)]
+            currentSlowSetRef.current = [...set]
+          }
+        }
       } else {
-        // Re-evaluate: pick fresh slowest 2 or 3
-        const slow = getSlowest(tbl)
-        currentSlowSetRef.current = [...slow]
-        cycleRoundsRef.current = 1
+        // First time: pick 3 slowest (or random if no data)
+        currentSlowSetRef.current = getSlowest3(tbl)
       }
-      // Fill queue from current slow set, shuffled
+      // Refill queue: shuffle the 3 facts
       let shuffled = shuffle([...currentSlowSetRef.current])
-      // Ensure no consecutive repeat across queue boundaries
+      // Prevent consecutive repeat across cycle boundaries
       if (shuffled.length > 1 && shuffled[0] === lastAskedRef.current) {
         const swapIdx = 1 + Math.floor(Math.random() * (shuffled.length - 1))
         ;[shuffled[0], shuffled[swapIdx]] = [shuffled[swapIdx], shuffled[0]]
       }
       cycleQueueRef.current = shuffled
     }
-    // Pop next from cycle queue
-    if (cycleQueueRef.current.length > 0) {
-      const next = cycleQueueRef.current.shift()
-      lastAskedRef.current = next
-      return next
-    }
-    // fallback (shouldn't happen)
-    return Math.floor(Math.random() * 10) + 1
+    // Pop next from queue
+    const next = cycleQueueRef.current.shift()
+    lastAskedRef.current = next
+    return next
   }
 
   // ── Styles (using Tenali CSS vars) ──
@@ -4186,7 +4202,6 @@ function SuperTables1App() {
     // reset cycling state
     cycleQueueRef.current = []
     currentSlowSetRef.current = []
-    cycleRoundsRef.current = 0
     lastAskedRef.current = null
     setPhase(1)
     setShuffledTable(genTable(num))
@@ -4203,7 +4218,6 @@ function SuperTables1App() {
     // reset cycling state for phase 2
     cycleQueueRef.current = []
     currentSlowSetRef.current = []
-    cycleRoundsRef.current = 0
     lastAskedRef.current = null
     setPhase(2)
     setShuffledTable(genTable(tableNum))

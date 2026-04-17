@@ -4106,25 +4106,34 @@ function SuperTables1App() {
     return true
   }
 
-  // ── Cycling queue: rotate through slowest 2 or 3, then re-pick ──
+  // ── Cycling queue: rotate through slowest 2 or 3 repeatedly, then re-evaluate ──
   const cycleQueueRef = useRef([])
-  const currentSlowSetRef = useRef([]) // track which facts are in current cycle for highlighting
+  const currentSlowSetRef = useRef([]) // the current slow set being drilled
+  const cycleRoundsRef = useRef(0) // how many full rotations done on current set
+  const ROUNDS_BEFORE_REEVAL = 3 // drill same set 3 full rounds before re-picking
 
   const lastAskedRef = useRef(null) // track last asked multiplier to avoid consecutive repeats
 
   const pickNext = (tbl) => {
-    // If queue is empty, refill: pick slowest 2 or 3, shuffle them
+    // If queue is empty, either re-shuffle the same set or re-evaluate
     if (cycleQueueRef.current.length === 0) {
-      const slow = getSlowest(tbl)
-      // Shuffle, but ensure first item != lastAskedRef to avoid consecutive repeat
-      let shuffled = shuffle(slow)
+      if (currentSlowSetRef.current.length > 0 && cycleRoundsRef.current < ROUNDS_BEFORE_REEVAL) {
+        // Re-shuffle the SAME slow set for another round
+        cycleRoundsRef.current += 1
+      } else {
+        // Re-evaluate: pick fresh slowest 2 or 3
+        const slow = getSlowest(tbl)
+        currentSlowSetRef.current = [...slow]
+        cycleRoundsRef.current = 1
+      }
+      // Fill queue from current slow set, shuffled
+      let shuffled = shuffle([...currentSlowSetRef.current])
+      // Ensure no consecutive repeat across queue boundaries
       if (shuffled.length > 1 && shuffled[0] === lastAskedRef.current) {
-        // swap first with a random other position
         const swapIdx = 1 + Math.floor(Math.random() * (shuffled.length - 1))
         ;[shuffled[0], shuffled[swapIdx]] = [shuffled[swapIdx], shuffled[0]]
       }
       cycleQueueRef.current = shuffled
-      currentSlowSetRef.current = [...slow]
     }
     // Pop next from cycle queue
     if (cycleQueueRef.current.length > 0) {
@@ -4174,6 +4183,11 @@ function SuperTables1App() {
     const d = getStore()
     for (let m = 1; m <= 10; m++) delete d[`${num}x${m}`]
     setStore(d)
+    // reset cycling state
+    cycleQueueRef.current = []
+    currentSlowSetRef.current = []
+    cycleRoundsRef.current = 0
+    lastAskedRef.current = null
     setPhase(1)
     setShuffledTable(genTable(num))
     setCurrentMul(pickNext(num))
@@ -4186,6 +4200,11 @@ function SuperTables1App() {
   const goHome = () => { setScreen('home'); setTableNum(null) }
 
   const goPhase2 = () => {
+    // reset cycling state for phase 2
+    cycleQueueRef.current = []
+    currentSlowSetRef.current = []
+    cycleRoundsRef.current = 0
+    lastAskedRef.current = null
     setPhase(2)
     setShuffledTable(genTable(tableNum))
     setFb(null)

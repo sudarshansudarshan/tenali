@@ -4164,13 +4164,17 @@ function SuperTables1App() {
 
   const goHome = () => { setScreen('home'); setTableNum(null) }
 
+  const goPhase2 = () => {
+    setPhase(2)
+    setShuffledTable(genTable(tableNum))
+    setFb(null)
+    setCurrentMul(pickNext(tableNum))
+    setStartTime(Date.now())
+  }
+
   const advance = () => {
     setFb(null)
-    // Check phase transitions
-    if (phase === 1 && allUnder5s(tableNum)) {
-      setPhase(2)
-      setShuffledTable(genTable(tableNum))
-    }
+    // Phase 2 auto-completes when all streaks hit 5
     if (phase === 2 && allStreak5(tableNum)) {
       setScreen('done')
       return
@@ -4314,8 +4318,19 @@ function SuperTables1App() {
                 {phase === 1 ? 'Phase 1 — With Lookup' : 'Phase 2 — From Memory'}
               </div>
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-soft)', textAlign: 'right' }}>
-              Q #{questionsAnswered + 1}
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-soft)' }}>Q #{questionsAnswered + 1}</div>
+              {phase === 1 && (
+                <button onClick={goPhase2} style={{
+                  marginTop: 4, padding: '4px 10px', fontSize: '0.7rem', fontWeight: 700,
+                  borderRadius: 6, border: '1px solid var(--clr-border)', background: 'var(--clr-surface)',
+                  color: 'var(--clr-text-soft)', cursor: 'pointer', transition: 'all var(--transition)',
+                  fontFamily: 'var(--font-body)',
+                }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'var(--clr-correct)'; e.currentTarget.style.color = '#fff' }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'var(--clr-surface)'; e.currentTarget.style.color = 'var(--clr-text-soft)' }}
+                >Phase 2 →</button>
+              )}
             </div>
           </div>
 

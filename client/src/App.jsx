@@ -4060,8 +4060,14 @@ function SuperTablesApp() {
     if (!d[k]) d[k] = { wrong: 0, attempts: 0, times: [] }
     // migrate old format (totalTime only) → new format (times array)
     if (!d[k].times) d[k].times = d[k].totalTime ? Array(d[k].attempts).fill(Math.round(d[k].totalTime / d[k].attempts)) : []
-    d[k].attempts++; d[k].times.push(ms); if (!ok) d[k].wrong++
-    if (d[k].times.length > 50) d[k].times = d[k].times.slice(-50) // cap storage
+    // Only record time and count attempt for correct answers
+    // Wrong answers just increment the wrong counter — not counted as an attempt
+    if (ok) {
+      d[k].attempts++; d[k].times.push(ms)
+      if (d[k].times.length > 50) d[k].times = d[k].times.slice(-50)
+    } else {
+      d[k].wrong++
+    }
     stSetAdaptive(d)
   }
   // Trimmed mean: discard bottom 10% and top 10%, average the middle 80%

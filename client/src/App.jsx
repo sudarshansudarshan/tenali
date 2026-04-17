@@ -4231,7 +4231,12 @@ function SuperTables1App() {
     setStartTime(Date.now())
   }
 
+  const advancingRef = useRef(false) // debounce guard
+
   const advance = () => {
+    if (advancingRef.current) return // prevent double-fire from rapid Enter
+    advancingRef.current = true
+    setTimeout(() => { advancingRef.current = false }, 100) // unlock after 100ms
     setFb(null)
     // Phase 2 auto-completes when all streaks hit 5
     if (phase === 2 && allStreak5(tableNum)) {
@@ -4431,12 +4436,13 @@ function SuperTables1App() {
               {table.map(e => {
                 const streak = getStreak(tableNum, e.multiplier)
                 const done = streak >= 5
+                const isFocused = slow3.has(e.multiplier)
                 return (
                   <div key={e.multiplier} style={{
                     padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700,
-                    background: done ? 'var(--clr-correct-bg)' : 'var(--clr-surface)',
-                    color: done ? 'var(--clr-correct)' : 'var(--clr-text-soft)',
-                    border: `1px solid ${done ? 'var(--clr-correct)' : 'var(--clr-border)'}`,
+                    background: done ? 'var(--clr-correct-bg)' : isFocused ? 'var(--clr-wrong-bg)' : 'var(--clr-surface)',
+                    color: done ? 'var(--clr-correct)' : isFocused ? 'var(--clr-wrong)' : 'var(--clr-text-soft)',
+                    border: `1px solid ${done ? 'var(--clr-correct)' : isFocused ? 'var(--clr-wrong)' : 'var(--clr-border)'}`,
                   }}>
                     ×{e.multiplier}: {done ? '✓' : `${streak}/5`}
                   </div>

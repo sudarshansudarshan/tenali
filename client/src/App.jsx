@@ -4033,6 +4033,421 @@ function AdaptiveMixedApp({ studentName }) {
  *  9. Direct Input (no assistance)
  * 10. Fill in the Blank (missing multiplier or answer)
  */
+/**
+ * SuperTables1App — Continuous adaptive drill with two phases:
+ *
+ * Phase 1 (WITH lookup): Shuffled reference table shown on top. Questions asked
+ *   continuously. 3 slowest facts highlighted. Uses rolling window of last 10
+ *   correct attempts per fact. Once ALL 10 facts have avg < 5s → Phase 2.
+ *
+ * Phase 2 (WITHOUT lookup): Same questions, no reference table. Once the student
+ *   answers 5 consecutive correct for EVERY fact → done.
+ */
+function SuperTables1App() {
+  const shuffle = (arr) => {
+    const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a;
+  }
+  const genTable = (n) => Array.from({ length: 10 }, (_, i) => ({ multiplier: i + 1, expression: `${n} × ${i + 1}`, answer: n * (i + 1) }))
+
+  // ── Session tracking (rolling window of last 10 correct attempts) ──
+  const getStore = () => { try { return JSON.parse(sessionStorage.getItem('st1_data') || '{}') } catch { return {} } }
+  const setStore = (d) => { sessionStorage.setItem('st1_data', JSON.stringify(d)) }
+
+  const recordCorrect = (tbl, mul, ms) => {
+    const d = getStore(); const k = `${tbl}x${mul}`
+    if (!d[k]) d[k] = { times: [], streak: 0 }
+    d[k].times.push(ms)
+    if (d[k].times.length > 10) d[k].times = d[k].times.slice(-10) // rolling window of 10
+    d[k].streak = (d[k].streak || 0) + 1
+    setStore(d)
+  }
+  const recordWrong = (tbl, mul) => {
+    const d = getStore(); const k = `${tbl}x${mul}`
+    if (!d[k]) d[k] = { times: [], streak: 0 }
+    d[k].streak = 0 // reset streak on wrong
+    setStore(d)
+  }
+  const getAvg = (tbl, mul) => {
+    const d = getStore(); const k = `${tbl}x${mul}`
+    const info = d[k]
+    if (!info || info.times.length === 0) return null
+    // trimmed mean: drop top/bottom 10%
+    const sorted = [...info.times].sort((a, b) => a - b)
+    if (sorted.length <= 2) return sorted.reduce((a, b) => a + b, 0) / sorted.length
+    const trim = Math.max(1, Math.round(sorted.length * 0.1))
+    const mid = sorted.slice(trim, sorted.length - trim)
+    return mid.length > 0 ? mid.reduce((a, b) => a + b, 0) / mid.length : sorted[Math.floor(sorted.length / 2)]
+  }
+  const getStreak = (tbl, mul) => {
+    const d = getStore(); const k = `${tbl}x${mul}`
+    return d[k] ? (d[k].streak || 0) : 0
+  }
+  const getSlowest3 = (tbl) => {
+    const scored = []
+    for (let m = 1; m <= 10; m++) {
+      const avg = getAvg(tbl, m)
+      scored.push({ m, avg: avg !== null ? avg : 99999 })
+    }
+    scored.sort((a, b) => b.avg - a.avg)
+    return scored.slice(0, 3).map(s => s.m)
+  }
+  const allUnder5s = (tbl) => {
+    for (let m = 1; m <= 10; m++) {
+      const avg = getAvg(tbl, m)
+      if (avg === null || avg >= 5000) return false
+    }
+    return true
+  }
+  const allStreak5 = (tbl) => {
+    for (let m = 1; m <= 10; m++) {
+      if (getStreak(tbl, m) < 5) return false
+    }
+    return true
+  }
+
+  // ── Pick next question adaptively ──
+  const pickNext = (tbl) => {
+    const slow = getSlowest3(tbl)
+    // 60% chance to pick from slowest 3, 40% random
+    if (slow.length > 0 && Math.random() < 0.6) {
+      return slow[Math.floor(Math.random() * slow.length)]
+    }
+    return Math.floor(Math.random() * 10) + 1
+  }
+
+  // ── Styles (using Tenali CSS vars) ──
+  const S = {
+    page: { minHeight: '100vh', padding: '24px', fontFamily: 'var(--font-body, system-ui)', color: 'var(--clr-text)', background: 'var(--clr-bg)' },
+    title: { fontSize: '2.5rem', fontWeight: 900, marginBottom: 8, fontFamily: 'var(--font-display)', color: 'var(--clr-text)' },
+    subtitle: { fontSize: '1.1rem', color: 'var(--clr-text-soft)', marginBottom: 32 },
+    card: { background: 'var(--clr-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-card)', padding: '28px 24px', maxWidth: 620, margin: '0 auto', color: 'var(--clr-text)' },
+    numGrid: { display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 6, width: '100%', margin: '0 auto' },
+    numBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0', background: 'var(--clr-surface)', border: '2px solid var(--clr-border)', borderRadius: 'var(--radius-sm)', fontSize: '1rem', fontWeight: 800, cursor: 'pointer', transition: 'all var(--transition)', color: 'var(--clr-text)', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
+    btn: { border: 'none', borderRadius: 'var(--radius-sm)', padding: '10px 20px', fontWeight: 700, cursor: 'pointer', fontSize: '1rem', transition: 'all var(--transition)', fontFamily: 'var(--font-body)' },
+    btnPrimary: { background: 'var(--clr-accent)', color: '#fff' },
+    input: { width: 120, textAlign: 'center', fontSize: '1.6rem', fontWeight: 800, border: '2px solid var(--clr-accent)', borderRadius: 'var(--radius-sm)', padding: '10px 16px', outline: 'none', background: 'var(--clr-input)', color: 'var(--clr-text)', fontFamily: 'var(--font-body)' },
+    back: { background: 'none', border: 'none', color: 'var(--clr-accent)', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem', padding: 0, fontFamily: 'var(--font-body)' },
+    th: { padding: '10px 14px', fontSize: '0.9rem', fontWeight: 700, color: 'var(--clr-accent)', background: 'var(--clr-accent-soft)', border: '2px solid var(--clr-border)' },
+    td: { padding: '10px 14px', textAlign: 'center', fontWeight: 800, fontSize: '1.2rem', border: '2px solid var(--clr-border)', background: 'var(--clr-card)', color: 'var(--clr-text)' },
+    tdSlow: { padding: '10px 14px', textAlign: 'center', fontWeight: 800, fontSize: '1.2rem', border: '2px solid var(--clr-wrong)', background: 'var(--clr-wrong-bg)', color: 'var(--clr-wrong)' },
+    fbOk: { marginTop: 16, padding: 16, borderRadius: 'var(--radius-sm)', textAlign: 'center', background: 'var(--clr-correct-bg)', border: '1px solid var(--clr-correct)' },
+    fbNo: { marginTop: 16, padding: 16, borderRadius: 'var(--radius-sm)', textAlign: 'center', background: 'var(--clr-wrong-bg)', border: '1px solid var(--clr-wrong)' },
+  }
+
+  // ── State ──
+  const [screen, setScreen] = useState('home') // home | drill | done
+  const [tableNum, setTableNum] = useState(null)
+  const [phase, setPhase] = useState(1) // 1 = with lookup, 2 = without
+  const [currentMul, setCurrentMul] = useState(1)
+  const [shuffledTable, setShuffledTable] = useState([])
+  const [fb, setFb] = useState(null)
+  const [startTime, setStartTime] = useState(Date.now())
+  const [questionsAnswered, setQuestionsAnswered] = useState(0)
+  const inputRef = useRef(null)
+  const nextBtnRef = useRef(null)
+
+  const startDrill = (num) => {
+    setTableNum(num)
+    // clear previous data for this table to start fresh
+    const d = getStore()
+    for (let m = 1; m <= 10; m++) delete d[`${num}x${m}`]
+    setStore(d)
+    setPhase(1)
+    setShuffledTable(shuffle(genTable(num)))
+    setCurrentMul(pickNext(num))
+    setFb(null)
+    setStartTime(Date.now())
+    setQuestionsAnswered(0)
+    setScreen('drill')
+  }
+
+  const goHome = () => { setScreen('home'); setTableNum(null) }
+
+  const advance = () => {
+    setFb(null)
+    // Check phase transitions
+    if (phase === 1 && allUnder5s(tableNum)) {
+      setPhase(2)
+      setShuffledTable(shuffle(genTable(tableNum)))
+    }
+    if (phase === 2 && allStreak5(tableNum)) {
+      setScreen('done')
+      return
+    }
+    setCurrentMul(pickNext(tableNum))
+    setStartTime(Date.now())
+    // re-shuffle lookup occasionally
+    if (questionsAnswered % 5 === 0) setShuffledTable(shuffle(genTable(tableNum)))
+  }
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    const val = parseInt(e.target.elements.ans.value, 10)
+    if (isNaN(val)) return
+    const correct = tableNum * currentMul
+    const ok = val === correct
+    const elapsed = Date.now() - startTime
+    if (ok) {
+      recordCorrect(tableNum, currentMul, elapsed)
+    } else {
+      recordWrong(tableNum, currentMul)
+    }
+    setQuestionsAnswered(q => q + 1)
+    setFb({ ok, correctAns: correct })
+    e.target.elements.ans.value = ''
+  }
+
+  // Focus management
+  useEffect(() => { if (!fb && inputRef.current) inputRef.current.focus() }, [fb, currentMul])
+  useEffect(() => { if (fb && nextBtnRef.current) nextBtnRef.current.focus() }, [fb])
+  useEffect(() => {
+    if (!fb || screen !== 'drill') return
+    const handler = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [fb, screen, currentMul, phase, tableNum, questionsAnswered])
+
+  // ── Performance chart (same as SuperTables but using st1_data) ──
+  const renderChart = () => {
+    if (!tableNum) return null
+    const bars = []
+    let maxTime = 0
+    for (let m = 1; m <= 10; m++) {
+      const avg = getAvg(tableNum, m)
+      const avgSec = avg !== null ? avg / 1000 : 0
+      if (avgSec > maxTime) maxTime = avgSec
+      bars.push({ m, avg: avgSec, streak: getStreak(tableNum, m) })
+    }
+    const hasData = bars.some(b => b.avg > 0)
+    if (!hasData) return null
+    maxTime = Math.max(maxTime, 1)
+    const chartH = 100
+    const barW = `${100 / 10}%`
+    const slow3 = new Set(getSlowest3(tableNum))
+    return (
+      <div style={{ marginTop: 20, padding: '12px 0 0' }}>
+        <p style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: 'var(--clr-text-soft)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 1 }}>
+          Avg. Time (last 10 correct) — {phase === 1 ? 'Target: under 5s each' : 'Streak target: 5 each'}
+        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-end', position: 'relative', height: chartH, margin: '0 4px', borderBottom: '2px solid var(--clr-border)', borderLeft: '2px solid var(--clr-border)' }}>
+          <span style={{ position: 'absolute', left: -4, top: 0, fontSize: '0.55rem', color: 'var(--clr-text-soft)', transform: 'translateX(-100%)' }}>{maxTime.toFixed(1)}s</span>
+          <span style={{ position: 'absolute', left: -4, bottom: -2, fontSize: '0.55rem', color: 'var(--clr-text-soft)', transform: 'translateX(-100%)' }}>0s</span>
+          {/* 5s threshold line */}
+          {phase === 1 && maxTime > 5 && (
+            <div style={{ position: 'absolute', left: 0, right: 0, bottom: `${(5 / maxTime) * chartH}px`, borderTop: '2px dashed var(--clr-correct)', opacity: 0.5 }}>
+              <span style={{ position: 'absolute', right: 0, top: -14, fontSize: '0.55rem', color: 'var(--clr-correct)', fontWeight: 700 }}>5s</span>
+            </div>
+          )}
+          {bars.map(b => {
+            const h = b.avg > 0 ? Math.max((b.avg / maxTime) * chartH, 4) : 0
+            const isSlow = slow3.has(b.m)
+            return (
+              <div key={b.m} style={{ width: barW, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', padding: '0 1px', boxSizing: 'border-box' }}>
+                {b.avg > 0 && <span style={{ fontSize: '0.5rem', color: 'var(--clr-text-soft)', marginBottom: 1, fontWeight: 600 }}>{b.avg.toFixed(1)}</span>}
+                <div style={{
+                  width: '65%', height: h, minWidth: 6, borderRadius: '3px 3px 0 0',
+                  background: b.avg === 0 ? 'transparent' : isSlow ? 'var(--clr-wrong)' : b.avg < 5 ? 'var(--clr-correct)' : 'var(--clr-accent)',
+                  opacity: b.avg === 0 ? 0.15 : 0.85, transition: 'height 0.3s',
+                }} />
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ display: 'flex', margin: '3px 4px 0' }}>
+          {bars.map(b => (
+            <div key={b.m} style={{ width: barW, textAlign: 'center', fontSize: '0.55rem', fontWeight: 700, color: 'var(--clr-text-soft)' }}>
+              ×{b.m}
+              {phase === 2 && <div style={{ fontSize: '0.5rem', color: b.streak >= 5 ? 'var(--clr-correct)' : 'var(--clr-text-soft)' }}>{b.streak}/5</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ── HOME ──
+  if (screen === 'home') {
+    return (
+      <div style={S.page}>
+        <div style={{ maxWidth: 620, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center' }}>
+            <h1 style={S.title}>SuperTables 1</h1>
+            <p style={S.subtitle}>Adaptive speed drill — master any table until it's automatic</p>
+          </div>
+          <div style={{ ...S.card, marginBottom: 24 }}>
+            <h2 style={{ textAlign: 'center', fontSize: '1.2rem', fontWeight: 700, margin: '0 0 20px', color: 'var(--clr-text)' }}>
+              Choose a multiplication table
+            </h2>
+            <div style={S.numGrid}>
+              {Array.from({ length: 50 }, (_, i) => i + 1).map(n => (
+                <button key={n} onClick={() => startDrill(n)} style={S.numBtn}
+                  onMouseOver={e => { e.currentTarget.style.background = 'var(--clr-accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'var(--clr-accent)' }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'var(--clr-surface)'; e.currentTarget.style.color = 'var(--clr-text)'; e.currentTarget.style.borderColor = 'var(--clr-border)' }}>
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--clr-text-soft)', margin: '0 0 4px' }}>Phase 1: Answer with lookup table until all facts &lt; 5 seconds</p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--clr-text-soft)', margin: 0 }}>Phase 2: No lookup — 5 consecutive correct per fact to finish</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── DRILL ──
+  if (screen === 'drill') {
+    const slow3 = new Set(getSlowest3(tableNum))
+    const table = genTable(tableNum)
+    const correct = tableNum * currentMul
+
+    return (
+      <div style={S.page}>
+        <div style={{ maxWidth: 620, margin: '0 auto' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <button onClick={goHome} style={S.back}>← Home</button>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--clr-text-soft)' }}>Table of {tableNum}</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: phase === 1 ? 'var(--clr-accent)' : 'var(--clr-correct)' }}>
+                {phase === 1 ? 'Phase 1 — With Lookup' : 'Phase 2 — From Memory'}
+              </div>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--clr-text-soft)', textAlign: 'right' }}>
+              Q #{questionsAnswered + 1}
+            </div>
+          </div>
+
+          {/* Phase 1: Shuffled lookup table */}
+          {phase === 1 && (
+            <div style={{ overflowX: 'auto', marginBottom: 20 }}>
+              <table style={{ margin: '0 auto', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {shuffledTable.map((e, i) => (
+                      <th key={i} style={{
+                        ...S.th,
+                        ...(slow3.has(e.multiplier) ? { color: 'var(--clr-wrong)', background: 'var(--clr-wrong-bg)', borderColor: 'var(--clr-wrong)' } : {})
+                      }}>
+                        {e.expression}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {shuffledTable.map((e, i) => (
+                      <td key={i} style={slow3.has(e.multiplier) ? S.tdSlow : S.td}>
+                        {e.answer}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Phase 2: Status badges */}
+          {phase === 2 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginBottom: 16 }}>
+              {table.map(e => {
+                const streak = getStreak(tableNum, e.multiplier)
+                const done = streak >= 5
+                return (
+                  <div key={e.multiplier} style={{
+                    padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700,
+                    background: done ? 'var(--clr-correct-bg)' : 'var(--clr-surface)',
+                    color: done ? 'var(--clr-correct)' : 'var(--clr-text-soft)',
+                    border: `1px solid ${done ? 'var(--clr-correct)' : 'var(--clr-border)'}`,
+                  }}>
+                    ×{e.multiplier}: {done ? '✓' : `${streak}/5`}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Question card */}
+          <div style={S.card}>
+            <div style={{ fontSize: '2rem', fontWeight: 900, textAlign: 'center', marginBottom: 24, color: 'var(--clr-text)', letterSpacing: '0.5px' }}>
+              {tableNum} × {currentMul} = ?
+            </div>
+
+            {fb ? (
+              <div style={fb.ok ? S.fbOk : S.fbNo}>
+                <p style={{ fontWeight: 700, fontSize: '1.1rem', color: fb.ok ? 'var(--clr-correct)' : 'var(--clr-wrong)', margin: 0 }}>
+                  {fb.ok ? '✓ Correct!' : `✗ The answer is ${fb.correctAns}`}
+                </p>
+                {fb.ok && <p style={{ fontSize: '0.8rem', color: 'var(--clr-text-soft)', margin: '4px 0 0' }}>{((Date.now() - startTime) / 1000).toFixed(1)}s</p>}
+                <button ref={nextBtnRef} onClick={advance} style={{ ...S.btn, ...S.btnPrimary, marginTop: 12 }}>Next →</button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+                <input ref={inputRef} name="ans" type="number" style={S.input} placeholder="?" autoComplete="off" />
+                <button type="submit" style={{ ...S.btn, ...S.btnPrimary }}>Submit</button>
+              </form>
+            )}
+          </div>
+
+          {/* Performance chart */}
+          {renderChart()}
+        </div>
+      </div>
+    )
+  }
+
+  // ── DONE ──
+  if (screen === 'done') {
+    return (
+      <div style={S.page}>
+        <div style={{ maxWidth: 480, margin: '0 auto', paddingTop: 40 }}>
+          <div style={{ ...S.card, textAlign: 'center' }}>
+            <div style={{ fontSize: '4rem', marginBottom: 12 }}>🏆</div>
+            <h2 style={{ margin: '0 0 8px', fontSize: '1.6rem', fontFamily: 'var(--font-display)', color: 'var(--clr-text)' }}>
+              Table of {tableNum} Mastered!
+            </h2>
+            <p style={{ color: 'var(--clr-text-soft)', margin: '0 0 8px' }}>
+              All 10 facts answered correctly 5 times in a row — without any lookup.
+            </p>
+            <p style={{ color: 'var(--clr-text-soft)', fontSize: '0.85rem', margin: '0 0 24px' }}>
+              Total questions answered: {questionsAnswered}
+            </p>
+
+            {/* Final times */}
+            <div style={{ marginBottom: 24 }}>
+              <table style={{ margin: '0 auto', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {genTable(tableNum).map((e, i) => (
+                      <th key={i} style={S.th}>{e.expression}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {genTable(tableNum).map((e, i) => {
+                      const avg = getAvg(tableNum, e.multiplier)
+                      return <td key={i} style={S.td}>{avg !== null ? (avg / 1000).toFixed(1) + 's' : '—'}</td>
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+              <button onClick={goHome} style={{ ...S.btn, ...S.btnPrimary, fontSize: '1.1rem', padding: '12px 32px' }}>Practice Another Table</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
+
 function SuperTablesApp() {
   // ── helpers ───────────────────────────────────────────
   const stShuffle = (arr) => {
@@ -4789,6 +5204,18 @@ function App() {
   // Route: /extendedeuclid → Extended Euclidean algorithm quiz
   if (pathname === '/extendedeuclid') {
     return <ExtendedEuclidApp />
+  }
+
+  // Route: /supertables1 → Adaptive speed drill (2-phase)
+  if (pathname === '/supertables1') {
+    return (
+      <>
+        <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+        <SuperTables1App />
+      </>
+    )
   }
 
   // Route: /supertables → 10-level progressive multiplication mastery

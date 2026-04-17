@@ -4155,8 +4155,13 @@ function SuperTables1App() {
       }
       cycleQueueRef.current = shuffled
     }
-    // Pop next from queue
-    const next = cycleQueueRef.current.shift()
+    // Pop next from queue — hard guard: NEVER return same as last asked
+    let next = cycleQueueRef.current.shift()
+    if (next === lastAskedRef.current && cycleQueueRef.current.length > 0) {
+      // Put it back at the end, take the next different one instead
+      cycleQueueRef.current.push(next)
+      next = cycleQueueRef.current.shift()
+    }
     lastAskedRef.current = next
     return next
   }

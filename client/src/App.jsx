@@ -4077,27 +4077,27 @@ function SuperTablesApp() {
     btn: { border: 'none', borderRadius: 'var(--radius-sm)', padding: '10px 20px', fontWeight: 700, cursor: 'pointer', fontSize: '1rem', transition: 'all var(--transition)', fontFamily: 'var(--font-body)' },
     btnPrimary: { background: 'var(--clr-accent)', color: '#fff' },
     btnSecondary: { background: 'var(--clr-surface)', color: 'var(--clr-text)' },
-    input: { width: 100, textAlign: 'center', fontSize: '1.5rem', fontWeight: 700, border: '2px solid var(--clr-border)', borderRadius: 'var(--radius-sm)', padding: '8px 16px', outline: 'none', background: 'var(--clr-input)', color: 'var(--clr-text)', fontFamily: 'var(--font-body)' },
-    optionBtn: { border: '2px solid var(--clr-border)', borderRadius: 'var(--radius-sm)', padding: '12px', fontWeight: 700, fontSize: '1.2rem', cursor: 'pointer', background: 'var(--clr-surface)', transition: 'all var(--transition)', color: 'var(--clr-text)' },
+    input: { width: 120, textAlign: 'center', fontSize: '1.6rem', fontWeight: 800, border: '2px solid var(--clr-accent)', borderRadius: 'var(--radius-sm)', padding: '10px 16px', outline: 'none', background: 'var(--clr-input)', color: 'var(--clr-text)', fontFamily: 'var(--font-body)' },
+    optionBtn: { border: '2px solid var(--clr-border)', borderRadius: 'var(--radius-sm)', padding: '14px', fontWeight: 800, fontSize: '1.3rem', cursor: 'pointer', background: 'var(--clr-surface)', transition: 'all var(--transition)', color: 'var(--clr-text)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
     grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
     tableWrap: { overflowX: 'auto', marginBottom: 24 },
     table: { margin: '0 auto', borderCollapse: 'collapse' },
-    th: { padding: '8px 12px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--clr-accent)', background: 'var(--clr-accent-soft)', border: '1px solid var(--clr-border)' },
-    td: { padding: '8px 12px', textAlign: 'center', fontWeight: 700, fontSize: '1.1rem', border: '1px solid var(--clr-border)', background: 'var(--clr-card)', color: 'var(--clr-text)' },
-    qLabel: { fontSize: '0.85rem', color: 'var(--clr-text-soft)', fontWeight: 500, marginBottom: 8 },
-    qText: { fontSize: '1.8rem', fontWeight: 800, textAlign: 'center', marginBottom: 24, color: 'var(--clr-text)' },
+    th: { padding: '10px 14px', fontSize: '0.9rem', fontWeight: 700, color: 'var(--clr-accent)', background: 'var(--clr-accent-soft)', border: '2px solid var(--clr-border)' },
+    td: { padding: '10px 14px', textAlign: 'center', fontWeight: 800, fontSize: '1.2rem', border: '2px solid var(--clr-border)', background: 'var(--clr-card)', color: 'var(--clr-text)' },
+    qLabel: { fontSize: '0.85rem', color: 'var(--clr-text-soft)', fontWeight: 600, marginBottom: 8 },
+    qText: { fontSize: '2rem', fontWeight: 900, textAlign: 'center', marginBottom: 24, color: 'var(--clr-text)', letterSpacing: '0.5px' },
     fbOk: { marginTop: 16, padding: 16, borderRadius: 'var(--radius-sm)', textAlign: 'center', background: 'var(--clr-correct-bg)', border: '1px solid var(--clr-correct)' },
     fbNo: { marginTop: 16, padding: 16, borderRadius: 'var(--radius-sm)', textAlign: 'center', background: 'var(--clr-wrong-bg)', border: '1px solid var(--clr-wrong)' },
     back: { background: 'none', border: 'none', color: 'var(--clr-accent)', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem', padding: 0, fontFamily: 'var(--font-body)' },
     badge: { fontSize: '0.7rem', fontWeight: 700, color: 'var(--clr-accent)', background: 'var(--clr-accent-soft)', padding: '2px 8px', borderRadius: 99, display: 'inline-block' },
-    numGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, maxWidth: 360, margin: '0 auto' },
-    numBtn: { aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--clr-card)', border: '2px solid var(--clr-border)', borderRadius: 'var(--radius-sm)', fontSize: '1.2rem', fontWeight: 700, cursor: 'pointer', transition: 'all var(--transition)', color: 'var(--clr-text)', fontFamily: 'var(--font-body)' },
+    numGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, maxWidth: 340, margin: '0 auto' },
+    numBtn: { aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--clr-surface)', border: '2px solid var(--clr-border)', borderRadius: 'var(--radius-sm)', fontSize: '1.25rem', fontWeight: 800, cursor: 'pointer', transition: 'all var(--transition)', color: 'var(--clr-text)', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
     matchCol: { flex: 1, display: 'flex', flexDirection: 'column', gap: 12 },
-    matchBtn: (active, matched) => ({ padding: '12px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: '1.1rem', border: '2px solid', cursor: matched ? 'default' : 'pointer', opacity: matched ? 0.5 : 1, transition: 'all var(--transition)', fontFamily: 'var(--font-body)',
+    matchBtn: (active, matched) => ({ padding: '14px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 800, fontSize: '1.15rem', border: '2px solid', cursor: matched ? 'default' : 'pointer', opacity: matched ? 0.5 : 1, transition: 'all var(--transition)', fontFamily: 'var(--font-body)',
       borderColor: matched ? 'var(--clr-correct)' : active ? 'var(--clr-accent)' : 'var(--clr-border)',
       background: matched ? 'var(--clr-correct-bg)' : active ? 'var(--clr-accent-soft)' : 'var(--clr-card)',
       color: matched ? 'var(--clr-correct)' : active ? 'var(--clr-accent)' : 'var(--clr-text)' }),
-    ansCol: (sel, matched) => ({ padding: '12px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: '1.1rem', border: '2px solid', cursor: matched ? 'default' : sel ? 'pointer' : 'not-allowed', opacity: matched ? 0.5 : 1, transition: 'all var(--transition)', fontFamily: 'var(--font-body)',
+    ansCol: (sel, matched) => ({ padding: '14px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 800, fontSize: '1.15rem', border: '2px solid', cursor: matched ? 'default' : sel ? 'pointer' : 'not-allowed', opacity: matched ? 0.5 : 1, transition: 'all var(--transition)', fontFamily: 'var(--font-body)',
       borderColor: matched ? 'var(--clr-correct)' : sel ? 'var(--clr-accent)' : 'var(--clr-border)',
       background: matched ? 'var(--clr-correct-bg)' : sel ? 'var(--clr-accent-soft)' : 'var(--clr-card)',
       color: matched ? 'var(--clr-correct)' : sel ? 'var(--clr-accent)' : 'var(--clr-text-soft)' }),
@@ -4276,7 +4276,7 @@ function SuperTablesApp() {
   // ── render helpers ────────────────────────────────────
   const renderLevelProgress = () => (
     <div style={{ textAlign: 'center', marginBottom: 8 }}>
-      <p style={{ fontSize: '0.8rem', color: 'var(--clr-text-soft)', margin: '0 0 8px', fontWeight: 500 }}>
+      <p style={{ fontSize: '0.9rem', color: 'var(--clr-text)', margin: '0 0 8px', fontWeight: 700 }}>
         Level {lid} of 10 — {levelMeta.name}
       </p>
       <div style={S.progressBar}>
@@ -4334,7 +4334,7 @@ function SuperTablesApp() {
               {Array.from({ length: 20 }, (_, i) => i + 1).map(n => (
                 <button key={n} onClick={() => startFromTable(n)} style={S.numBtn}
                   onMouseOver={e => { e.currentTarget.style.background = 'var(--clr-accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'var(--clr-accent)' }}
-                  onMouseOut={e => { e.currentTarget.style.background = 'var(--clr-card)'; e.currentTarget.style.color = 'var(--clr-text)'; e.currentTarget.style.borderColor = 'var(--clr-border)' }}>
+                  onMouseOut={e => { e.currentTarget.style.background = 'var(--clr-surface)'; e.currentTarget.style.color = 'var(--clr-text)'; e.currentTarget.style.borderColor = 'var(--clr-border)' }}>
                   {n}
                 </button>
               ))}

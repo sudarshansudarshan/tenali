@@ -66,11 +66,11 @@
   --clr-text-soft: #a89e94;     /* Secondary text, labels, hints (muted brown-gray) */
 
   /* BORDERS & DIVIDERS */
-  --clr-border: rgba(255, 245, 230, 0.10);  /* Subtle light border (10% opacity cream) */
+  --clr-border: rgba(255, 245, 230, 0.18);  /* Light border (18% opacity cream — more visible) */
 
   /* ACCENT COLORS */
   --clr-accent: #e8864a;        /* Primary action color (warm orange, eye-catching) */
-  --clr-accent-soft: rgba(232, 134, 74, 0.15);  /* Accent background overlay (15% opacity) */
+  --clr-accent-soft: rgba(232, 134, 74, 0.22);  /* Accent background overlay (22% opacity — more visible) */
 
   /* SEMANTIC COLORS - Feedback states */
   --clr-correct: #5cb87a;       /* Success/correct answer indicator (muted green) */
@@ -108,11 +108,11 @@
   --clr-text-soft: #6b5e54;     /* Secondary text (warm brown) */
 
   /* LIGHT THEME BORDERS */
-  --clr-border: rgba(60, 45, 30, 0.12);  /* Dark border with 12% opacity */
+  --clr-border: rgba(60, 45, 30, 0.22);  /* Dark border with 22% opacity — more visible */
 
   /* LIGHT THEME ACCENT - slightly muted for better contrast on light backgrounds */
   --clr-accent: #e07a3a;        /* Slightly darker/muted orange */
-  --clr-accent-soft: rgba(224, 122, 58, 0.10);  /* Accent overlay (10% opacity) */
+  --clr-accent-soft: rgba(224, 122, 58, 0.18);  /* Accent overlay (18% opacity — more visible) */
 
   /* LIGHT THEME SEMANTIC COLORS */
   --clr-correct: #3a8a5c;       /* Darker green for light background */

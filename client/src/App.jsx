@@ -4106,13 +4106,33 @@ function SuperTables1App() {
     return true
   }
 
-  // ── Pick next question adaptively ──
+  // ── Cycling queue: rotate through slowest 2 or 3, then re-pick ──
+  const cycleQueueRef = useRef([])
+  const currentSlowSetRef = useRef([]) // track which facts are in current cycle for highlighting
+
+  const lastAskedRef = useRef(null) // track last asked multiplier to avoid consecutive repeats
+
   const pickNext = (tbl) => {
-    const slow = getSlowest(tbl)
-    // 60% chance to pick from slowest 3, 40% random
-    if (slow.length > 0 && Math.random() < 0.6) {
-      return slow[Math.floor(Math.random() * slow.length)]
+    // If queue is empty, refill: pick slowest 2 or 3, shuffle them
+    if (cycleQueueRef.current.length === 0) {
+      const slow = getSlowest(tbl)
+      // Shuffle, but ensure first item != lastAskedRef to avoid consecutive repeat
+      let shuffled = shuffle(slow)
+      if (shuffled.length > 1 && shuffled[0] === lastAskedRef.current) {
+        // swap first with a random other position
+        const swapIdx = 1 + Math.floor(Math.random() * (shuffled.length - 1))
+        ;[shuffled[0], shuffled[swapIdx]] = [shuffled[swapIdx], shuffled[0]]
+      }
+      cycleQueueRef.current = shuffled
+      currentSlowSetRef.current = [...slow]
     }
+    // Pop next from cycle queue
+    if (cycleQueueRef.current.length > 0) {
+      const next = cycleQueueRef.current.shift()
+      lastAskedRef.current = next
+      return next
+    }
+    // fallback (shouldn't happen)
     return Math.floor(Math.random() * 10) + 1
   }
 
@@ -4227,7 +4247,7 @@ function SuperTables1App() {
     maxTime = Math.max(maxTime, 1)
     const chartH = 100
     const barW = `${100 / 10}%`
-    const slow3 = new Set(getSlowest(tableNum))
+    const slow3 = new Set(currentSlowSetRef.current)
     return (
       <div style={{ marginTop: 20, padding: '12px 0 0' }}>
         <p style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: 'var(--clr-text-soft)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -4303,7 +4323,7 @@ function SuperTables1App() {
 
   // ── DRILL ──
   if (screen === 'drill') {
-    const slow3 = new Set(getSlowest(tableNum))
+    const slow3 = new Set(currentSlowSetRef.current)
     const table = genTable(tableNum)
     const correct = tableNum * currentMul
 

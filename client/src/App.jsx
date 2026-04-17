@@ -4073,7 +4073,7 @@ function SuperTablesApp() {
     center: { textAlign: 'center' },
     title: { fontSize: '2.5rem', fontWeight: 900, marginBottom: 8, fontFamily: 'var(--font-display)', color: 'var(--clr-text)' },
     subtitle: { fontSize: '1.1rem', color: 'var(--clr-text-soft)', marginBottom: 32 },
-    card: { background: 'var(--clr-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-card)', padding: '28px 24px', maxWidth: 560, margin: '0 auto', color: 'var(--clr-text)' },
+    card: { background: 'var(--clr-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-card)', padding: '28px 24px', maxWidth: 620, margin: '0 auto', color: 'var(--clr-text)' },
     btn: { border: 'none', borderRadius: 'var(--radius-sm)', padding: '10px 20px', fontWeight: 700, cursor: 'pointer', fontSize: '1rem', transition: 'all var(--transition)', fontFamily: 'var(--font-body)' },
     btnPrimary: { background: 'var(--clr-accent)', color: '#fff' },
     btnSecondary: { background: 'var(--clr-surface)', color: 'var(--clr-text)' },
@@ -4090,8 +4090,8 @@ function SuperTablesApp() {
     fbNo: { marginTop: 16, padding: 16, borderRadius: 'var(--radius-sm)', textAlign: 'center', background: 'var(--clr-wrong-bg)', border: '1px solid var(--clr-wrong)' },
     back: { background: 'none', border: 'none', color: 'var(--clr-accent)', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem', padding: 0, fontFamily: 'var(--font-body)' },
     badge: { fontSize: '0.7rem', fontWeight: 700, color: 'var(--clr-accent)', background: 'var(--clr-accent-soft)', padding: '2px 8px', borderRadius: 99, display: 'inline-block' },
-    numGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, width: '100%', margin: '0 auto' },
-    numBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '14px 0', background: 'var(--clr-surface)', border: '2px solid var(--clr-border)', borderRadius: 'var(--radius-sm)', fontSize: '1.2rem', fontWeight: 800, cursor: 'pointer', transition: 'all var(--transition)', color: 'var(--clr-text)', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
+    numGrid: { display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 6, width: '100%', margin: '0 auto' },
+    numBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0', background: 'var(--clr-surface)', border: '2px solid var(--clr-border)', borderRadius: 'var(--radius-sm)', fontSize: '1rem', fontWeight: 800, cursor: 'pointer', transition: 'all var(--transition)', color: 'var(--clr-text)', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
     matchCol: { flex: 1, display: 'flex', flexDirection: 'column', gap: 12 },
     matchBtn: (active, matched) => ({ padding: '14px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 800, fontSize: '1.15rem', border: '2px solid', cursor: matched ? 'default' : 'pointer', opacity: matched ? 0.5 : 1, transition: 'all var(--transition)', fontFamily: 'var(--font-body)',
       borderColor: matched ? 'var(--clr-correct)' : active ? 'var(--clr-accent)' : 'var(--clr-border)',
@@ -4343,7 +4343,7 @@ function SuperTablesApp() {
               Choose a multiplication table to begin
             </h2>
             <div style={S.numGrid}>
-              {Array.from({ length: 20 }, (_, i) => i + 1).map(n => (
+              {Array.from({ length: 50 }, (_, i) => i + 1).map(n => (
                 <button key={n} onClick={() => startFromTable(n)} style={S.numBtn}
                   onMouseOver={e => { e.currentTarget.style.background = 'var(--clr-accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'var(--clr-accent)' }}
                   onMouseOut={e => { e.currentTarget.style.background = 'var(--clr-surface)'; e.currentTarget.style.color = 'var(--clr-text)'; e.currentTarget.style.borderColor = 'var(--clr-border)' }}>
@@ -4488,7 +4488,16 @@ function SuperTablesApp() {
           )}
 
           {/* L5 hint */}
-          {lid === 5 && <p style={{ textAlign: 'center', color: 'var(--clr-text-soft)', fontSize: '0.85rem', marginBottom: 12 }}>Type the complete answer</p>}
+          {lid === 5 && (
+            <div style={{ textAlign: 'center', marginBottom: 14 }}>
+              <p style={{ color: 'var(--clr-accent)', fontSize: '1rem', fontWeight: 700, margin: '0 0 4px' }}>
+                Type the FULL number (e.g. if 5* → type 52)
+              </p>
+              <p style={{ color: 'var(--clr-text-soft)', fontSize: '0.8rem', margin: 0 }}>
+                Not just the missing digit — enter the complete answer
+              </p>
+            </div>
+          )}
 
           {/* L8 hint */}
           {lid === 8 && <p style={{ textAlign: 'center', color: 'var(--clr-text-soft)', fontSize: '0.75rem', marginBottom: 12 }}>Adaptive — focuses on your weak spots</p>}

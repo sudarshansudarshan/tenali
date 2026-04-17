@@ -4127,9 +4127,10 @@ function SuperTables1App() {
     btnPrimary: { background: 'var(--clr-accent)', color: '#fff' },
     input: { width: 120, textAlign: 'center', fontSize: '1.6rem', fontWeight: 800, border: '2px solid var(--clr-accent)', borderRadius: 'var(--radius-sm)', padding: '10px 16px', outline: 'none', background: 'var(--clr-input)', color: 'var(--clr-text)', fontFamily: 'var(--font-body)' },
     back: { background: 'none', border: 'none', color: 'var(--clr-accent)', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem', padding: 0, fontFamily: 'var(--font-body)' },
-    th: { padding: '10px 14px', fontSize: '0.9rem', fontWeight: 700, color: 'var(--clr-accent)', background: 'var(--clr-accent-soft)', border: '2px solid var(--clr-border)' },
-    td: { padding: '10px 14px', textAlign: 'center', fontWeight: 800, fontSize: '1.2rem', border: '2px solid var(--clr-border)', background: 'var(--clr-card)', color: 'var(--clr-text)' },
-    tdSlow: { padding: '10px 14px', textAlign: 'center', fontWeight: 800, fontSize: '1.2rem', border: '2px solid var(--clr-wrong)', background: 'var(--clr-wrong-bg)', color: 'var(--clr-wrong)' },
+    th: { padding: '8px 6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--clr-accent)', background: 'var(--clr-accent-soft)', border: '2px solid var(--clr-border)', whiteSpace: 'nowrap' },
+    td: { padding: '8px 6px', textAlign: 'center', fontWeight: 800, fontSize: '1rem', border: '2px solid var(--clr-border)', background: 'var(--clr-card)', color: 'var(--clr-text)', whiteSpace: 'nowrap' },
+    tdSlow: { padding: '8px 6px', textAlign: 'center', fontWeight: 800, fontSize: '1rem', border: '2px solid var(--clr-wrong)', background: 'var(--clr-wrong-bg)', color: 'var(--clr-wrong)', whiteSpace: 'nowrap' },
+    thSlow: { padding: '8px 6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--clr-wrong)', background: 'var(--clr-wrong-bg)', border: '2px solid var(--clr-wrong)', whiteSpace: 'nowrap' },
     fbOk: { marginTop: 16, padding: 16, borderRadius: 'var(--radius-sm)', textAlign: 'center', background: 'var(--clr-correct-bg)', border: '1px solid var(--clr-correct)' },
     fbNo: { marginTop: 16, padding: 16, borderRadius: 'var(--radius-sm)', textAlign: 'center', background: 'var(--clr-wrong-bg)', border: '1px solid var(--clr-wrong)' },
   }
@@ -4153,7 +4154,7 @@ function SuperTables1App() {
     for (let m = 1; m <= 10; m++) delete d[`${num}x${m}`]
     setStore(d)
     setPhase(1)
-    setShuffledTable(shuffle(genTable(num)))
+    setShuffledTable(genTable(num))
     setCurrentMul(pickNext(num))
     setFb(null)
     setStartTime(Date.now())
@@ -4168,7 +4169,7 @@ function SuperTables1App() {
     // Check phase transitions
     if (phase === 1 && allUnder5s(tableNum)) {
       setPhase(2)
-      setShuffledTable(shuffle(genTable(tableNum)))
+      setShuffledTable(genTable(tableNum))
     }
     if (phase === 2 && allStreak5(tableNum)) {
       setScreen('done')
@@ -4176,8 +4177,6 @@ function SuperTables1App() {
     }
     setCurrentMul(pickNext(tableNum))
     setStartTime(Date.now())
-    // re-shuffle lookup occasionally
-    if (questionsAnswered % 5 === 0) setShuffledTable(shuffle(genTable(tableNum)))
   }
 
   const handleSubmit = (e) => {
@@ -4320,32 +4319,31 @@ function SuperTables1App() {
             </div>
           </div>
 
-          {/* Phase 1: Shuffled lookup table */}
+          {/* Phase 1: Shuffled lookup table — split into 2 rows of 5 */}
           {phase === 1 && (
-            <div style={{ overflowX: 'auto', marginBottom: 20 }}>
-              <table style={{ margin: '0 auto', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    {shuffledTable.map((e, i) => (
-                      <th key={i} style={{
-                        ...S.th,
-                        ...(slow3.has(e.multiplier) ? { color: 'var(--clr-wrong)', background: 'var(--clr-wrong-bg)', borderColor: 'var(--clr-wrong)' } : {})
-                      }}>
-                        {e.expression}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    {shuffledTable.map((e, i) => (
-                      <td key={i} style={slow3.has(e.multiplier) ? S.tdSlow : S.td}>
-                        {e.answer}
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
+            <div style={{ marginBottom: 20 }}>
+              {[shuffledTable.slice(0, 5), shuffledTable.slice(5)].map((half, hi) => (
+                <table key={hi} style={{ margin: '0 auto', borderCollapse: 'collapse', marginBottom: hi === 0 ? 4 : 0, width: '100%', tableLayout: 'fixed' }}>
+                  <thead>
+                    <tr>
+                      {half.map((e, i) => (
+                        <th key={i} style={slow3.has(e.multiplier) ? S.thSlow : S.th}>
+                          {e.expression}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      {half.map((e, i) => (
+                        <td key={i} style={slow3.has(e.multiplier) ? S.tdSlow : S.td}>
+                          {e.answer}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              ))}
             </div>
           )}
 

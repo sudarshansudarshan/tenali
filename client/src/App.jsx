@@ -4149,31 +4149,82 @@ function SuperTablesApp() {
   const totalQ = lid <= 2 ? 20 : lid === 4 ? 5 : lid === 7 ? rounds.length * 3 : 10
   const cur = questions[Math.min(idx, questions.length - 1)] || { expression: '', answer: 0, multiplier: 1 }
 
+  // ── adaptive weighting helper ──────────────────────────
+  // Returns a shuffled question list that includes extra copies of weak facts.
+  // `base` = full 10-entry table, `count` = desired question count.
+  // Weak facts (from stWeak) get duplicated so they appear ~2× more often,
+  // but mixed with others so it doesn't feel overwhelming.
+  const stAdaptiveList = (base, num, count) => {
+    const weak = new Set(stWeak(num).slice(0, 4)) // top 4 weakest
+    if (weak.size === 0) return stShuffle(base).slice(0, count)
+    const pool = []
+    for (const e of base) {
+      pool.push(e)
+      if (weak.has(e.multiplier)) pool.push({ ...e }) // extra copy for weak facts
+    }
+    // shuffle and trim to count
+    const shuffled = stShuffle(pool)
+    if (shuffled.length >= count) return shuffled.slice(0, count)
+    // if we need more, repeat the pool
+    while (shuffled.length < count) shuffled.push(...stShuffle(base))
+    return shuffled.slice(0, count)
+  }
+
   // ── setup a level (called with table number + uses currentLevel) ──
   const setupLevel = (num, level) => {
     setScreen('play'); setIdx(0); setScore(0); setFb(null); setPhase('show')
     setSelected(null); setMatched([]); setWrong7(false); setRoundIdx(0); setStartTime(Date.now()); setWrongAttempts(0)
     const tbl = stGenTable(num)
     const first = tbl.slice(0, 5), second = tbl.slice(5)
-    if (level === 1) { setQuestions([...first, ...first, ...second, ...second]); setVisible(first) }
-    else if (level === 2) { setQuestions([...stShuffle([...first, ...first]), ...stShuffle([...second, ...second])]); setVisible(first) }
-    else if (level === 3) { setQuestions(stShuffle(tbl)) }
-    else if (level === 4) { const v = stShuffle(tbl).slice(0, 5); setVisible(v); setQuestions(stShuffle(v)) }
-    else if (level === 5) { setQuestions(stShuffle(tbl).map(e => ({ ...e, masked: stMask(e.answer) }))) }
-    else if (level === 6) { const q = stShuffle(tbl); setQuestions(q); setOptions(stDistractors(q[0].answer, num)) }
+    // L1 & L2: sequential/halved structure preserved, but weak facts from each half get extra reps
+    if (level === 1) {
+      const weak = new Set(stWeak(num).slice(0, 4))
+      const firstQ = [...first]; first.forEach(e => { if (weak.has(e.multiplier)) firstQ.push(e) })
+      const secondQ = [...second]; second.forEach(e => { if (weak.has(e.multiplier)) secondQ.push(e) })
+      const fwd1 = firstQ.slice(0, 10), fwd2 = secondQ.slice(0, 10)
+      while (fwd1.length < 10) fwd1.push(first[fwd1.length % first.length])
+      while (fwd2.length < 10) fwd2.push(second[fwd2.length % second.length])
+      setQuestions([...fwd1, ...fwd2]); setVisible(first)
+    }
+    else if (level === 2) {
+      const weak = new Set(stWeak(num).slice(0, 4))
+      const firstPool = [...first]; first.forEach(e => { if (weak.has(e.multiplier)) firstPool.push(e) })
+      const secondPool = [...second]; second.forEach(e => { if (weak.has(e.multiplier)) secondPool.push(e) })
+      const r1 = stShuffle(firstPool).slice(0, 10), r2 = stShuffle(secondPool).slice(0, 10)
+      while (r1.length < 10) r1.push(first[r1.length % first.length])
+      while (r2.length < 10) r2.push(second[r2.length % second.length])
+      setQuestions([...stShuffle(r1), ...stShuffle(r2)]); setVisible(first)
+    }
+    else if (level === 3) { setQuestions(stAdaptiveList(tbl, num, 10)) }
+    else if (level === 4) {
+      // Prefer showing weak facts in the visible set
+      const weak = new Set(stWeak(num).slice(0, 3))
+      const weakEntries = tbl.filter(e => weak.has(e.multiplier))
+      const others = stShuffle(tbl.filter(e => !weak.has(e.multiplier)))
+      const v = stShuffle([...weakEntries, ...others].slice(0, 5))
+      setVisible(v); setQuestions(stShuffle(v))
+    }
+    else if (level === 5) { setQuestions(stAdaptiveList(tbl, num, 10).map(e => ({ ...e, masked: stMask(e.answer) }))) }
+    else if (level === 6) { const q = stAdaptiveList(tbl, num, 10); setQuestions(q); setOptions(stDistractors(q[0].answer, num)) }
     else if (level === 7) {
-      const sh = stShuffle(tbl).slice(0, 9); const r = []
+      // Ensure weak facts appear in the rounds
+      const weak = new Set(stWeak(num).slice(0, 3))
+      const weakEntries = tbl.filter(e => weak.has(e.multiplier))
+      const others = stShuffle(tbl.filter(e => !weak.has(e.multiplier)))
+      const ordered = [...weakEntries, ...others].slice(0, 9)
+      const sh = stShuffle(ordered); const r = []
       for (let i = 0; i < sh.length; i += 3) r.push(sh.slice(i, i + 3))
       if (r.length === 0) r.push(stShuffle(tbl).slice(0, 3))
       setRounds(r); setShuffledAns(stShuffle(r[0].map(e => e.answer)))
     } else if (level === 8) {
+      // L8 already fully adaptive — keep as is but use stAdaptiveList
       const weak = stWeak(num); const weakE = weak.slice(0, 5).map(m => tbl.find(e => e.multiplier === m)).filter(Boolean)
       const others = stShuffle(tbl.filter(e => !weak.includes(e.multiplier)))
       const mix = [...weakE]; for (const o of others) { if (mix.length >= 10) break; if (!mix.find(m => m.multiplier === o.multiplier)) mix.push(o) }
       while (mix.length < 10) mix.push(tbl[mix.length % 10])
       const q = stShuffle(mix); setQuestions(q); setOptions(stDistractors(q[0].answer, num))
-    } else if (level === 9) { setQuestions(stShuffle(tbl)) }
-    else if (level === 10) { setQuestions(stShuffle(tbl).map(e => ({ ...e, blankType: Math.random() > 0.5 ? 'multiplier' : 'answer' }))) }
+    } else if (level === 9) { setQuestions(stAdaptiveList(tbl, num, 10)) }
+    else if (level === 10) { setQuestions(stAdaptiveList(tbl, num, 10).map(e => ({ ...e, blankType: Math.random() > 0.5 ? 'multiplier' : 'answer' }))) }
   }
 
   // Start from table selection → always Level 1

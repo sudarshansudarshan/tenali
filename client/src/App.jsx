@@ -4073,7 +4073,7 @@ function SuperTablesApp() {
     center: { textAlign: 'center' },
     title: { fontSize: '2.5rem', fontWeight: 900, marginBottom: 8, fontFamily: 'var(--font-display)', color: 'var(--clr-text)' },
     subtitle: { fontSize: '1.1rem', color: 'var(--clr-text-soft)', marginBottom: 32 },
-    card: { background: 'var(--clr-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-card)', padding: 32, maxWidth: 560, margin: '0 auto', color: 'var(--clr-text)' },
+    card: { background: 'var(--clr-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-card)', padding: '28px 24px', maxWidth: 560, margin: '0 auto', color: 'var(--clr-text)' },
     btn: { border: 'none', borderRadius: 'var(--radius-sm)', padding: '10px 20px', fontWeight: 700, cursor: 'pointer', fontSize: '1rem', transition: 'all var(--transition)', fontFamily: 'var(--font-body)' },
     btnPrimary: { background: 'var(--clr-accent)', color: '#fff' },
     btnSecondary: { background: 'var(--clr-surface)', color: 'var(--clr-text)' },
@@ -4090,8 +4090,8 @@ function SuperTablesApp() {
     fbNo: { marginTop: 16, padding: 16, borderRadius: 'var(--radius-sm)', textAlign: 'center', background: 'var(--clr-wrong-bg)', border: '1px solid var(--clr-wrong)' },
     back: { background: 'none', border: 'none', color: 'var(--clr-accent)', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem', padding: 0, fontFamily: 'var(--font-body)' },
     badge: { fontSize: '0.7rem', fontWeight: 700, color: 'var(--clr-accent)', background: 'var(--clr-accent-soft)', padding: '2px 8px', borderRadius: 99, display: 'inline-block' },
-    numGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, maxWidth: 340, margin: '0 auto' },
-    numBtn: { aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--clr-surface)', border: '2px solid var(--clr-border)', borderRadius: 'var(--radius-sm)', fontSize: '1.25rem', fontWeight: 800, cursor: 'pointer', transition: 'all var(--transition)', color: 'var(--clr-text)', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
+    numGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, width: '100%', margin: '0 auto' },
+    numBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '14px 0', background: 'var(--clr-surface)', border: '2px solid var(--clr-border)', borderRadius: 'var(--radius-sm)', fontSize: '1.2rem', fontWeight: 800, cursor: 'pointer', transition: 'all var(--transition)', color: 'var(--clr-text)', fontFamily: 'var(--font-body)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
     matchCol: { flex: 1, display: 'flex', flexDirection: 'column', gap: 12 },
     matchBtn: (active, matched) => ({ padding: '14px 16px', borderRadius: 'var(--radius-sm)', fontWeight: 800, fontSize: '1.15rem', border: '2px solid', cursor: matched ? 'default' : 'pointer', opacity: matched ? 0.5 : 1, transition: 'all var(--transition)', fontFamily: 'var(--font-body)',
       borderColor: matched ? 'var(--clr-correct)' : active ? 'var(--clr-accent)' : 'var(--clr-border)',
@@ -4220,7 +4220,19 @@ function SuperTablesApp() {
   }, [matched, lid])
 
   useEffect(() => { setStartTime(Date.now()) }, [idx])
-  useEffect(() => { if (inputRef.current) inputRef.current.focus() }, [idx, fb, phase])
+  useEffect(() => { if (!fb && inputRef.current) inputRef.current.focus() }, [idx, fb, phase])
+
+  // Allow Enter key to advance when feedback is showing
+  const nextBtnRef = useRef(null)
+  useEffect(() => {
+    if (fb && nextBtnRef.current) nextBtnRef.current.focus()
+  }, [fb])
+  useEffect(() => {
+    if (!fb || screen !== 'play') return
+    const handler = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [fb, screen, idx, lid])
 
   // ── answer handlers (level logic unchanged) ───────────
   const handleInput = (e) => {
@@ -4304,7 +4316,7 @@ function SuperTablesApp() {
       <p style={{ fontWeight: 700, fontSize: '1.1rem', color: fb.ok ? 'var(--clr-correct)' : 'var(--clr-wrong)', margin: 0 }}>
         {fb.ok ? '✓ Correct!' : `✗ The answer is ${fb.correctAns}`}
       </p>
-      <button onClick={advance} style={{ ...S.btn, ...S.btnPrimary, marginTop: 12 }}>Next →</button>
+      <button ref={nextBtnRef} onClick={advance} style={{ ...S.btn, ...S.btnPrimary, marginTop: 12 }}>Next →</button>
     </div>
   )
 

@@ -4244,7 +4244,7 @@ function SuperTablesApp() {
     const ok = val === correctAns
     if (ok) setScore(s => s + 1)
     else setWrongAttempts(w => w + 1)
-    if (lid === 8) stRecord(tableNum, cur.multiplier, ok, Date.now() - startTime)
+    stRecord(tableNum, cur.multiplier, ok, Date.now() - startTime)
     setFb({ ok, correctAns })
     e.target.elements.ans.value = ''
   }
@@ -4252,7 +4252,7 @@ function SuperTablesApp() {
     const ok = ans === cur.answer
     if (ok) setScore(s => s + 1)
     else setWrongAttempts(w => w + 1)
-    if (lid === 8) stRecord(tableNum, cur.multiplier, ok, Date.now() - startTime)
+    stRecord(tableNum, cur.multiplier, ok, Date.now() - startTime)
     setFb({ ok, correctAns: cur.answer })
   }
   const advance = () => {
@@ -4326,6 +4326,66 @@ function SuperTablesApp() {
       <button type="submit" style={{ ...S.btn, ...S.btnPrimary }}>Submit</button>
     </form>
   )
+
+  // ── Performance chart ──────────────────────────────────
+  const renderPerformanceChart = () => {
+    if (!tableNum) return null
+    const d = stGetAdaptive()
+    const bars = []
+    let maxTime = 0
+    for (let m = 1; m <= 10; m++) {
+      const info = d[`${tableNum}x${m}`]
+      const avg = info && info.attempts > 0 ? Math.round(info.totalTime / info.attempts) / 1000 : 0
+      if (avg > maxTime) maxTime = avg
+      bars.push({ m, avg, attempts: info ? info.attempts : 0, wrong: info ? info.wrong : 0 })
+    }
+    const hasData = bars.some(b => b.attempts > 0)
+    if (!hasData) return null
+    maxTime = Math.max(maxTime, 1) // at least 1s scale
+    const chartH = 120
+    const barW = `${100 / 10}%`
+    return (
+      <div style={{ marginTop: 24, padding: '16px 0 0' }}>
+        <p style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: 'var(--clr-text-soft)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>
+          Avg. Time per Fact (seconds)
+        </p>
+        {/* Y-axis + bars */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 0, position: 'relative', height: chartH, margin: '0 4px', borderBottom: '2px solid var(--clr-border)', borderLeft: '2px solid var(--clr-border)' }}>
+          {/* Y-axis labels */}
+          <span style={{ position: 'absolute', left: -4, top: 0, fontSize: '0.6rem', color: 'var(--clr-text-soft)', transform: 'translateX(-100%)', whiteSpace: 'nowrap' }}>{maxTime.toFixed(1)}s</span>
+          <span style={{ position: 'absolute', left: -4, top: '50%', fontSize: '0.6rem', color: 'var(--clr-text-soft)', transform: 'translateX(-100%) translateY(-50%)', whiteSpace: 'nowrap' }}>{(maxTime / 2).toFixed(1)}s</span>
+          <span style={{ position: 'absolute', left: -4, bottom: -2, fontSize: '0.6rem', color: 'var(--clr-text-soft)', transform: 'translateX(-100%)', whiteSpace: 'nowrap' }}>0s</span>
+          {/* Grid lines */}
+          <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', borderTop: '1px dashed var(--clr-border)', opacity: 0.5 }} />
+          {/* Bars */}
+          {bars.map(b => {
+            const h = b.avg > 0 ? Math.max((b.avg / maxTime) * chartH, 4) : 0
+            const isWeak = b.wrong > 0 || b.avg > maxTime * 0.7
+            return (
+              <div key={b.m} style={{ width: barW, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', padding: '0 2px', boxSizing: 'border-box' }}>
+                {b.avg > 0 && <span style={{ fontSize: '0.55rem', color: 'var(--clr-text-soft)', marginBottom: 2, fontWeight: 600 }}>{b.avg.toFixed(1)}</span>}
+                <div style={{
+                  width: '70%', height: h, minWidth: 8,
+                  borderRadius: '4px 4px 0 0',
+                  background: b.attempts === 0 ? 'transparent' : isWeak ? 'var(--clr-wrong)' : 'var(--clr-accent)',
+                  opacity: b.attempts === 0 ? 0.15 : 0.85,
+                  transition: 'height 0.3s ease',
+                }} />
+              </div>
+            )
+          })}
+        </div>
+        {/* X-axis labels */}
+        <div style={{ display: 'flex', margin: '4px 4px 0' }}>
+          {bars.map(b => (
+            <div key={b.m} style={{ width: barW, textAlign: 'center', fontSize: '0.6rem', fontWeight: 700, color: 'var(--clr-text-soft)' }}>
+              ×{b.m}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   // ── SCREENS ───────────────────────────────────────────
 
@@ -4442,14 +4502,15 @@ function SuperTablesApp() {
                   return (
                     <button key={i} disabled={isM || selected === null} onClick={() => {
                       if (selected === null) return
-                      if (rd[selected].answer === ans) { setMatched(m => [...m, selected]); setScore(s => s + 1); setSelected(null) }
-                      else { setWrong7(true); setWrongAttempts(w => w + 1) }
+                      if (rd[selected].answer === ans) { stRecord(tableNum, rd[selected].multiplier, true, Date.now() - startTime); setMatched(m => [...m, selected]); setScore(s => s + 1); setSelected(null) }
+                      else { stRecord(tableNum, rd[selected].multiplier, false, Date.now() - startTime); setWrong7(true); setWrongAttempts(w => w + 1) }
                     }} style={S.ansCol(selected !== null, isM)}>{ans}</button>
                   )
                 })}
               </div>
             </div>
           </div>
+          {renderPerformanceChart()}
         </div>
       </div>
     )
@@ -4517,6 +4578,7 @@ function SuperTablesApp() {
             ) : (lid === 3 && phase !== 'ask') ? null : renderInput()
           )}
         </div>
+        {renderPerformanceChart()}
       </div>
     </div>
   )

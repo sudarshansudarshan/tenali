@@ -4052,18 +4052,36 @@ function SuperTablesApp() {
     const s = String(answer); const pos = Math.floor(Math.random() * s.length)
     return s.slice(0, pos) + '*' + s.slice(pos + 1)
   }
-  // adaptive tracking
+  // adaptive tracking — stores individual times for trimmed mean
   const stGetAdaptive = () => { try { return JSON.parse(sessionStorage.getItem('st_adaptive') || '{}') } catch { return {} } }
   const stSetAdaptive = (d) => { sessionStorage.setItem('st_adaptive', JSON.stringify(d)) }
   const stRecord = (tbl, mul, ok, ms) => {
     const d = stGetAdaptive(); const k = `${tbl}x${mul}`
-    if (!d[k]) d[k] = { wrong: 0, totalTime: 0, attempts: 0 }
-    d[k].attempts++; d[k].totalTime += ms; if (!ok) d[k].wrong++
+    if (!d[k]) d[k] = { wrong: 0, attempts: 0, times: [] }
+    // migrate old format (totalTime only) → new format (times array)
+    if (!d[k].times) d[k].times = d[k].totalTime ? Array(d[k].attempts).fill(Math.round(d[k].totalTime / d[k].attempts)) : []
+    d[k].attempts++; d[k].times.push(ms); if (!ok) d[k].wrong++
+    if (d[k].times.length > 50) d[k].times = d[k].times.slice(-50) // cap storage
     stSetAdaptive(d)
+  }
+  // Trimmed mean: discard bottom 10% and top 10%, average the middle 80%
+  const stTrimmedMean = (times) => {
+    if (!times || times.length === 0) return 0
+    if (times.length <= 2) return times.reduce((a, b) => a + b, 0) / times.length
+    const sorted = [...times].sort((a, b) => a - b)
+    const trim = Math.max(1, Math.round(sorted.length * 0.1))
+    const trimmed = sorted.slice(trim, sorted.length - trim)
+    if (trimmed.length === 0) return sorted[Math.floor(sorted.length / 2)]
+    return trimmed.reduce((a, b) => a + b, 0) / trimmed.length
   }
   const stWeak = (tbl) => {
     const d = stGetAdaptive(); const w = []
-    for (let m = 1; m <= 10; m++) { const info = d[`${tbl}x${m}`]; if (info && (info.wrong > 0 || info.totalTime / info.attempts > 5000)) w.push({ m, sc: info.wrong * 2 + info.totalTime / info.attempts / 1000 }) }
+    for (let m = 1; m <= 10; m++) {
+      const info = d[`${tbl}x${m}`]
+      if (!info || info.attempts === 0) continue
+      const avg = stTrimmedMean(info.times || [])
+      if (info.wrong > 0 || avg > 5000) w.push({ m, sc: info.wrong * 2 + avg / 1000 })
+    }
     return w.sort((a, b) => b.sc - a.sc).map(x => x.m)
   }
 
@@ -4386,7 +4404,7 @@ function SuperTablesApp() {
     let maxTime = 0
     for (let m = 1; m <= 10; m++) {
       const info = d[`${tableNum}x${m}`]
-      const avg = info && info.attempts > 0 ? Math.round(info.totalTime / info.attempts) / 1000 : 0
+      const avg = info && info.attempts > 0 ? stTrimmedMean(info.times || []) / 1000 : 0
       if (avg > maxTime) maxTime = avg
       bars.push({ m, avg, attempts: info ? info.attempts : 0, wrong: info ? info.wrong : 0 })
     }

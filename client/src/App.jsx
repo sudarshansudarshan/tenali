@@ -858,6 +858,29 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   // ── Celebration State ──────────────────────────────────────────────────
   const [showCelebration, setShowCelebration] = useState(false)
 
+  // ── Timing tracker for spaced repetition ─────────────────────────────
+  // { [multiplier]: { totalTime: ms, count: n } }
+  const timingRef = useRef({})
+
+  const recordTiming = (multiplier, elapsed) => {
+    const t = timingRef.current
+    if (!t[multiplier]) t[multiplier] = { totalTime: 0, count: 0 }
+    t[multiplier].totalTime += elapsed
+    t[multiplier].count += 1
+  }
+
+  const getSlowMultipliers = () => {
+    const t = timingRef.current
+    const entries = Object.entries(t).filter(([, v]) => v.count > 0)
+    if (entries.length < 2) return [] // need enough data
+    const totalTime = entries.reduce((s, [, v]) => s + v.totalTime, 0)
+    const totalCount = entries.reduce((s, [, v]) => s + v.count, 0)
+    const avgTime = totalTime / totalCount
+    return entries
+      .filter(([, v]) => (v.totalTime / v.count) > avgTime)
+      .map(([m]) => parseInt(m, 10))
+  }
+
   // ── Refs ──────────────────────────────────────────────────────────────
   const inputRef = useRef(null)
   const advanceFnRef = useRef(null)
@@ -891,12 +914,25 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
   }
 
   /**
+   * pickMultiplier(): Pick a multiplier, biased toward slow ones
+   * 60% chance to pick from slow multipliers (if any), 40% fully random
+   */
+  const pickMultiplier = () => {
+    const slow = getSlowMultipliers()
+    if (slow.length > 0 && Math.random() < 0.6) {
+      return slow[Math.floor(Math.random() * slow.length)]
+    }
+    return Math.floor(Math.random() * 10) + 1
+  }
+
+  /**
    * generateQuestion(tbl, lvl): Create a question appropriate for the level
    * Level 1,2,3,5: normal → "13 × 3 = ?" answer = 39
    * Level 4: reverse → "13 × ? = 39" answer = 3 (student finds the multiplier)
+   * Biased toward multipliers the student is slower on.
    */
   const generateQuestion = (tbl, lvl) => {
-    const multiplier = Math.floor(Math.random() * 10) + 1
+    const multiplier = pickMultiplier()
     const product = tbl * multiplier
     if (lvl === 4) {
       return { table: tbl, multiplier, product, answer: multiplier, reverse: true }
@@ -919,6 +955,7 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     setPromotionPrompt(null)
     setHasTyped(false)
     setAnswerOpacity(1)
+    timingRef.current = {} // reset timing history for new table
     setStatusMsg('Level 1: See the answer, then type it!')
     const q = generateQuestion(tbl, 1)
     setQuestion(q)
@@ -1009,6 +1046,9 @@ function ScaffoldedTablesApp({ studentName, defaultTable = 2 }) {
     const correct = userAns === question.answer
     const elapsed = Date.now() - startTime
     const fast = elapsed < FAST_MS
+
+    // Record timing for spaced repetition (track actual multiplier regardless of question type)
+    recordTiming(question.multiplier, elapsed)
 
     setIsCorrect(correct)
     setRevealed(true)

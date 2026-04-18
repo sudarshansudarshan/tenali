@@ -4204,10 +4204,9 @@ function SuperTables1App() {
   const [currentMul, setCurrentMul] = useState(1)
   const [shuffledTable, setShuffledTable] = useState([])
   const [fb, setFb] = useState(null)
-  const [startTime, setStartTime] = useState(Date.now())
+  const startTimeRef = useRef(Date.now()) // ref, not state — always synchronous, no stale closures
   const [questionsAnswered, setQuestionsAnswered] = useState(0)
   const inputRef = useRef(null)
-  const nextBtnRef = useRef(null)
 
   const startDrill = (num) => {
     setTableNum(num)
@@ -4226,7 +4225,7 @@ function SuperTables1App() {
     displayedMulRef.current = first
     setCurrentMul(first)
     setFb(null)
-    setStartTime(Date.now())
+    startTimeRef.current = Date.now()
     setQuestionsAnswered(0)
     setScreen('drill')
   }
@@ -4245,7 +4244,7 @@ function SuperTables1App() {
     const first = pickNext(tableNum)
     displayedMulRef.current = first
     setCurrentMul(first)
-    setStartTime(Date.now())
+    startTimeRef.current = Date.now()
   }
 
   const advancingRef = useRef(false) // debounce guard
@@ -4260,13 +4259,8 @@ function SuperTables1App() {
       setScreen('done')
       return
     }
-    // Compute next OUTSIDE setState to avoid React StrictMode double-invocation
     let next = pickNext(tableNum)
-    // Guard: never same as what's currently displayed
-    if (next === displayedMulRef.current) {
-      next = pickNext(tableNum)
-    }
-    // Final fallback: force a different one
+    if (next === displayedMulRef.current) next = pickNext(tableNum)
     if (next == null || next === displayedMulRef.current) {
       const others = currentSlowSetRef.current.filter(m => m !== displayedMulRef.current)
       if (others.length > 0) next = others[Math.floor(Math.random() * others.length)]
@@ -4274,7 +4268,8 @@ function SuperTables1App() {
     displayedMulRef.current = next
     lastAskedRef.current = next
     setCurrentMul(next)
-    setStartTime(Date.now())
+    // Set startTime LAST, synchronously via ref — no stale closures possible
+    startTimeRef.current = Date.now()
   }
 
   const handleSubmit = (e) => {
@@ -4283,20 +4278,19 @@ function SuperTables1App() {
     if (isNaN(val)) return
     const correct = tableNum * currentMul
     const ok = val === correct
-    const elapsed = Date.now() - startTime
+    const elapsed = Date.now() - startTimeRef.current // ref = always current, never stale
     if (ok) {
       recordCorrect(tableNum, currentMul, elapsed)
     } else {
       recordWrong(tableNum, currentMul)
     }
     setQuestionsAnswered(q => q + 1)
-    setFb({ ok, correctAns: correct })
+    setFb({ ok, correctAns: correct, elapsed })
     e.target.elements.ans.value = ''
   }
 
   // Focus management
   useEffect(() => { if (!fb && inputRef.current) inputRef.current.focus() }, [fb, currentMul])
-  useEffect(() => { if (fb && nextBtnRef.current) nextBtnRef.current.focus() }, [fb])
   useEffect(() => {
     if (!fb || screen !== 'drill') return
     const handler = (e) => {
@@ -4507,8 +4501,8 @@ function SuperTables1App() {
                 <p style={{ fontWeight: 700, fontSize: '1.1rem', color: fb.ok ? 'var(--clr-correct)' : 'var(--clr-wrong)', margin: 0 }}>
                   {fb.ok ? '✓ Correct!' : `✗ The answer is ${fb.correctAns}`}
                 </p>
-                {fb.ok && <p style={{ fontSize: '0.8rem', color: 'var(--clr-text-soft)', margin: '4px 0 0' }}>{((Date.now() - startTime) / 1000).toFixed(1)}s</p>}
-                <button ref={nextBtnRef} onClick={advance} style={{ ...S.btn, ...S.btnPrimary, marginTop: 12 }}>Next →</button>
+                {fb.ok && fb.elapsed != null && <p style={{ fontSize: '0.8rem', color: 'var(--clr-text-soft)', margin: '4px 0 0' }}>{(fb.elapsed / 1000).toFixed(1)}s</p>}
+                <p style={{ fontSize: '0.85rem', color: 'var(--clr-text-soft)', marginTop: 12, fontWeight: 600 }}>Press Enter →</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>

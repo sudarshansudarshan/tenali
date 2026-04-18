@@ -4428,8 +4428,12 @@ function SuperTables1App() {
           {phase === 1 && (
             <div style={{ marginBottom: 20 }}>
               {(() => {
-                const focused = shuffledTable.filter(e => slow3.has(e.multiplier))
-                return (
+                // Show only the 3 focused facts; fallback to current question if set is empty
+                let focused = shuffledTable.filter(e => slow3.has(e.multiplier))
+                if (focused.length === 0) {
+                  focused = shuffledTable.filter(e => e.multiplier === currentMul)
+                }
+                return focused.length > 0 ? (
                   <table style={{ margin: '0 auto', borderCollapse: 'collapse', width: 'auto', tableLayout: 'fixed' }}>
                     <thead>
                       <tr>
@@ -4446,7 +4450,7 @@ function SuperTables1App() {
                       </tr>
                     </tbody>
                   </table>
-                )
+                ) : null
               })()}
               {/* Phase 2 button — prominently below the lookup table */}
               <div style={{ textAlign: 'center', marginTop: 12 }}>

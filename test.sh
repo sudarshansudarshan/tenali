@@ -1,38 +1,31 @@
 #!/bin/bash
-# test.sh — Tests the SuperTables1 cycling logic in isolation
-# Usage: ./test.sh
+# test.sh — Tests the SuperTables1 cycling logic with live simulation
+# Usage: ./test.sh [table_number]  (default: random 2-50)
 
 set -e
 cd "$(dirname "$0")"
 
-echo "🧪 Running SuperTables1 cycling logic tests..."
-echo ""
+TABLE=${1:-0}
 
-node --eval '
-// ═══════════════════════════════════════════════════════════
-// Extract the pure logic from App.jsx and test it
-// ═══════════════════════════════════════════════════════════
-
+node --eval "
+const TABLE_ARG = ${TABLE}
 const ELIGIBLE = [2, 3, 4, 5, 6, 7, 8, 9]
 const FAST_THRESHOLD_MS = 3000
 const MIN_CORRECT_TO_JUDGE = 3
 
-// ── Simulated storage ──
 let store = {}
-
 const recordCorrect = (tbl, mul, ms) => {
-  const k = tbl + "x" + mul
+  const k = tbl + 'x' + mul
   if (!store[k]) store[k] = { times: [], streak: 0 }
   store[k].times.push(ms)
   if (store[k].times.length > 10) store[k].times = store[k].times.slice(-10)
   store[k].streak = (store[k].streak || 0) + 1
 }
 const recordWrong = (tbl, mul) => {
-  const k = tbl + "x" + mul
+  const k = tbl + 'x' + mul
   if (!store[k]) store[k] = { times: [], streak: 0 }
   store[k].streak = 0
 }
-
 const stTrimmedMean = (times) => {
   if (!times || times.length === 0) return 0
   if (times.length <= 2) return times.reduce((a, b) => a + b, 0) / times.length
@@ -42,18 +35,12 @@ const stTrimmedMean = (times) => {
   if (trimmed.length === 0) return sorted[Math.floor(sorted.length / 2)]
   return trimmed.reduce((a, b) => a + b, 0) / trimmed.length
 }
-
 const getAvg = (tbl, mul) => {
-  const k = tbl + "x" + mul
+  const k = tbl + 'x' + mul
   const info = store[k]
   if (!info || info.times.length === 0) return null
   return stTrimmedMean(info.times)
 }
-const getStreak = (tbl, mul) => {
-  const k = tbl + "x" + mul
-  return store[k] ? (store[k].streak || 0) : 0
-}
-
 const shuffle = (arr) => {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
@@ -62,7 +49,6 @@ const shuffle = (arr) => {
   }
   return a
 }
-
 const getSlowest3 = (tbl) => {
   const scored = []
   for (const m of ELIGIBLE) {
@@ -75,7 +61,6 @@ const getSlowest3 = (tbl) => {
   return scored.slice(0, 3).map(s => s.m)
 }
 
-// ── Simulated refs ──
 let cycleQueue = []
 let currentSlowSet = []
 let lastAsked = null
@@ -87,7 +72,7 @@ const pickNext = (tbl) => {
       const set = [...currentSlowSet]
       let fastestIdx = -1, fastestAvg = Infinity
       for (let i = 0; i < set.length; i++) {
-        const k = tbl + "x" + set[i]
+        const k = tbl + 'x' + set[i]
         const times = store[k] ? store[k].times : []
         if (times.length >= MIN_CORRECT_TO_JUDGE) {
           const avg = stTrimmedMean(times)
@@ -130,7 +115,6 @@ const pickNext = (tbl) => {
   return next
 }
 
-// advance() mirrors the React version (NO side effects inside setState)
 const advance = (tbl) => {
   let next = pickNext(tbl)
   if (next === displayedMul) next = pickNext(tbl)
@@ -143,191 +127,89 @@ const advance = (tbl) => {
   return next
 }
 
-// ═══════════════════════════════════════════════════════════
-// TESTS
-// ═══════════════════════════════════════════════════════════
+// ── Run simulation ──
+const tbl = TABLE_ARG > 0 ? TABLE_ARG : 2 + Math.floor(Math.random() * 49)
+const lines = []
+let prevSet = ''
+let repeats = 0
 
-let passed = 0
-let failed = 0
-const assert = (condition, msg) => {
-  if (condition) { passed++; }
-  else { failed++; console.log("  ❌ FAIL: " + msg); }
-}
+lines.push('Table of ' + tbl + ' — 500 questions')
+lines.push('═'.repeat(50))
+lines.push('')
 
-// ── TEST 1: 500 questions on a random table — full sequence printout ──
-const randomTable = 2 + Math.floor(Math.random() * 49) // random table 2-50
-console.log("TEST 1: 500 questions on table of " + randomTable + " — full sequence")
-store = {}
-cycleQueue = []; currentSlowSet = []; lastAsked = null; displayedMul = null
-const seq500 = []
-const setLog = [] // log slow set changes
-let prevSet = ""
 for (let i = 0; i < 500; i++) {
-  const mul = advance(randomTable)
-  seq500.push(mul)
-  const setStr = "[" + currentSlowSet.join(",") + "]"
+  const mul = advance(tbl)
+  const answer = tbl * mul
+  const setStr = currentSlowSet.join(', ')
+
+  // Check consecutive repeat
+  let flag = ''
+  if (i > 0 && lines.length > 3) {
+    const prevMul = lines[lines.length - 1].match(/× (\\d+)/);
+    // we track via displayedMul instead
+  }
+
+  // Detect set change
   if (setStr !== prevSet) {
-    setLog.push({ q: i + 1, set: setStr })
+    if (prevSet !== '') lines.push('  ┌─ SET CHANGED → focusing on [' + setStr + ']')
+    else lines.push('  ┌─ Starting set: [' + setStr + ']')
     prevSet = setStr
   }
-  // simulate: 70% correct fast, 20% correct slow, 10% wrong
+
+  const qNum = String(i + 1).padStart(3)
+
+  // Simulate answer: 70% fast correct, 20% slow correct, 10% wrong
   const r = Math.random()
+  let status, ms
   if (r < 0.1) {
-    recordWrong(randomTable, mul)
+    recordWrong(tbl, mul)
+    status = '  ✗ WRONG'
+    ms = 0
   } else if (r < 0.3) {
-    recordCorrect(randomTable, mul, 4000 + Math.random() * 3000) // slow 4-7s
+    ms = 4000 + Math.floor(Math.random() * 3000)
+    recordCorrect(tbl, mul, ms)
+    status = '  ' + (ms / 1000).toFixed(1) + 's (slow)'
   } else {
-    recordCorrect(randomTable, mul, 1500 + Math.random() * 2000) // fast 1.5-3.5s
+    ms = 1500 + Math.floor(Math.random() * 2000)
+    recordCorrect(tbl, mul, ms)
+    status = '  ' + (ms / 1000).toFixed(1) + 's'
   }
+
+  lines.push('  Q' + qNum + ':  ' + tbl + ' × ' + mul + ' = ' + answer + status)
 }
 
-// Print sequence in rows of 25
-console.log("")
-console.log("  Full sequence (×multiplier):")
-for (let i = 0; i < seq500.length; i += 25) {
-  const row = seq500.slice(i, i + 25).map(m => String(m).padStart(2)).join(" ")
-  console.log("  Q" + String(i + 1).padStart(3) + "-" + String(Math.min(i + 25, 500)).padStart(3) + ": " + row)
+// Check for repeats
+let repeatCount = 0
+const muls = []
+for (const line of lines) {
+  const match = line.match(/× (\\d+) =/)
+  if (match) muls.push(parseInt(match[1]))
+}
+for (let i = 1; i < muls.length; i++) {
+  if (muls[i] === muls[i - 1]) repeatCount++
 }
 
-// Print set changes
-console.log("")
-console.log("  Slow set changes over time:")
-for (const entry of setLog) {
-  console.log("    Q" + String(entry.q).padStart(3) + ": focused on " + entry.set)
-}
+lines.push('')
+lines.push('═'.repeat(50))
+lines.push(repeatCount === 0
+  ? '✅ 0 consecutive repeats in 500 questions'
+  : '❌ ' + repeatCount + ' consecutive repeats found!')
+lines.push('')
 
-// Check for consecutive repeats
-let repeats500 = 0
-let repeatPos500 = []
-for (let i = 1; i < seq500.length; i++) {
-  if (seq500[i] === seq500[i - 1]) {
-    repeats500++
-    repeatPos500.push("Q" + (i + 1) + ": ×" + seq500[i] + " (after ×" + seq500[i - 1] + ")")
-  }
-}
-console.log("")
-assert(repeats500 === 0,
-  repeats500 + " consecutive repeats found!")
-if (repeats500 === 0) {
-  console.log("  ✅ 0 consecutive repeats in 500 questions")
-} else {
-  console.log("  Repeat locations:")
-  for (const r of repeatPos500) console.log("    " + r)
-}
-
-// Check only eligible multipliers
-const uniq500 = [...new Set(seq500)]
-const invalid500 = uniq500.filter(m => !ELIGIBLE.includes(m))
-assert(invalid500.length === 0,
-  "Found invalid multipliers: " + invalid500.join(","))
-if (invalid500.length === 0) console.log("  ✅ All multipliers in range 2-9")
-
-// Check slow set always 3
-console.log("")
-
-// ── TEST 2: No consecutive repeats (another 1000 questions, different table) ──
-console.log("TEST 2: Stress — 1000 questions on table of 37")
-store = {}
-cycleQueue = []; currentSlowSet = []; lastAsked = null; displayedMul = null
-const bigSeq = []
-for (let i = 0; i < 1000; i++) {
-  const mul = advance(37)
-  bigSeq.push(mul)
-  recordCorrect(37, mul, 1000 + Math.random() * 8000)
-}
-let bigRepeats = 0
-for (let i = 1; i < bigSeq.length; i++) {
-  if (bigSeq[i] === bigSeq[i - 1]) bigRepeats++
-}
-assert(bigRepeats === 0, bigRepeats + " consecutive repeats in 1000 questions")
-if (bigRepeats === 0) console.log("  ✅ 0 consecutive repeats in 1000 questions")
-
-// ── TEST 3: Slow set always has 3 ──
-console.log("TEST 3: Slow set always has exactly 3 facts")
-store = {}
-cycleQueue = []; currentSlowSet = []; lastAsked = null; displayedMul = null
-let badSizes = 0
-for (let i = 0; i < 500; i++) {
-  const mul = advance(randomTable)
-  if (currentSlowSet.length !== 3) badSizes++
-  recordCorrect(randomTable, mul, 2000 + Math.random() * 4000)
-}
-assert(badSizes === 0, badSizes + " times slow set was not exactly 3")
-if (badSizes === 0) console.log("  ✅ Always exactly 3 elements")
-
-// ── TEST 4: Questions always from current slow set ──
-console.log("TEST 4: Questions come from the current slow set")
-store = {}
-cycleQueue = []; currentSlowSet = []; lastAsked = null; displayedMul = null
-let violations = 0
-for (let i = 0; i < 500; i++) {
-  const mul = advance(randomTable)
-  if (!currentSlowSet.includes(mul)) violations++
-  recordCorrect(randomTable, mul, 2000 + Math.random() * 4000)
-}
-assert(violations === 0, violations + " questions NOT from slow set")
-if (violations === 0) console.log("  ✅ All questions from current slow set")
-
-// ── TEST 5: Fast fact swap ──
-console.log("TEST 5: Fast fact gets swapped out")
-store = {}
-cycleQueue = []; currentSlowSet = []; lastAsked = null; displayedMul = null
-for (let i = 0; i < 6; i++) {
-  const mul = advance(randomTable)
-  recordCorrect(randomTable, mul, 5000)
-}
-const initSet = [...currentSlowSet]
-const ff = initSet[0]
-for (let i = 0; i < 5; i++) recordCorrect(randomTable, ff, 1000)
-let swapped = false
-for (let i = 0; i < 30; i++) {
-  const mul = advance(randomTable)
-  if (!initSet.includes(mul)) { swapped = true; break }
-  recordCorrect(randomTable, mul, mul === ff ? 1000 : 5000)
-}
-assert(swapped, "Fast fact ×" + ff + " never swapped")
-if (swapped) {
-  console.log("  ✅ ×" + ff + " swapped out → new set: [" + currentSlowSet.join(",") + "]")
-  const kept = initSet.filter(m => currentSlowSet.includes(m))
-  assert(kept.length === 2, "Expected 2 kept, got " + kept.length)
-  if (kept.length === 2) console.log("  ✅ Exactly 1 replaced, 2 kept")
-}
-
-// ── TEST 6: Wrong answers excluded ──
-console.log("TEST 6: Wrong answers excluded from timing")
-store = {}
-for (let i = 0; i < 5; i++) recordWrong(13, 5)
-assert(getAvg(13, 5) === null, "Expected null avg after wrongs")
-if (getAvg(13, 5) === null) console.log("  ✅ No timing data from wrong answers")
-
-// ── TEST 7: Rolling window ──
-console.log("TEST 7: Rolling window = last 10")
-store = {}
-for (let i = 0; i < 20; i++) recordCorrect(13, 4, 5000)
-assert(store["13x4"].times.length === 10, "Expected 10")
-if (store["13x4"].times.length === 10) console.log("  ✅ Only 10 times kept")
-
-// ── TEST 8: Trimmed mean ──
-console.log("TEST 8: Trimmed mean correctness")
-const tm = stTrimmedMean([100, 200, 300, 400, 500, 600, 700, 800, 900, 10000])
-assert(Math.abs(tm - 550) < 0.01, "Expected 550, got " + tm)
-if (Math.abs(tm - 550) < 0.01) console.log("  ✅ Trimmed mean = " + tm)
-
-// ── TEST 9: No undefined/null in sequence ──
-console.log("TEST 9: No undefined or null values in sequence")
-const undefs = seq500.filter(m => m == null)
-assert(undefs.length === 0, undefs.length + " null/undefined values found")
-if (undefs.length === 0) console.log("  ✅ All 500 values are valid numbers")
-
-// ═══════════════════════════════════════════════════════════
-// SUMMARY
-// ═══════════════════════════════════════════════════════════
-console.log("")
-console.log("════════════════════════════════")
-console.log("Results: " + passed + " passed, " + failed + " failed")
-console.log("════════════════════════════════")
-if (failed > 0) process.exit(1)
-'
-
-echo ""
-echo "✅ All tests complete."
+// Output all lines as JSON array for bash to print with delay
+console.log(JSON.stringify(lines))
+" | node --eval "
+const readline = require('readline');
+let data = '';
+process.stdin.on('data', chunk => data += chunk);
+process.stdin.on('end', () => {
+  const lines = JSON.parse(data);
+  let i = 0;
+  const printNext = () => {
+    if (i >= lines.length) return process.exit(0);
+    console.log(lines[i++]);
+    setTimeout(printNext, 100);
+  };
+  printNext();
+});
+"

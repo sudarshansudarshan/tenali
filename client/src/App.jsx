@@ -4219,9 +4219,12 @@ function SuperTables1App() {
     cycleQueueRef.current = []
     currentSlowSetRef.current = []
     lastAskedRef.current = null
+    displayedMulRef.current = null
     setPhase(1)
     setShuffledTable(genTable(num))
-    setCurrentMul(pickNext(num))
+    const first = pickNext(num)
+    displayedMulRef.current = first
+    setCurrentMul(first)
     setFb(null)
     setStartTime(Date.now())
     setQuestionsAnswered(0)
@@ -4235,26 +4238,41 @@ function SuperTables1App() {
     cycleQueueRef.current = []
     currentSlowSetRef.current = []
     lastAskedRef.current = null
+    displayedMulRef.current = null
     setPhase(2)
     setShuffledTable(genTable(tableNum))
     setFb(null)
-    setCurrentMul(pickNext(tableNum))
+    const first = pickNext(tableNum)
+    displayedMulRef.current = first
+    setCurrentMul(first)
     setStartTime(Date.now())
   }
 
   const advancingRef = useRef(false) // debounce guard
+  const displayedMulRef = useRef(null) // tracks what's actually shown on screen
 
   const advance = () => {
     if (advancingRef.current) return // prevent double-fire from rapid Enter
     advancingRef.current = true
-    setTimeout(() => { advancingRef.current = false }, 100) // unlock after 100ms
+    setTimeout(() => { advancingRef.current = false }, 200) // unlock after 200ms
     setFb(null)
     // Phase 2 auto-completes when all streaks hit 5
     if (phase === 2 && allStreak5(tableNum)) {
       setScreen('done')
       return
     }
-    setCurrentMul(pickNext(tableNum))
+    let next = pickNext(tableNum)
+    // ABSOLUTE last resort: if same as what's on screen, try again
+    if (next === displayedMulRef.current) {
+      next = pickNext(tableNum)
+    }
+    // If STILL same, force a different one from the set
+    if (next === displayedMulRef.current) {
+      const others = currentSlowSetRef.current.filter(m => m !== next)
+      if (others.length > 0) next = others[Math.floor(Math.random() * others.length)]
+    }
+    displayedMulRef.current = next
+    setCurrentMul(next)
     setStartTime(Date.now())
   }
 

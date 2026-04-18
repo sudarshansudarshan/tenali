@@ -4114,67 +4114,70 @@ function SuperTables1App() {
     return true
   }
 
-  // ── Cycling: fixate on 3 facts, swap out one at a time when it gets fast ──
-  const cycleQueueRef = useRef([])
+  // ── Pre-computed sequence: structurally impossible to have consecutive repeats ──
   const currentSlowSetRef = useRef([]) // always exactly 3 facts being drilled
-  const lastAskedRef = useRef(null)
+  const sequenceRef = useRef([])       // pre-built question sequence
+  const seqIndexRef = useRef(-1)       // current position in sequence
 
+  // Build a sequence of N questions from a set of 3, guaranteed no consecutive repeats
+  const buildSequence = (set, count = 30) => {
+    const seq = []
+    let last = null
+    for (let i = 0; i < count; i++) {
+      const candidates = set.filter(m => m !== last)
+      const pick = candidates[Math.floor(Math.random() * candidates.length)]
+      seq.push(pick)
+      last = pick
+    }
+    return seq
+  }
+
+  // Check if any fact in the set got fast, swap it out, rebuild sequence
+  const checkAndSwap = (tbl) => {
+    const set = [...currentSlowSetRef.current]
+    let fastestIdx = -1, fastestAvg = Infinity
+    for (let i = 0; i < set.length; i++) {
+      const d = getStore(); const k = `${tbl}x${set[i]}`
+      const times = d[k] ? d[k].times : []
+      if (times.length >= MIN_CORRECT_TO_JUDGE) {
+        const avg = stTrimmedMean(times)
+        if (avg < fastestAvg) { fastestAvg = avg; fastestIdx = i }
+      }
+    }
+    if (fastestIdx !== -1 && fastestAvg < FAST_THRESHOLD_MS) {
+      const currentSet = new Set(set)
+      const candidates = ELIGIBLE.filter(m => !currentSet.has(m))
+      if (candidates.length > 0) {
+        set[fastestIdx] = candidates[Math.floor(Math.random() * candidates.length)]
+        currentSlowSetRef.current = [...set]
+      }
+    }
+  }
+
+  // Get next question — just advance the index, sequence is pre-built
   const pickNext = (tbl) => {
-    if (cycleQueueRef.current.length === 0) {
+    seqIndexRef.current++
+    // If we've exhausted the sequence, check for swaps and rebuild
+    if (seqIndexRef.current >= sequenceRef.current.length) {
       if (currentSlowSetRef.current.length === 3) {
-        // After a full rotation: check if any fact got "super fast"
-        const set = [...currentSlowSetRef.current]
-        let fastestIdx = -1, fastestAvg = Infinity
-        for (let i = 0; i < set.length; i++) {
-          const d = getStore(); const k = `${tbl}x${set[i]}`
-          const times = d[k] ? d[k].times : []
-          if (times.length >= MIN_CORRECT_TO_JUDGE) {
-            const avg = stTrimmedMean(times)
-            if (avg < fastestAvg) { fastestAvg = avg; fastestIdx = i }
-          }
-        }
-        // If the fastest is under threshold, swap it out with a random eligible fact
-        if (fastestIdx !== -1 && fastestAvg < FAST_THRESHOLD_MS) {
-          const currentSet = new Set(set)
-          const candidates = ELIGIBLE.filter(m => !currentSet.has(m))
-          if (candidates.length > 0) {
-            set[fastestIdx] = candidates[Math.floor(Math.random() * candidates.length)]
-            currentSlowSetRef.current = [...set]
-          }
-        }
+        checkAndSwap(tbl)
       } else {
-        // First time: pick 3 slowest (or random if no data)
         currentSlowSetRef.current = getSlowest3(tbl)
       }
-      // Refill queue: shuffle the 3 facts
-      let shuffled = shuffle([...currentSlowSetRef.current])
-      // Prevent consecutive repeat across cycle boundaries
-      if (shuffled.length > 1 && shuffled[0] === lastAskedRef.current) {
-        const swapIdx = 1 + Math.floor(Math.random() * (shuffled.length - 1))
-        ;[shuffled[0], shuffled[swapIdx]] = [shuffled[swapIdx], shuffled[0]]
+      // Build new sequence, ensuring first element != last element of old sequence
+      const lastInOld = sequenceRef.current.length > 0
+        ? sequenceRef.current[sequenceRef.current.length - 1]
+        : null
+      let newSeq = buildSequence(currentSlowSetRef.current, 30)
+      // Ensure no repeat at the boundary
+      if (newSeq[0] === lastInOld) {
+        const candidates = currentSlowSetRef.current.filter(m => m !== lastInOld)
+        if (candidates.length > 0) newSeq[0] = candidates[Math.floor(Math.random() * candidates.length)]
       }
-      cycleQueueRef.current = shuffled
+      sequenceRef.current = newSeq
+      seqIndexRef.current = 0
     }
-    // Pop next from queue — ABSOLUTE guard: NEVER return same as last asked
-    let next = cycleQueueRef.current.shift()
-    if (next === lastAskedRef.current) {
-      if (cycleQueueRef.current.length > 0) {
-        // Put it back at end, take the next different one
-        cycleQueueRef.current.push(next)
-        next = cycleQueueRef.current.shift()
-      } else {
-        // Queue is empty and we got a repeat — pick a different one from the set
-        const others = currentSlowSetRef.current.filter(m => m !== next)
-        if (others.length > 0) {
-          const picked = others[Math.floor(Math.random() * others.length)]
-          // Rebuild queue with the rest (excluding what we just picked)
-          cycleQueueRef.current = shuffle(currentSlowSetRef.current.filter(m => m !== picked))
-          next = picked
-        }
-      }
-    }
-    lastAskedRef.current = next
-    return next
+    return sequenceRef.current[seqIndexRef.current]
   }
 
   // ── Styles (using Tenali CSS vars) ──
@@ -4215,9 +4218,9 @@ function SuperTables1App() {
     for (let m = 1; m <= 10; m++) delete d[`${num}x${m}`]
     setStore(d)
     // reset cycling state
-    cycleQueueRef.current = []
     currentSlowSetRef.current = []
-    lastAskedRef.current = null
+    sequenceRef.current = []
+    seqIndexRef.current = -1
     displayedMulRef.current = null
     setPhase(1)
     setShuffledTable(genTable(num))
@@ -4234,9 +4237,9 @@ function SuperTables1App() {
 
   const goPhase2 = () => {
     // reset cycling state for phase 2
-    cycleQueueRef.current = []
     currentSlowSetRef.current = []
-    lastAskedRef.current = null
+    sequenceRef.current = []
+    seqIndexRef.current = -1
     displayedMulRef.current = null
     setPhase(2)
     setShuffledTable(genTable(tableNum))
@@ -4247,28 +4250,18 @@ function SuperTables1App() {
     startTimeRef.current = Date.now()
   }
 
-  const advancingRef = useRef(false) // debounce guard
-  const displayedMulRef = useRef(null) // tracks what's actually shown on screen
+  const displayedMulRef = useRef(null)
 
   const advance = () => {
-    if (advancingRef.current) return // prevent double-fire
-    advancingRef.current = true
-    setTimeout(() => { advancingRef.current = false }, 300)
     setFb(null)
     if (phase === 2 && allStreak5(tableNum)) {
       setScreen('done')
       return
     }
-    let next = pickNext(tableNum)
-    if (next === displayedMulRef.current) next = pickNext(tableNum)
-    if (next == null || next === displayedMulRef.current) {
-      const others = currentSlowSetRef.current.filter(m => m !== displayedMulRef.current)
-      if (others.length > 0) next = others[Math.floor(Math.random() * others.length)]
-    }
+    // pickNext just advances an index in a pre-built sequence — no repeat possible
+    const next = pickNext(tableNum)
     displayedMulRef.current = next
-    lastAskedRef.current = next
     setCurrentMul(next)
-    // Set startTime LAST, synchronously via ref — no stale closures possible
     startTimeRef.current = Date.now()
   }
 

@@ -4252,27 +4252,28 @@ function SuperTables1App() {
   const displayedMulRef = useRef(null) // tracks what's actually shown on screen
 
   const advance = () => {
-    if (advancingRef.current) return // prevent double-fire from rapid Enter
+    if (advancingRef.current) return // prevent double-fire
     advancingRef.current = true
-    setTimeout(() => { advancingRef.current = false }, 200) // unlock after 200ms
+    setTimeout(() => { advancingRef.current = false }, 300)
     setFb(null)
-    // Phase 2 auto-completes when all streaks hit 5
     if (phase === 2 && allStreak5(tableNum)) {
       setScreen('done')
       return
     }
-    let next = pickNext(tableNum)
-    // ABSOLUTE last resort: if same as what's on screen, try again
-    if (next === displayedMulRef.current) {
-      next = pickNext(tableNum)
-    }
-    // If STILL same, force a different one from the set
-    if (next === displayedMulRef.current) {
-      const others = currentSlowSetRef.current.filter(m => m !== next)
-      if (others.length > 0) next = others[Math.floor(Math.random() * others.length)]
-    }
-    displayedMulRef.current = next
-    setCurrentMul(next)
+    // Use callback form of setState to guarantee we see the REAL current value
+    setCurrentMul(prev => {
+      let next = pickNext(tableNum)
+      // Guard 1: check against previous React state value
+      if (next === prev) next = pickNext(tableNum)
+      // Guard 2: check against displayedMulRef
+      if (next === prev || next === displayedMulRef.current) {
+        const others = currentSlowSetRef.current.filter(m => m !== prev && m !== displayedMulRef.current)
+        if (others.length > 0) next = others[Math.floor(Math.random() * others.length)]
+      }
+      displayedMulRef.current = next
+      lastAskedRef.current = next
+      return next
+    })
     setStartTime(Date.now())
   }
 
@@ -4298,9 +4299,16 @@ function SuperTables1App() {
   useEffect(() => { if (fb && nextBtnRef.current) nextBtnRef.current.focus() }, [fb])
   useEffect(() => {
     if (!fb || screen !== 'drill') return
-    const handler = (e) => { if (e.key === 'Enter') { e.preventDefault(); advance() } }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    const handler = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        advance()
+      }
+    }
+    // Use capture phase so this fires FIRST and stops the button click from also firing advance
+    window.addEventListener('keydown', handler, true)
+    return () => window.removeEventListener('keydown', handler, true)
   }, [fb, screen, currentMul, phase, tableNum, questionsAnswered])
 
   // ── Performance chart (same as SuperTables but using st1_data) ──

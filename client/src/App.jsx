@@ -4155,12 +4155,23 @@ function SuperTables1App() {
       }
       cycleQueueRef.current = shuffled
     }
-    // Pop next from queue — hard guard: NEVER return same as last asked
+    // Pop next from queue — ABSOLUTE guard: NEVER return same as last asked
     let next = cycleQueueRef.current.shift()
-    if (next === lastAskedRef.current && cycleQueueRef.current.length > 0) {
-      // Put it back at the end, take the next different one instead
-      cycleQueueRef.current.push(next)
-      next = cycleQueueRef.current.shift()
+    if (next === lastAskedRef.current) {
+      if (cycleQueueRef.current.length > 0) {
+        // Put it back at end, take the next different one
+        cycleQueueRef.current.push(next)
+        next = cycleQueueRef.current.shift()
+      } else {
+        // Queue is empty and we got a repeat — pick a different one from the set
+        const others = currentSlowSetRef.current.filter(m => m !== next)
+        if (others.length > 0) {
+          const picked = others[Math.floor(Math.random() * others.length)]
+          // Rebuild queue with the rest (excluding what we just picked)
+          cycleQueueRef.current = shuffle(currentSlowSetRef.current.filter(m => m !== picked))
+          next = picked
+        }
+      }
     }
     lastAskedRef.current = next
     return next

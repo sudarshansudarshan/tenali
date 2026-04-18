@@ -4403,6 +4403,10 @@ function SuperTables1App() {
 
   // ── DRILL ──
   if (screen === 'drill') {
+    // Safety: if slow set got cleared somehow, refill it
+    if (currentSlowSetRef.current.length === 0 && tableNum) {
+      currentSlowSetRef.current = getSlowest3(tableNum)
+    }
     const slow3 = new Set(currentSlowSetRef.current)
     const table = genTable(tableNum)
     const correct = tableNum * currentMul

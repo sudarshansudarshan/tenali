@@ -61,80 +61,76 @@ const getSlowest3 = (tbl) => {
   return scored.slice(0, 3).map(s => s.m)
 }
 
-let cycleQueue = []
+// ── Pre-computed sequence system (matches App.jsx exactly) ──
 let currentSlowSet = []
-let lastAsked = null
-let displayedMul = null
+let sequence = []
+let seqIndex = -1
+
+const buildSequence = (set, count = 30) => {
+  const seq = []
+  let last = null
+  for (let i = 0; i < count; i++) {
+    const candidates = set.filter(m => m !== last)
+    const pick = candidates[Math.floor(Math.random() * candidates.length)]
+    seq.push(pick)
+    last = pick
+  }
+  return seq
+}
+
+const checkAndSwap = (tbl) => {
+  const set = [...currentSlowSet]
+  let fastestIdx = -1, fastestAvg = Infinity
+  for (let i = 0; i < set.length; i++) {
+    const k = tbl + 'x' + set[i]
+    const times = store[k] ? store[k].times : []
+    if (times.length >= MIN_CORRECT_TO_JUDGE) {
+      const avg = stTrimmedMean(times)
+      if (avg < fastestAvg) { fastestAvg = avg; fastestIdx = i }
+    }
+  }
+  if (fastestIdx !== -1 && fastestAvg < FAST_THRESHOLD_MS) {
+    const currentS = new Set(set)
+    const candidates = ELIGIBLE.filter(m => !currentS.has(m))
+    if (candidates.length > 0) {
+      set[fastestIdx] = candidates[Math.floor(Math.random() * candidates.length)]
+      currentSlowSet = [...set]
+    }
+  }
+}
 
 const pickNext = (tbl) => {
-  if (cycleQueue.length === 0) {
+  seqIndex++
+  if (seqIndex >= sequence.length) {
     if (currentSlowSet.length === 3) {
-      const set = [...currentSlowSet]
-      let fastestIdx = -1, fastestAvg = Infinity
-      for (let i = 0; i < set.length; i++) {
-        const k = tbl + 'x' + set[i]
-        const times = store[k] ? store[k].times : []
-        if (times.length >= MIN_CORRECT_TO_JUDGE) {
-          const avg = stTrimmedMean(times)
-          if (avg < fastestAvg) { fastestAvg = avg; fastestIdx = i }
-        }
-      }
-      if (fastestIdx !== -1 && fastestAvg < FAST_THRESHOLD_MS) {
-        const currentS = new Set(set)
-        const candidates = ELIGIBLE.filter(m => !currentS.has(m))
-        if (candidates.length > 0) {
-          set[fastestIdx] = candidates[Math.floor(Math.random() * candidates.length)]
-          currentSlowSet = [...set]
-        }
-      }
+      checkAndSwap(tbl)
     } else {
       currentSlowSet = getSlowest3(tbl)
     }
-    let shuffled = shuffle([...currentSlowSet])
-    if (shuffled.length > 1 && shuffled[0] === lastAsked) {
-      const swapIdx = 1 + Math.floor(Math.random() * (shuffled.length - 1))
-      ;[shuffled[0], shuffled[swapIdx]] = [shuffled[swapIdx], shuffled[0]]
+    const lastInOld = sequence.length > 0 ? sequence[sequence.length - 1] : null
+    let newSeq = buildSequence(currentSlowSet, 30)
+    if (newSeq[0] === lastInOld) {
+      const candidates = currentSlowSet.filter(m => m !== lastInOld)
+      if (candidates.length > 0) newSeq[0] = candidates[Math.floor(Math.random() * candidates.length)]
     }
-    cycleQueue = shuffled
+    sequence = newSeq
+    seqIndex = 0
   }
-  let next = cycleQueue.shift()
-  if (next === lastAsked) {
-    if (cycleQueue.length > 0) {
-      cycleQueue.push(next)
-      next = cycleQueue.shift()
-    } else {
-      const others = currentSlowSet.filter(m => m !== next)
-      if (others.length > 0) {
-        const picked = others[Math.floor(Math.random() * others.length)]
-        cycleQueue = shuffle(currentSlowSet.filter(m => m !== picked))
-        next = picked
-      }
-    }
-  }
-  lastAsked = next
-  return next
+  return sequence[seqIndex]
 }
 
+// advance() — now trivial, just calls pickNext
 const advance = (tbl) => {
-  let next = pickNext(tbl)
-  if (next === displayedMul) next = pickNext(tbl)
-  if (next == null || next === displayedMul) {
-    const others = currentSlowSet.filter(m => m !== displayedMul)
-    if (others.length > 0) next = others[Math.floor(Math.random() * others.length)]
-  }
-  displayedMul = next
-  lastAsked = next
-  return next
+  return pickNext(tbl)
 }
 
 // ── Run simulation ──
 const tbl = TABLE_ARG > 0 ? TABLE_ARG : 2 + Math.floor(Math.random() * 49)
 const lines = []
 let prevSet = ''
-let repeats = 0
 
 lines.push('Table of ' + tbl + ' — 500 questions')
-lines.push('═'.repeat(50))
+lines.push('='.repeat(50))
 lines.push('')
 
 for (let i = 0; i < 500; i++) {
@@ -142,58 +138,54 @@ for (let i = 0; i < 500; i++) {
   const answer = tbl * mul
   const setStr = currentSlowSet.join(', ')
 
-  // Check consecutive repeat
-  let flag = ''
-  if (i > 0 && lines.length > 3) {
-    const prevMul = lines[lines.length - 1].match(/× (\\d+)/);
-    // we track via displayedMul instead
-  }
-
-  // Detect set change
   if (setStr !== prevSet) {
-    if (prevSet !== '') lines.push('  ┌─ SET CHANGED → focusing on [' + setStr + ']')
-    else lines.push('  ┌─ Starting set: [' + setStr + ']')
+    if (prevSet !== '') lines.push('  SET CHANGED -> focusing on [' + setStr + ']')
+    else lines.push('  Starting set: [' + setStr + ']')
     prevSet = setStr
   }
 
   const qNum = String(i + 1).padStart(3)
-
-  // Simulate answer: 70% fast correct, 20% slow correct, 10% wrong
   const r = Math.random()
-  let status, ms
+  let status
   if (r < 0.1) {
     recordWrong(tbl, mul)
-    status = '  ✗ WRONG'
-    ms = 0
+    status = '  WRONG'
   } else if (r < 0.3) {
-    ms = 4000 + Math.floor(Math.random() * 3000)
+    const ms = 4000 + Math.floor(Math.random() * 3000)
     recordCorrect(tbl, mul, ms)
     status = '  ' + (ms / 1000).toFixed(1) + 's (slow)'
   } else {
-    ms = 1500 + Math.floor(Math.random() * 2000)
+    const ms = 1500 + Math.floor(Math.random() * 2000)
     recordCorrect(tbl, mul, ms)
     status = '  ' + (ms / 1000).toFixed(1) + 's'
   }
 
-  lines.push('  Q' + qNum + ':  ' + tbl + ' × ' + mul + ' = ' + answer + status)
+  lines.push('  Q' + qNum + ':  ' + tbl + ' x ' + mul + ' = ' + answer + status)
 }
 
 // Check for repeats
-let repeatCount = 0
 const muls = []
 for (const line of lines) {
-  const match = line.match(/× (\\d+) =/)
+  const match = line.match(/x (\\d+) =/)
   if (match) muls.push(parseInt(match[1]))
 }
+let repeatCount = 0
+let repeatDetails = []
 for (let i = 1; i < muls.length; i++) {
-  if (muls[i] === muls[i - 1]) repeatCount++
+  if (muls[i] === muls[i - 1]) {
+    repeatCount++
+    repeatDetails.push('  Q' + (i + 1) + ': x' + muls[i] + ' repeated')
+  }
 }
 
 lines.push('')
-lines.push('═'.repeat(50))
-lines.push(repeatCount === 0
-  ? '✅ 0 consecutive repeats in 500 questions'
-  : '❌ ' + repeatCount + ' consecutive repeats found!')
+lines.push('='.repeat(50))
+if (repeatCount === 0) {
+  lines.push('PASS: 0 consecutive repeats in 500 questions')
+} else {
+  lines.push('FAIL: ' + repeatCount + ' consecutive repeats found!')
+  for (const d of repeatDetails) lines.push(d)
+}
 lines.push('')
 
 // Output all lines as JSON array for bash to print with delay

@@ -16,22 +16,17 @@ for lockfile in .git/index.lock .git/HEAD.lock .git/refs/heads/*.lock; do
   fi
 done
 
-# 2. Check if there's anything to commit
-if git diff --quiet && git diff --cached --quiet; then
-  echo "✅ Nothing to commit — working tree clean."
-  exit 0
+# 2. Stage & commit if there are changes
+git add -A
+if git diff --cached --quiet; then
+  echo "✅ Nothing new to commit."
+else
+  MSG="${1:-auto-commit $(date '+%Y-%m-%d %H:%M:%S')}"
+  echo "📝 Committing: $MSG"
+  git commit -m "$MSG"
 fi
 
-# 3. Stage all changes
-echo "📦 Staging changes..."
-git add -A
-
-# 4. Commit
-MSG="${1:-auto-commit $(date '+%Y-%m-%d %H:%M:%S')}"
-echo "📝 Committing: $MSG"
-git commit -m "$MSG"
-
-# 5. Push
+# 3. Push (always — even if nothing new was committed, there may be unpushed commits)
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 echo "🚀 Pushing to origin/$BRANCH..."
 git push origin "$BRANCH"

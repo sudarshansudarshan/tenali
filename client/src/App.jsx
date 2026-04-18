@@ -8006,12 +8006,23 @@ const Sup = ({ base, exp }) => (
   <span>{base}<sup style={{ fontSize: '0.7em' }}>{exp}</sup></span>
 )
 
-const Frac = ({ n, d }) => (
-  <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', verticalAlign: 'middle', margin: '0 4px', lineHeight: 1.1 }}>
-    <span style={{ borderBottom: '2px solid currentColor', padding: '0 4px 2px' }}>{n}</span>
-    <span style={{ padding: '2px 4px 0' }}>{d}</span>
-  </span>
-)
+const Frac = ({ n, d, size }) => {
+  const sz = size || '1em'
+  return (
+    <span style={{
+      display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+      verticalAlign: 'middle', margin: '0 6px', lineHeight: 1.2,
+      fontSize: sz, fontStyle: 'italic',
+    }}>
+      <span style={{ padding: '2px 8px 3px', fontSize: '0.85em' }}>{n}</span>
+      <span style={{
+        width: '100%', height: '2px', background: 'currentColor',
+        borderRadius: '1px', margin: '1px 0',
+      }} />
+      <span style={{ padding: '3px 8px 2px', fontSize: '0.85em' }}>{d}</span>
+    </span>
+  )
+}
 
 const generateQuestion = (level) => {
   if (level >= 1 && level <= 5) return generateExponentQuestion(level)
@@ -8043,9 +8054,9 @@ const generateExponentQuestion = (level) => {
     const m = 5 + Math.floor(Math.random() * 4)
     const n = 2 + Math.floor(Math.random() * 3)
     const correct = m - n
-    const questionJSX = <span><Sup base="a" exp={m} /> / <Sup base="a" exp={n} /> = ?</span>
+    const questionJSX = <span><Frac n={<Sup base="a" exp={m} />} d={<Sup base="a" exp={n} />} /> = ?</span>
     const distractors = [
-      { jsx: <Sup base="a" exp={m / n} />, isCorrect: false },
+      { jsx: <Sup base="a" exp={Math.round(m / n)} />, isCorrect: false },
       { jsx: <Sup base="a" exp={m + n} />, isCorrect: false },
       { jsx: <Sup base="a" exp={n} />, isCorrect: false }
     ]
@@ -8092,7 +8103,7 @@ const generateExponentQuestion = (level) => {
     const b = 2 + Math.floor(Math.random() * 3)
     const c = 1 + Math.floor(Math.random() * 2)
     const correct = a + b - c
-    const questionJSX = <span>(<Sup base="a" exp={a} /> · <Sup base="a" exp={b} />) / <Sup base="a" exp={c} /> = ?</span>
+    const questionJSX = <span><Frac n={<span><Sup base="a" exp={a} /> · <Sup base="a" exp={b} /></span>} d={<Sup base="a" exp={c} />} /> = ?</span>
     const distractors = [
       { jsx: <Sup base="a" exp={a + b} />, isCorrect: false },
       { jsx: <Sup base="a" exp={a + b + c} />, isCorrect: false },
@@ -8121,19 +8132,20 @@ const generateNegativeExponentQuestion = (level) => {
   }
 
   if (level === 7) {
-    // (p/q)^-2 = (q/p)^2
-    const p = 2 + Math.floor(Math.random() * 5)
-    const q = 2 + Math.floor(Math.random() * 5)
-    const exp = 2 + Math.floor(Math.random() * 2)
-    const pExp = p * exp
-    const qExp = q * exp
-    const questionJSX = <span>(<Frac n={p} d={q} /><sup style={{ fontSize: '0.7em' }}>-{exp}</sup>) = ?</span>
+    // (p/q)^-exp = (q/p)^exp = q^exp / p^exp
+    const p = 2 + Math.floor(Math.random() * 4)
+    let q = 2 + Math.floor(Math.random() * 4)
+    if (q === p) q = p + 1 // avoid p/p
+    const exp = 2
+    const numResult = Math.pow(q, exp)
+    const denResult = Math.pow(p, exp)
+    const questionJSX = <span>(<Frac n={p} d={q} />)<sup style={{ fontSize: '0.7em' }}>⁻{exp}</sup> = ?</span>
     const distractors = [
-      { jsx: <Frac n={p} d={q} />, isCorrect: false },
+      { jsx: <Frac n={Math.pow(p, exp)} d={Math.pow(q, exp)} />, isCorrect: false },
       { jsx: <Frac n={p * exp} d={q * exp} />, isCorrect: false },
-      { jsx: <span>-<Frac n={qExp} d={pExp} /></span>, isCorrect: false }
+      { jsx: <span>-<Frac n={numResult} d={denResult} /></span>, isCorrect: false }
     ]
-    const choices = [{ jsx: <Frac n={qExp} d={pExp} />, isCorrect: true }, ...distractors].sort(() => Math.random() - 0.5)
+    const choices = [{ jsx: <Frac n={numResult} d={denResult} />, isCorrect: true }, ...distractors].sort(() => Math.random() - 0.5)
     return { questionJSX, choices, levelName: `${topicName} - Level ${level}` }
   }
 

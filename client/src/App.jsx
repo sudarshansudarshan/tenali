@@ -4416,31 +4416,30 @@ function SuperTables1App() {
             </div>
           </div>
 
-          {/* Phase 1: Shuffled lookup table — split into 2 rows of 5 */}
+          {/* Phase 1: Lookup table — only the 3 facts currently being practiced */}
           {phase === 1 && (
             <div style={{ marginBottom: 20 }}>
-              {[shuffledTable.slice(0, 5), shuffledTable.slice(5)].map((half, hi) => (
-                <table key={hi} style={{ margin: '0 auto', borderCollapse: 'collapse', marginBottom: hi === 0 ? 4 : 0, width: '100%', tableLayout: 'fixed' }}>
-                  <thead>
-                    <tr>
-                      {half.map((e, i) => (
-                        <th key={i} style={slow3.has(e.multiplier) ? S.thSlow : S.th}>
-                          {e.expression}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      {half.map((e, i) => (
-                        <td key={i} style={slow3.has(e.multiplier) ? S.tdSlow : S.td}>
-                          {e.answer}
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              ))}
+              {(() => {
+                const focused = shuffledTable.filter(e => slow3.has(e.multiplier))
+                return (
+                  <table style={{ margin: '0 auto', borderCollapse: 'collapse', width: 'auto', tableLayout: 'fixed' }}>
+                    <thead>
+                      <tr>
+                        {focused.map((e, i) => (
+                          <th key={i} style={S.thSlow}>{e.expression}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        {focused.map((e, i) => (
+                          <td key={i} style={S.tdSlow}>{e.answer}</td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                )
+              })()}
               {/* Phase 2 button — prominently below the lookup table */}
               <div style={{ textAlign: 'center', marginTop: 12 }}>
                 <button onClick={goPhase2} style={{

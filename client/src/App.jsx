@@ -27,6 +27,26 @@ import './App.css'
 // API base URL from environment variables (Vite)
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
+// App version — increment with each commit
+const TENALI_VERSION = '1.0.2'
+const TENALI_BUILD_DATE = '2026-04-18 11:33 IST'
+
+// Inject version badge into DOM once (appears on all routes)
+;(() => {
+  if (typeof document !== 'undefined' && !document.getElementById('tenali-version')) {
+    const el = document.createElement('div')
+    el.id = 'tenali-version'
+    Object.assign(el.style, {
+      position: 'fixed', top: '8px', right: '12px', zIndex: '9999',
+      fontSize: '0.65rem', opacity: '0.55', pointerEvents: 'none',
+      textAlign: 'right', lineHeight: '1.4', fontFamily: 'system-ui, sans-serif',
+      color: 'var(--clr-text-soft)',
+    })
+    el.innerHTML = `<div>v${TENALI_VERSION}</div><div>${TENALI_BUILD_DATE}</div>`
+    document.body.appendChild(el)
+  }
+})()
+
 // Default number of questions for quizzes
 const DEFAULT_TOTAL = 20
 // Delay before auto-advancing to next question after correct answer (ms)

@@ -1,146 +1,131 @@
-const ELIGIBLE = [2, 3, 4, 5, 6, 7, 8, 9]
-const FAST_THRESHOLD_MS = 3000
-const MIN_CORRECT_TO_JUDGE = 3
-let store = {}
+// test_quick.js — Tests the deterministic sliding window logic
+// Verifies: no consecutive repeats, only valid multipliers, correct window cycling
 
-const rc = (t, m, ms) => {
-  const k = t + 'x' + m
-  if (store[k] === undefined) store[k] = { times: [], streak: 0 }
-  store[k].times.push(ms)
-  if (store[k].times.length > 10) store[k].times = store[k].times.slice(-10)
-  store[k].streak = (store[k].streak || 0) + 1
-}
-const stTM = (ts) => {
-  if (ts.length <= 2) return ts.reduce((a, b) => a + b, 0) / ts.length
-  const s = [...ts].sort((a, b) => a - b)
-  const t = Math.max(1, Math.round(s.length * 0.1))
-  const m = s.slice(t, s.length - t)
-  return m.length ? m.reduce((a, b) => a + b, 0) / m.length : s[Math.floor(s.length / 2)]
-}
-const gA = (t, m) => {
-  const k = t + 'x' + m
-  const i = store[k]
-  if (i === undefined || i.times.length === 0) return null
-  return stTM(i.times)
-}
-const sh = (a) => {
-  const r = [...a]
-  for (let i = r.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    const tmp = r[i]; r[i] = r[j]; r[j] = tmp
-  }
-  return r
-}
-const gS3 = (t) => {
-  const s = []
-  for (const m of ELIGIBLE) {
-    const a = gA(t, m)
-    s.push({ m, avg: a !== null ? a : 99999 })
-  }
-  if (s.every(x => x.avg === 99999)) return sh(s.map(x => x.m)).slice(0, 3)
-  s.sort((a, b) => b.avg - a.avg)
-  return s.slice(0, 3).map(x => x.m)
-}
+const MULS = [2, 3, 4, 5, 6, 7, 8, 9]
+const ROUNDS_PER_WINDOW = 10
 
-let cSS = []
-let rotCount = 0
-
-const cAS = (t) => {
-  const s = [...cSS]
-  let fi = -1, fa = Infinity
-  for (let i = 0; i < s.length; i++) {
-    const k = t + 'x' + s[i]
-    const ts = store[k] ? store[k].times : []
-    if (ts.length >= MIN_CORRECT_TO_JUDGE) {
-      const a = stTM(ts)
-      if (a < fa) { fa = a; fi = i }
+const buildFullSequence = () => {
+  const seq = []
+  for (let w = 0; w < 20; w++) {
+    const startIdx = w % MULS.length
+    const window = [
+      MULS[startIdx % MULS.length],
+      MULS[(startIdx + 1) % MULS.length],
+      MULS[(startIdx + 2) % MULS.length],
+    ]
+    for (let r = 0; r < ROUNDS_PER_WINDOW; r++) {
+      seq.push({ mul: window[r % 3], window: [...window] })
     }
   }
-  if (fi !== -1 && fa < FAST_THRESHOLD_MS) {
-    const cs = new Set(s)
-    const cd = ELIGIBLE.filter(m => cs.has(m) === false)
-    if (cd.length > 0) {
-      s[fi] = cd[Math.floor(Math.random() * cd.length)]
-      cSS = [...s]
-    }
-  }
+  return seq
 }
 
-// pickNext takes exclude param = what user currently sees
-const pN = (t, exclude) => {
-  if (cSS.length !== 3) cSS = gS3(t)
-  rotCount++
-  if (rotCount >= 9) { cAS(t); rotCount = 0 }
-  const candidates = cSS.filter(m => m !== exclude)
-  return candidates.length > 0
-    ? candidates[Math.floor(Math.random() * candidates.length)]
-    : cSS[Math.floor(Math.random() * cSS.length)]
-}
-
-// advance with debounce — mirrors React code exactly
-let displayed = null
-let locked = false
-
-const advance = (t) => {
-  if (locked) return null // blocked by debounce
-  locked = true
-  // In real code: setTimeout(() => locked = false, 300)
-  // For double-fire test, we unlock manually after each "round"
-  const next = pN(t, displayed)
-  displayed = next
-  return next
-}
-
-// TEST 1: Normal — 1000 questions (with debounce, so single fire)
-console.log('=== With debounce (single fire per round) ===')
-store = {}; cSS = []; rotCount = 0; displayed = null; locked = false
-const muls = []
-for (let i = 0; i < 1000; i++) {
-  locked = false // unlock for next round
-  const m = advance(13)
-  muls.push(m)
-  rc(13, m, 1000 + Math.random() * 8000)
-}
+// TEST 1: No consecutive repeats in single pass
+console.log('=== TEST 1: No consecutive repeats ===')
+const seq = buildFullSequence()
 let reps = 0
-for (let i = 1; i < muls.length; i++) {
-  if (muls[i] === muls[i - 1]) reps++
+for (let i = 1; i < seq.length; i++) {
+  if (seq[i].mul === seq[i - 1].mul) {
+    reps++
+    console.log(`  REPEAT at position ${i}: x${seq[i].mul} after x${seq[i - 1].mul}`)
+  }
 }
-console.log('TEST 1 — Normal 1000 questions, consecutive repeats:', reps)
+console.log(`Result: ${reps} consecutive repeats in ${seq.length} questions`)
+console.log(reps === 0 ? 'PASS' : 'FAIL')
+console.log()
 
-// TEST 2: DOUBLE-FIRE with debounce — second call is BLOCKED
-store = {}; cSS = []; rotCount = 0; displayed = null; locked = false
-const muls2 = []
-for (let i = 0; i < 1000; i++) {
-  locked = false // unlock for next round
-  const m1 = advance(13)     // first fire goes through
-  const m2 = advance(13)     // second fire — BLOCKED by debounce, returns null
-  muls2.push(m1)             // user sees m1 (m2 was blocked)
-  rc(13, m1, 2000 + Math.random() * 3000)
-}
-let reps2 = 0
-for (let i = 1; i < muls2.length; i++) {
-  if (muls2[i] === muls2[i - 1]) reps2++
-}
-console.log('TEST 2 — DOUBLE-FIRE with debounce, consecutive repeats:', reps2)
+// TEST 2: Only valid multipliers (2-9)
+console.log('=== TEST 2: Only valid multipliers ===')
+const invalid = seq.filter(e => MULS.indexOf(e.mul) === -1)
+console.log(`Result: ${invalid.length} invalid multipliers`)
+console.log(invalid.length === 0 ? 'PASS' : 'FAIL')
+console.log()
 
-// TEST 3: Without debounce (worst case) — pickNext still uses exclude
-store = {}; cSS = []; rotCount = 0; displayed = null
-const muls3 = []
-for (let i = 0; i < 1000; i++) {
-  // No debounce, both fires go through
-  const m1 = pN(13, displayed)
-  displayed = m1
-  const m2 = pN(13, displayed)
-  displayed = m2
-  muls3.push(m2) // user sees m2
-  rc(13, m2, 2000 + Math.random() * 3000)
+// TEST 3: Windows slide correctly: [2,3,4] -> [3,4,5] -> ... -> [8,9,2] -> [9,2,3] -> [2,3,4]
+console.log('=== TEST 3: Window sliding pattern ===')
+let windowChanges = []
+let prevWindow = null
+for (const entry of seq) {
+  const wStr = entry.window.join(',')
+  if (wStr !== prevWindow) {
+    windowChanges.push(entry.window)
+    prevWindow = wStr
+  }
 }
-let reps3 = 0
-for (let i = 1; i < muls3.length; i++) {
-  if (muls3[i] === muls3[i - 1]) reps3++
+console.log('Windows encountered:')
+for (const w of windowChanges) {
+  console.log(`  [${w.join(', ')}]`)
 }
-console.log('TEST 3 — NO debounce double-fire (worst case), consecutive repeats:', reps3)
+// First 8 should be: [2,3,4], [3,4,5], [4,5,6], [5,6,7], [6,7,8], [7,8,9], [8,9,2], [9,2,3]
+const expected = [
+  [2,3,4], [3,4,5], [4,5,6], [5,6,7], [6,7,8], [7,8,9], [8,9,2], [9,2,3]
+]
+let windowOk = true
+for (let i = 0; i < Math.min(expected.length, windowChanges.length); i++) {
+  if (expected[i].join(',') !== windowChanges[i].join(',')) {
+    console.log(`  MISMATCH at window ${i}: expected [${expected[i]}] got [${windowChanges[i]}]`)
+    windowOk = false
+  }
+}
+console.log(windowOk ? 'PASS' : 'FAIL')
+console.log()
 
-// TEST 4: Only ELIGIBLE
-const all = [...muls, ...muls2, ...muls3]
-console.log('TEST 4 — Invalid multipliers:', all.filter(m => ELIGIBLE.indexOf(m) === -1).length)
+// TEST 4: Each window has exactly 10 rounds
+console.log('=== TEST 4: 10 rounds per window ===')
+let windowCounts = {}
+let currentW = null
+for (const entry of seq) {
+  const wStr = entry.window.join(',')
+  if (wStr !== currentW) {
+    currentW = wStr
+    if (!windowCounts[wStr]) windowCounts[wStr] = 0
+  }
+  windowCounts[wStr]++
+}
+let countOk = true
+for (const [w, count] of Object.entries(windowCounts)) {
+  if (count % ROUNDS_PER_WINDOW !== 0) {
+    console.log(`  Window [${w}]: ${count} rounds (not multiple of ${ROUNDS_PER_WINDOW})`)
+    countOk = false
+  }
+}
+console.log(countOk ? 'PASS' : 'FAIL')
+console.log()
+
+// TEST 5: Cycling pattern within a window is a,b,c,a,b,c,a,b,c,a
+console.log('=== TEST 5: Cycling pattern within window ===')
+const firstWindow = seq.slice(0, ROUNDS_PER_WINDOW)
+const w = firstWindow[0].window
+const expectedPattern = []
+for (let r = 0; r < ROUNDS_PER_WINDOW; r++) expectedPattern.push(w[r % 3])
+const actualPattern = firstWindow.map(e => e.mul)
+const patternMatch = expectedPattern.join(',') === actualPattern.join(',')
+console.log(`  Expected: ${expectedPattern.join(',')}`)
+console.log(`  Actual:   ${actualPattern.join(',')}`)
+console.log(patternMatch ? 'PASS' : 'FAIL')
+console.log()
+
+// TEST 6: Double-fire simulation — even if advance is called twice, index just skips ahead
+console.log('=== TEST 6: Double-fire resilience ===')
+let seqRef = buildFullSequence()
+let idx = -1
+const results = []
+for (let i = 0; i < 100; i++) {
+  // First fire
+  idx++
+  if (idx >= seqRef.length) { seqRef = buildFullSequence(); idx = 0 }
+  const m1 = seqRef[idx].mul
+  // Second fire (double-fire)
+  idx++
+  if (idx >= seqRef.length) { seqRef = buildFullSequence(); idx = 0 }
+  const m2 = seqRef[idx].mul
+  // User sees m2 (the second one)
+  results.push(m2)
+}
+let dfReps = 0
+for (let i = 1; i < results.length; i++) {
+  if (results[i] === results[i - 1]) dfReps++
+}
+console.log(`Double-fire: ${dfReps} consecutive repeats in ${results.length} questions`)
+// With double-fire, some repeats may happen because we skip entries, but it's bounded
+console.log(dfReps < 10 ? 'PASS (acceptable)' : 'FAIL (too many repeats)')

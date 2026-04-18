@@ -1,5 +1,5 @@
 #!/bin/bash
-# test.sh — Tests the SuperTables1 cycling logic with live simulation
+# test.sh — Tests the SuperTables1 sliding window logic with live simulation
 # Usage: ./test.sh [table_number]  (default: random 2-50)
 
 set -e
@@ -9,9 +9,8 @@ TABLE=${1:-0}
 
 node --eval "
 const TABLE_ARG = ${TABLE}
-const ELIGIBLE = [2, 3, 4, 5, 6, 7, 8, 9]
-const FAST_THRESHOLD_MS = 3000
-const MIN_CORRECT_TO_JUDGE = 3
+const MULS = [2, 3, 4, 5, 6, 7, 8, 9]
+const ROUNDS_PER_WINDOW = 10
 
 let store = {}
 const recordCorrect = (tbl, mul, ms) => {
@@ -26,122 +25,51 @@ const recordWrong = (tbl, mul) => {
   if (!store[k]) store[k] = { times: [], streak: 0 }
   store[k].streak = 0
 }
-const stTrimmedMean = (times) => {
-  if (!times || times.length === 0) return 0
-  if (times.length <= 2) return times.reduce((a, b) => a + b, 0) / times.length
-  const sorted = [...times].sort((a, b) => a - b)
-  const trim = Math.max(1, Math.round(sorted.length * 0.1))
-  const trimmed = sorted.slice(trim, sorted.length - trim)
-  if (trimmed.length === 0) return sorted[Math.floor(sorted.length / 2)]
-  return trimmed.reduce((a, b) => a + b, 0) / trimmed.length
-}
-const getAvg = (tbl, mul) => {
-  const k = tbl + 'x' + mul
-  const info = store[k]
-  if (!info || info.times.length === 0) return null
-  return stTrimmedMean(info.times)
-}
-const shuffle = (arr) => {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-const getSlowest3 = (tbl) => {
-  const scored = []
-  for (const m of ELIGIBLE) {
-    const avg = getAvg(tbl, m)
-    scored.push({ m, avg: avg !== null ? avg : 99999 })
-  }
-  const hasData = scored.some(s => s.avg !== 99999)
-  if (!hasData) return shuffle(scored.map(s => s.m)).slice(0, 3)
-  scored.sort((a, b) => b.avg - a.avg)
-  return scored.slice(0, 3).map(s => s.m)
-}
 
-// ── Pre-computed sequence system (matches App.jsx exactly) ──
-let currentSlowSet = []
-let sequence = []
-let seqIndex = -1
-
-const buildSequence = (set, count = 30) => {
+const buildFullSequence = () => {
   const seq = []
-  let last = null
-  for (let i = 0; i < count; i++) {
-    const candidates = set.filter(m => m !== last)
-    const pick = candidates[Math.floor(Math.random() * candidates.length)]
-    seq.push(pick)
-    last = pick
+  for (let w = 0; w < 20; w++) {
+    const startIdx = w % MULS.length
+    const window = [
+      MULS[startIdx % MULS.length],
+      MULS[(startIdx + 1) % MULS.length],
+      MULS[(startIdx + 2) % MULS.length],
+    ]
+    for (let r = 0; r < ROUNDS_PER_WINDOW; r++) {
+      seq.push({ mul: window[r % 3], window: [...window] })
+    }
   }
   return seq
-}
-
-const checkAndSwap = (tbl) => {
-  const set = [...currentSlowSet]
-  let fastestIdx = -1, fastestAvg = Infinity
-  for (let i = 0; i < set.length; i++) {
-    const k = tbl + 'x' + set[i]
-    const times = store[k] ? store[k].times : []
-    if (times.length >= MIN_CORRECT_TO_JUDGE) {
-      const avg = stTrimmedMean(times)
-      if (avg < fastestAvg) { fastestAvg = avg; fastestIdx = i }
-    }
-  }
-  if (fastestIdx !== -1 && fastestAvg < FAST_THRESHOLD_MS) {
-    const currentS = new Set(set)
-    const candidates = ELIGIBLE.filter(m => !currentS.has(m))
-    if (candidates.length > 0) {
-      set[fastestIdx] = candidates[Math.floor(Math.random() * candidates.length)]
-      currentSlowSet = [...set]
-    }
-  }
-}
-
-const pickNext = (tbl) => {
-  seqIndex++
-  if (seqIndex >= sequence.length) {
-    if (currentSlowSet.length === 3) {
-      checkAndSwap(tbl)
-    } else {
-      currentSlowSet = getSlowest3(tbl)
-    }
-    const lastInOld = sequence.length > 0 ? sequence[sequence.length - 1] : null
-    let newSeq = buildSequence(currentSlowSet, 30)
-    if (newSeq[0] === lastInOld) {
-      const candidates = currentSlowSet.filter(m => m !== lastInOld)
-      if (candidates.length > 0) newSeq[0] = candidates[Math.floor(Math.random() * candidates.length)]
-    }
-    sequence = newSeq
-    seqIndex = 0
-  }
-  return sequence[seqIndex]
-}
-
-// advance() — now trivial, just calls pickNext
-const advance = (tbl) => {
-  return pickNext(tbl)
 }
 
 // ── Run simulation ──
 const tbl = TABLE_ARG > 0 ? TABLE_ARG : 2 + Math.floor(Math.random() * 49)
 const lines = []
-let prevSet = ''
+let prevWindow = ''
 
-lines.push('Table of ' + tbl + ' — 500 questions')
-lines.push('='.repeat(50))
+let sequence = buildFullSequence()
+let seqIndex = -1
+
+lines.push('Table of ' + tbl + ' — 500 questions (sliding window)')
+lines.push('='.repeat(55))
 lines.push('')
 
+const muls = []
 for (let i = 0; i < 500; i++) {
-  const mul = advance(tbl)
+  seqIndex++
+  if (seqIndex >= sequence.length) {
+    sequence = buildFullSequence()
+    seqIndex = 0
+  }
+  const entry = sequence[seqIndex]
+  const mul = entry.mul
   const answer = tbl * mul
-  const setStr = currentSlowSet.join(', ')
+  const windowStr = entry.window.join(', ')
 
-  if (setStr !== prevSet) {
-    if (prevSet !== '') lines.push('  SET CHANGED -> focusing on [' + setStr + ']')
-    else lines.push('  Starting set: [' + setStr + ']')
-    prevSet = setStr
+  if (windowStr !== prevWindow) {
+    if (prevWindow !== '') lines.push('  WINDOW CHANGE -> focusing on [' + windowStr + ']')
+    else lines.push('  Starting window: [' + windowStr + ']')
+    prevWindow = windowStr
   }
 
   const qNum = String(i + 1).padStart(3)
@@ -161,14 +89,10 @@ for (let i = 0; i < 500; i++) {
   }
 
   lines.push('  Q' + qNum + ':  ' + tbl + ' x ' + mul + ' = ' + answer + status)
+  muls.push(mul)
 }
 
 // Check for repeats
-const muls = []
-for (const line of lines) {
-  const match = line.match(/x (\\d+) =/)
-  if (match) muls.push(parseInt(match[1]))
-}
 let repeatCount = 0
 let repeatDetails = []
 for (let i = 1; i < muls.length; i++) {
@@ -179,7 +103,7 @@ for (let i = 1; i < muls.length; i++) {
 }
 
 lines.push('')
-lines.push('='.repeat(50))
+lines.push('='.repeat(55))
 if (repeatCount === 0) {
   lines.push('PASS: 0 consecutive repeats in 500 questions')
 } else {

@@ -4082,84 +4082,41 @@ function SuperTables1App() {
     const d = getStore(); const k = `${tbl}x${mul}`
     return d[k] ? (d[k].streak || 0) : 0
   }
-  // Eligible multipliers: 2–9 (skip ×1 and ×10, too easy)
-  const ELIGIBLE = [2, 3, 4, 5, 6, 7, 8, 9]
-  const FAST_THRESHOLD_MS = 3000 // under 3s = "super fast", ready to swap out
-  const MIN_CORRECT_TO_JUDGE = 3  // need at least 3 correct answers to judge speed
+  // ── Sliding window: deterministic sequence, no randomness, no repeats possible ──
+  // Window of 3 multipliers: [2,3,4] for 10 rounds, then [3,4,5], then [4,5,6]... wraps around
+  const MULS = [2, 3, 4, 5, 6, 7, 8, 9] // eligible multipliers in order
+  const ROUNDS_PER_WINDOW = 10            // 10 questions per window of 3
 
-  const getSlowest3 = (tbl) => {
-    const scored = []
-    for (const m of ELIGIBLE) {
-      const avg = getAvg(tbl, m)
-      scored.push({ m, avg: avg !== null ? avg : 99999 })
+  // Pre-build the ENTIRE sequence for a drill session
+  const sequenceRef = useRef([])  // flat array of multipliers in order
+  const seqIndexRef = useRef(-1)  // current position
+  const currentWindowRef = useRef([]) // which 3 are active (for display)
+
+  const buildFullSequence = () => {
+    const seq = []
+    const windowMeta = [] // track which window each question belongs to
+    // Sliding windows: [2,3,4], [3,4,5], [4,5,6], ..., [8,9,2], [9,2,3], [2,3,4], ...
+    // We'll build enough for a long session (e.g., 20 windows = 200 questions)
+    for (let w = 0; w < 20; w++) {
+      const startIdx = w % MULS.length
+      const window = [
+        MULS[startIdx % MULS.length],
+        MULS[(startIdx + 1) % MULS.length],
+        MULS[(startIdx + 2) % MULS.length],
+      ]
+      // 10 rounds cycling through the 3: a,b,c,a,b,c,a,b,c,a
+      for (let r = 0; r < ROUNDS_PER_WINDOW; r++) {
+        seq.push({ mul: window[r % 3], window: [...window] })
+      }
     }
-    // If no data yet, pick 3 at random from eligible
-    const hasData = scored.some(s => s.avg !== 99999)
-    if (!hasData) return shuffle(scored.map(s => s.m)).slice(0, 3)
-    scored.sort((a, b) => b.avg - a.avg) // slowest first
-    return scored.slice(0, 3).map(s => s.m)
+    return seq
   }
 
-  const allUnder5s = (tbl) => {
-    for (let m = 1; m <= 10; m++) {
-      const avg = getAvg(tbl, m)
-      if (avg === null || avg >= 5000) return false
-    }
-    return true
-  }
   const allStreak5 = (tbl) => {
     for (let m = 1; m <= 10; m++) {
       if (getStreak(tbl, m) < 5) return false
     }
     return true
-  }
-
-  // ── Adaptive cycling with absolute no-repeat guarantee ──
-  const currentSlowSetRef = useRef([]) // always exactly 3 facts being drilled
-  const lastReturnedRef = useRef(null) // the last value pickNext actually returned
-  const rotationCountRef = useRef(0)   // how many questions since last swap check
-
-  // Check if any fact in the set got fast, swap it out
-  const checkAndSwap = (tbl) => {
-    const set = [...currentSlowSetRef.current]
-    let fastestIdx = -1, fastestAvg = Infinity
-    for (let i = 0; i < set.length; i++) {
-      const d = getStore(); const k = `${tbl}x${set[i]}`
-      const times = d[k] ? d[k].times : []
-      if (times.length >= MIN_CORRECT_TO_JUDGE) {
-        const avg = stTrimmedMean(times)
-        if (avg < fastestAvg) { fastestAvg = avg; fastestIdx = i }
-      }
-    }
-    if (fastestIdx !== -1 && fastestAvg < FAST_THRESHOLD_MS) {
-      const currentSet = new Set(set)
-      const candidates = ELIGIBLE.filter(m => !currentSet.has(m))
-      if (candidates.length > 0) {
-        set[fastestIdx] = candidates[Math.floor(Math.random() * candidates.length)]
-        currentSlowSetRef.current = [...set]
-      }
-    }
-  }
-
-  // Pick next — takes the value to exclude (what user currently sees)
-  const pickNext = (tbl, exclude) => {
-    // Initialize if needed
-    if (currentSlowSetRef.current.length !== 3) {
-      currentSlowSetRef.current = getSlowest3(tbl)
-    }
-    // Every 9 questions, check if we should swap a fast fact
-    rotationCountRef.current++
-    if (rotationCountRef.current >= 9) {
-      checkAndSwap(tbl)
-      rotationCountRef.current = 0
-    }
-    // Pick randomly from the 3, but NEVER the same as exclude
-    const set = currentSlowSetRef.current
-    const candidates = set.filter(m => m !== exclude)
-    const pick = candidates.length > 0
-      ? candidates[Math.floor(Math.random() * candidates.length)]
-      : set[Math.floor(Math.random() * set.length)]
-    return pick
   }
 
   // ── Styles (using Tenali CSS vars) ──
@@ -4199,16 +4156,14 @@ function SuperTables1App() {
     const d = getStore()
     for (let m = 1; m <= 10; m++) delete d[`${num}x${m}`]
     setStore(d)
-    // reset cycling state
-    currentSlowSetRef.current = []
-    lastReturnedRef.current = null
-    rotationCountRef.current = 0
-    displayedMulRef.current = null
+    // Build deterministic sequence
+    const fullSeq = buildFullSequence()
+    sequenceRef.current = fullSeq
+    seqIndexRef.current = 0
+    currentWindowRef.current = fullSeq[0].window
     setPhase(1)
     setShuffledTable(genTable(num))
-    const first = pickNext(num, null)
-    displayedMulRef.current = first
-    setCurrentMul(first)
+    setCurrentMul(fullSeq[0].mul)
     setFb(null)
     startTimeRef.current = Date.now()
     setQuestionsAnswered(0)
@@ -4218,38 +4173,36 @@ function SuperTables1App() {
   const goHome = () => { setScreen('home'); setTableNum(null) }
 
   const goPhase2 = () => {
-    // reset cycling state for phase 2
-    currentSlowSetRef.current = []
-    lastReturnedRef.current = null
-    rotationCountRef.current = 0
-    displayedMulRef.current = null
+    // Rebuild sequence for phase 2
+    const fullSeq = buildFullSequence()
+    sequenceRef.current = fullSeq
+    seqIndexRef.current = 0
+    currentWindowRef.current = fullSeq[0].window
     setPhase(2)
     setShuffledTable(genTable(tableNum))
     setFb(null)
-    const first = pickNext(tableNum, null)
-    displayedMulRef.current = first
-    setCurrentMul(first)
+    setCurrentMul(fullSeq[0].mul)
     startTimeRef.current = Date.now()
   }
 
-  const displayedMulRef = useRef(null)
-  const advanceLockedRef = useRef(false)
-
   const advance = () => {
-    // Hard lock: only one advance per 300ms, no exceptions
-    if (advanceLockedRef.current) return
-    advanceLockedRef.current = true
-    setTimeout(() => { advanceLockedRef.current = false }, 300)
-
     setFb(null)
     if (phase === 2 && allStreak5(tableNum)) {
       setScreen('done')
       return
     }
-    // Pass what's currently displayed so pickNext never returns it
-    const next = pickNext(tableNum, displayedMulRef.current)
-    displayedMulRef.current = next
-    setCurrentMul(next)
+    // Simply advance the index — sequence is deterministic, no randomness
+    let nextIdx = seqIndexRef.current + 1
+    // If we've exhausted the sequence, rebuild (wraps around)
+    if (nextIdx >= sequenceRef.current.length) {
+      const fullSeq = buildFullSequence()
+      sequenceRef.current = fullSeq
+      nextIdx = 0
+    }
+    seqIndexRef.current = nextIdx
+    const entry = sequenceRef.current[nextIdx]
+    currentWindowRef.current = entry.window
+    setCurrentMul(entry.mul)
     startTimeRef.current = Date.now()
   }
 
@@ -4303,7 +4256,7 @@ function SuperTables1App() {
     maxTime = 10
     const chartH = 100
     const barW = `${100 / 10}%`
-    const slow3 = new Set(currentSlowSetRef.current)
+    const focused = new Set(currentWindowRef.current)
     return (
       <div style={{ marginTop: 20, padding: '12px 0 0' }}>
         <p style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 700, color: 'var(--clr-text-soft)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -4320,7 +4273,7 @@ function SuperTables1App() {
           )}
           {bars.map(b => {
             const h = b.avg > 0 ? Math.max((b.avg / maxTime) * chartH, 4) : 0
-            const isSlow = slow3.has(b.m)
+            const isSlow = focused.has(b.m)
             return (
               <div key={b.m} style={{ width: barW, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', padding: '0 1px', boxSizing: 'border-box' }}>
                 {b.avg > 0 && <span style={{ fontSize: '0.5rem', color: 'var(--clr-text-soft)', marginBottom: 1, fontWeight: 600 }}>{b.avg.toFixed(1)}</span>}
@@ -4379,11 +4332,8 @@ function SuperTables1App() {
 
   // ── DRILL ──
   if (screen === 'drill') {
-    // Safety: if slow set got cleared somehow, refill it
-    if (currentSlowSetRef.current.length === 0 && tableNum) {
-      currentSlowSetRef.current = getSlowest3(tableNum)
-    }
-    const slow3 = new Set(currentSlowSetRef.current)
+    // Current window of 3 multipliers being practiced
+    const slow3 = new Set(currentWindowRef.current)
     const table = genTable(tableNum)
     const correct = tableNum * currentMul
 

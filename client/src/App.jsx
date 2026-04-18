@@ -4324,7 +4324,8 @@ function SuperTables1App() {
     }
     const hasData = bars.some(b => b.avg > 0)
     if (!hasData) return null
-    maxTime = Math.max(maxTime, 1)
+    // Fixed scale: always 10s max so bars shrink as you get faster
+    maxTime = 10
     const chartH = 100
     const barW = `${100 / 10}%`
     const slow3 = new Set(currentSlowSetRef.current)
@@ -4334,7 +4335,7 @@ function SuperTables1App() {
           Avg. Time (last 10 correct) — {phase === 1 ? 'Target: under 5s each' : 'Streak target: 5 each'}
         </p>
         <div style={{ display: 'flex', alignItems: 'flex-end', position: 'relative', height: chartH, margin: '0 4px', borderBottom: '2px solid var(--clr-border)', borderLeft: '2px solid var(--clr-border)' }}>
-          <span style={{ position: 'absolute', left: -4, top: 0, fontSize: '0.55rem', color: 'var(--clr-text-soft)', transform: 'translateX(-100%)' }}>{maxTime.toFixed(1)}s</span>
+          <span style={{ position: 'absolute', left: -4, top: 0, fontSize: '0.55rem', color: 'var(--clr-text-soft)', transform: 'translateX(-100%)' }}>10s</span>
           <span style={{ position: 'absolute', left: -4, bottom: -2, fontSize: '0.55rem', color: 'var(--clr-text-soft)', transform: 'translateX(-100%)' }}>0s</span>
           {/* 5s threshold line */}
           {phase === 1 && maxTime > 5 && (

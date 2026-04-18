@@ -4260,20 +4260,20 @@ function SuperTables1App() {
       setScreen('done')
       return
     }
-    // Use callback form of setState to guarantee we see the REAL current value
-    setCurrentMul(prev => {
-      let next = pickNext(tableNum)
-      // Guard 1: check against previous React state value
-      if (next === prev) next = pickNext(tableNum)
-      // Guard 2: check against displayedMulRef
-      if (next === prev || next === displayedMulRef.current) {
-        const others = currentSlowSetRef.current.filter(m => m !== prev && m !== displayedMulRef.current)
-        if (others.length > 0) next = others[Math.floor(Math.random() * others.length)]
-      }
-      displayedMulRef.current = next
-      lastAskedRef.current = next
-      return next
-    })
+    // Compute next OUTSIDE setState to avoid React StrictMode double-invocation
+    let next = pickNext(tableNum)
+    // Guard: never same as what's currently displayed
+    if (next === displayedMulRef.current) {
+      next = pickNext(tableNum)
+    }
+    // Final fallback: force a different one
+    if (next == null || next === displayedMulRef.current) {
+      const others = currentSlowSetRef.current.filter(m => m !== displayedMulRef.current)
+      if (others.length > 0) next = others[Math.floor(Math.random() * others.length)]
+    }
+    displayedMulRef.current = next
+    lastAskedRef.current = next
+    setCurrentMul(next)
     setStartTime(Date.now())
   }
 

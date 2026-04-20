@@ -8056,11 +8056,61 @@ const Frac = ({ n, d, size }) => {
   )
 }
 
+// Serialize a React element tree into a stable string so two visually
+// identical choices (e.g. a^4 and a^4 produced by different formulas that
+// happened to collide on the same random inputs) compare equal.
+const jsxKey = (node) => {
+  if (node == null || typeof node === 'boolean') return ''
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return '[' + node.map(jsxKey).join('|') + ']'
+  if (typeof node === 'object' && node.props) {
+    const typeStr = typeof node.type === 'function'
+      ? (node.type.displayName || node.type.name || 'fn')
+      : (node.type || 'frag')
+    const { children, ...rest } = node.props
+    const propsStr = Object.keys(rest).sort()
+      .map(k => `${k}:${jsxKey(rest[k])}`).join(',')
+    return `<${typeStr}|${propsStr}>${jsxKey(children)}`
+  }
+  return ''
+}
+
+const choicesAllUnique = (choices) => {
+  const keys = new Set()
+  for (const c of choices) {
+    const k = jsxKey(c.jsx)
+    if (keys.has(k)) return false
+    keys.add(k)
+  }
+  return true
+}
+
 const generateQuestion = (level) => {
-  if (level >= 1 && level <= 5) return generateExponentQuestion(level)
-  if (level >= 6 && level <= 9) return generateNegativeExponentQuestion(level)
-  if (level >= 10 && level <= 13) return generateLikeTermsQuestion(level)
-  return generateExponentQuestion(1)
+  const gen =
+    (level >= 1 && level <= 5)  ? () => generateExponentQuestion(level)
+    : (level >= 6 && level <= 9)  ? () => generateNegativeExponentQuestion(level)
+    : (level >= 10 && level <= 13) ? () => generateLikeTermsQuestion(level)
+    : () => generateExponentQuestion(1)
+
+  // Retry with fresh random parameters until all four choices are distinct.
+  // Collisions are rare for most levels but common for a few specific
+  // parameter combinations (e.g. m=n=2 in Level 1 makes a^(m+n) = a^(m·n)).
+  let q = gen()
+  for (let i = 0; i < 100 && q && !choicesAllUnique(q.choices); i++) {
+    q = gen()
+  }
+  // Last-resort safety net: if we somehow still have duplicates, drop them
+  // so the user never sees two identical options.
+  if (q && !choicesAllUnique(q.choices)) {
+    const seen = new Set()
+    q.choices = q.choices.filter(c => {
+      const k = jsxKey(c.jsx)
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+  }
+  return q
 }
 
 const generateExponentQuestion = (level) => {

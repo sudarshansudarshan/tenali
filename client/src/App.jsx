@@ -28,8 +28,8 @@ import './App.css'
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
 // App version — increment with each commit
-const TENALI_VERSION = '1.0.20'
-const TENALI_BUILD_DATE = '2026-04-24 09:40 IST'
+const TENALI_VERSION = '1.0.22'
+const TENALI_BUILD_DATE = '2026-04-24 09:56 IST'
 
 // Inject version badge into DOM once (appears on all routes)
 ;(() => {
@@ -15876,10 +15876,12 @@ function RiyaApp({ onBack }) {
 function TatsavitLineApp({ onBack }) {
   // `round` is just a counter that forces regeneration on Next
   const [round, setRound] = useState(0)
-  const [p1, setP1] = useState({ x: 0, y: 0 })
-  const [p2, setP2] = useState({ x: 1, y: 0 })
-  const [targetM, setTargetM] = useState(0)
-  const [targetC, setTargetC] = useState(0)
+  // Point coordinates are stored as strings so the inputs stay editable
+  // (allowing intermediate states like "", "-", "1.").
+  const [p1xS, setP1xS] = useState('0')
+  const [p1yS, setP1yS] = useState('0')
+  const [p2xS, setP2xS] = useState('1')
+  const [p2yS, setP2yS] = useState('0')
   const [mInput, setMInput] = useState('')
   const [cInput, setCInput] = useState('')
   const [showAnswer, setShowAnswer] = useState(false)
@@ -15911,22 +15913,54 @@ function TatsavitLineApp({ onBack }) {
       // Ultra-safe fallback
       chosen = { m: 1, c: 0, p1: { x: -2, y: -2 }, p2: { x: 3, y: 3 } }
     }
-    setTargetM(chosen.m)
-    setTargetC(chosen.c)
-    setP1(chosen.p1)
-    setP2(chosen.p2)
+    setP1xS(String(chosen.p1.x))
+    setP1yS(String(chosen.p1.y))
+    setP2xS(String(chosen.p2.x))
+    setP2yS(String(chosen.p2.y))
     setMInput('')
     setCInput('')
     setShowAnswer(false)
     setJustSolved(false)
   }, [round])
 
-  // Derived state: parsed inputs and correctness
-  const mVal = mInput === '' || mInput === '-' ? NaN : parseFloat(mInput)
-  const cVal = cInput === '' || cInput === '-' ? NaN : parseFloat(cInput)
+  // Parse a numeric input string; returns NaN for incomplete inputs
+  // ("", "-", ".", "-.") so typing does not break the plot.
+  const parseNum = (s) => {
+    if (s === '' || s === '-' || s === '.' || s === '-.') return NaN
+    const n = parseFloat(s)
+    return Number.isFinite(n) ? n : NaN
+  }
+
+  const p1x = parseNum(p1xS)
+  const p1y = parseNum(p1yS)
+  const p2x = parseNum(p2xS)
+  const p2y = parseNum(p2yS)
+  const hasValidPoints = [p1x, p1y, p2x, p2y].every(n => !Number.isNaN(n))
+  const isVertical = hasValidPoints && Math.abs(p2x - p1x) < 1e-9
+  const p1 = { x: hasValidPoints ? p1x : 0, y: hasValidPoints ? p1y : 0 }
+  const p2 = { x: hasValidPoints ? p2x : 0, y: hasValidPoints ? p2y : 0 }
+
+  // Target line (y = targetM·x + targetC) computed from the *current*
+  // (possibly edited) points. If the two points share an x-coordinate,
+  // the line is vertical and cannot be represented as y = mx + C.
+  let targetM = 0
+  let targetC = 0
+  let targetValid = false
+  if (hasValidPoints && !isVertical) {
+    targetM = (p2y - p1y) / (p2x - p1x)
+    targetC = p1y - targetM * p1x
+    targetValid = true
+  }
+
+  // Derived state: parsed m/C inputs and correctness
+  const mVal = parseNum(mInput)
+  const cVal = parseNum(cInput)
   const hasValidInputs = !Number.isNaN(mVal) && !Number.isNaN(cVal)
-  const EPS = 1e-6
+  // Use a tolerance that scales with the problem so integer answers feel
+  // forgiving but decimal answers still require reasonable precision.
+  const EPS = 1e-3
   const isCorrect =
+    targetValid &&
     hasValidInputs &&
     Math.abs(mVal - targetM) < EPS &&
     Math.abs(cVal - targetC) < EPS
@@ -15940,6 +15974,13 @@ function TatsavitLineApp({ onBack }) {
       setSolvedCount(n => n + 1)
     }
   }, [isCorrect, justSolved])
+
+  // If the student edits the points while a success banner is showing,
+  // clear it so correctness is re-evaluated against the new target.
+  useEffect(() => {
+    if (justSolved) setJustSolved(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p1xS, p1yS, p2xS, p2yS])
 
   // ── Plot geometry ───────────────────────────────────────────────
   const PLOT = 440                     // SVG viewBox size (square)
@@ -16001,12 +16042,20 @@ function TatsavitLineApp({ onBack }) {
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
+  // Format numbers tidily: integers as-is, decimals rounded to 4 places
+  // (trailing zeros trimmed), with a minus sign.
+  const fmtNum = (n) => {
+    if (!Number.isFinite(n)) return '?'
+    if (Number.isInteger(n)) return String(n)
+    return String(parseFloat(n.toFixed(4)))
+  }
+
   const formatEq = () => {
     if (!hasValidInputs) return 'y = ?·x + ?'
-    const mStr = Number.isInteger(mVal) ? String(mVal) : String(mVal)
+    const mStr = fmtNum(mVal)
     if (cVal === 0) return `y = ${mStr}·x`
     const sign = cVal >= 0 ? '+' : '−'
-    return `y = ${mStr}·x ${sign} ${Math.abs(cVal)}`
+    return `y = ${mStr}·x ${sign} ${fmtNum(Math.abs(cVal))}`
   }
 
   const handleNext = () => setRound(r => r + 1)
@@ -16095,8 +16144,8 @@ function TatsavitLineApp({ onBack }) {
               </g>
             )
           })}
-          {/* Show-answer dashed line */}
-          {showAnswer && !isCorrect && (
+          {/* Show-answer dashed line (only when a y = mx + C line exists) */}
+          {showAnswer && !isCorrect && targetValid && (
             <line x1={answerStart.x} y1={answerStart.y} x2={answerEnd.x} y2={answerEnd.y}
               stroke="var(--clr-correct, #26de81)" strokeWidth={2}
               strokeDasharray="6 4" strokeOpacity={0.7} />
@@ -16111,8 +16160,8 @@ function TatsavitLineApp({ onBack }) {
               strokeOpacity={0.9}
             />
           )}
-          {/* Target points */}
-          {[p1, p2].map((p, i) => {
+          {/* Target points — only render when coordinates parse cleanly */}
+          {hasValidPoints && [p1, p2].map((p, i) => {
             const { x, y } = toPx(p.x, p.y)
             return (
               <g key={i}>
@@ -16122,12 +16171,73 @@ function TatsavitLineApp({ onBack }) {
                   strokeWidth={2} />
                 <text x={x + 10} y={y - 10}
                   style={{ fontSize: 12, fill: 'currentColor', fontWeight: 600 }}>
-                  ({p.x}, {p.y})
+                  ({fmtNum(p.x)}, {fmtNum(p.y)})
                 </text>
               </g>
             )
           })}
         </svg>
+
+        {/* Editable coordinates for the two target points */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'auto auto auto',
+          alignItems: 'center',
+          gap: '8px 10px',
+          fontSize: '0.95rem',
+        }}>
+          <span style={{ color: 'var(--clr-text-soft)' }}>Point 1</span>
+          <input
+            type="number" value={p1xS} onChange={e => setP1xS(e.target.value)}
+            step="0.1" aria-label="Point 1 x"
+            style={{
+              width: 72, padding: '6px 8px', borderRadius: 6,
+              border: '1px solid var(--clr-text-soft)',
+              background: 'transparent', color: 'inherit',
+              textAlign: 'center', fontFamily: 'monospace',
+            }}
+          />
+          <input
+            type="number" value={p1yS} onChange={e => setP1yS(e.target.value)}
+            step="0.1" aria-label="Point 1 y"
+            style={{
+              width: 72, padding: '6px 8px', borderRadius: 6,
+              border: '1px solid var(--clr-text-soft)',
+              background: 'transparent', color: 'inherit',
+              textAlign: 'center', fontFamily: 'monospace',
+            }}
+          />
+          <span style={{ color: 'var(--clr-text-soft)' }}>Point 2</span>
+          <input
+            type="number" value={p2xS} onChange={e => setP2xS(e.target.value)}
+            step="0.1" aria-label="Point 2 x"
+            style={{
+              width: 72, padding: '6px 8px', borderRadius: 6,
+              border: '1px solid var(--clr-text-soft)',
+              background: 'transparent', color: 'inherit',
+              textAlign: 'center', fontFamily: 'monospace',
+            }}
+          />
+          <input
+            type="number" value={p2yS} onChange={e => setP2yS(e.target.value)}
+            step="0.1" aria-label="Point 2 y"
+            style={{
+              width: 72, padding: '6px 8px', borderRadius: 6,
+              border: '1px solid var(--clr-text-soft)',
+              background: 'transparent', color: 'inherit',
+              textAlign: 'center', fontFamily: 'monospace',
+            }}
+          />
+        </div>
+
+        {isVertical && (
+          <div style={{
+            fontSize: '0.9rem', color: 'var(--clr-wrong, #ff6b6b)',
+            textAlign: 'center', maxWidth: 360,
+          }}>
+            Point 1 and Point 2 share the same x-coordinate — a vertical line cannot be written as y = m·x + C. Change one of the x-values to continue.
+          </div>
+        )}
 
         {/* Inputs for m and C */}
         <div style={{ display: 'flex', gap: 18, alignItems: 'flex-end', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -16179,9 +16289,14 @@ function TatsavitLineApp({ onBack }) {
             ✓ The line passes through both points.
           </div>
         )}
-        {showAnswer && !isCorrect && (
+        {showAnswer && !isCorrect && targetValid && (
           <div style={{ fontSize: '0.95rem', color: 'var(--clr-text-soft)', textAlign: 'center' }}>
-            Answer: m = {targetM}, C = {targetC}
+            Answer: m = {fmtNum(targetM)}, C = {fmtNum(targetC)}
+          </div>
+        )}
+        {showAnswer && !targetValid && (
+          <div style={{ fontSize: '0.95rem', color: 'var(--clr-text-soft)', textAlign: 'center' }}>
+            No y = m·x + C line exists for these points yet.
           </div>
         )}
 

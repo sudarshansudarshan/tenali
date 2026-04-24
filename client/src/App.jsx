@@ -28,8 +28,8 @@ import './App.css'
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
 // App version — increment with each commit
-const TENALI_VERSION = '1.0.19'
-const TENALI_BUILD_DATE = '2026-04-24 09:34 IST'
+const TENALI_VERSION = '1.0.20'
+const TENALI_BUILD_DATE = '2026-04-24 09:40 IST'
 
 // Inject version badge into DOM once (appears on all routes)
 ;(() => {
@@ -15885,6 +15885,9 @@ function TatsavitLineApp({ onBack }) {
   const [showAnswer, setShowAnswer] = useState(false)
   const [solvedCount, setSolvedCount] = useState(0)
   const [justSolved, setJustSolved] = useState(false)
+  // Visible domain on each axis (±zoom units). Smaller = zoomed in.
+  const [zoom, setZoom] = useState(10)
+  const svgRef = useRef(null)
 
   // Regenerate random points when `round` changes
   useEffect(() => {
@@ -15940,7 +15943,7 @@ function TatsavitLineApp({ onBack }) {
 
   // ── Plot geometry ───────────────────────────────────────────────
   const PLOT = 440                     // SVG viewBox size (square)
-  const DOMAIN = 10                    // ±10 on each axis
+  const DOMAIN = zoom                  // ±zoom units on each axis
   const scale = PLOT / (2 * DOMAIN)    // px per unit
   const toPx = (px, py) => ({
     x: PLOT / 2 + px * scale,
@@ -15954,8 +15957,49 @@ function TatsavitLineApp({ onBack }) {
   const answerEnd = toPx(DOMAIN, targetM * DOMAIN + targetC)
 
   // ── Rendering helpers ───────────────────────────────────────────
+  // Tick and label spacing adapt to zoom so the grid never becomes a mess.
+  //   very zoomed in (DOMAIN ≤ 3): half-unit ticks, labels every 1
+  //   typical (DOMAIN 4–12):       1-unit ticks, labels every 2
+  //   zoomed out (DOMAIN 13–25):   1-unit ticks, labels every 4
+  //   far out (DOMAIN > 25):       2-unit ticks, labels every 10
+  const tickStep = DOMAIN <= 3 ? 0.5 : DOMAIN <= 25 ? 1 : 2
+  const labelStep = DOMAIN <= 3 ? 1 : DOMAIN <= 12 ? 2 : DOMAIN <= 25 ? 4 : 10
   const gridTicks = []
-  for (let g = -DOMAIN; g <= DOMAIN; g++) gridTicks.push(g)
+  // Use integer arithmetic to avoid floating-point drift on half-unit ticks
+  const inv = 1 / tickStep
+  const lo = -Math.round(DOMAIN * inv)
+  const hi = Math.round(DOMAIN * inv)
+  for (let k = lo; k <= hi; k++) gridTicks.push(k * tickStep)
+
+  // Zoom controls
+  const ZOOM_MIN = 2
+  const ZOOM_MAX = 40
+  const zoomIn = () => setZoom(z => Math.max(ZOOM_MIN, Math.round((z - 2) * 10) / 10))
+  const zoomOut = () => setZoom(z => Math.min(ZOOM_MAX, Math.round((z + 2) * 10) / 10))
+  const zoomReset = () => setZoom(10)
+  const zoomFit = () => {
+    // Fit both target points snugly with a small margin
+    const maxAbs = Math.max(Math.abs(p1.x), Math.abs(p1.y), Math.abs(p2.x), Math.abs(p2.y))
+    const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.ceil(maxAbs + 1)))
+    setZoom(z)
+  }
+  // Mouse-wheel zoom inside the SVG
+  const onWheel = (e) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 1 : -1    // down = zoom out
+    setZoom(z => {
+      // Step size scales with current zoom so wheel feels consistent
+      const step = Math.max(0.5, z * 0.15)
+      const next = z + delta * step
+      return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(next * 10) / 10))
+    })
+  }
+  useEffect(() => {
+    const el = svgRef.current
+    if (!el) return
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   const formatEq = () => {
     if (!hasValidInputs) return 'y = ?·x + ?'
@@ -15975,8 +16019,36 @@ function TatsavitLineApp({ onBack }) {
       onBack={onBack}
     >
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, maxWidth: 560, margin: '0 auto' }}>
+        {/* Zoom controls — above the plot */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button onClick={zoomIn} title="Zoom in"
+            style={{ padding: '4px 12px', background: 'transparent',
+                     border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)', borderRadius: 6 }}>
+            +
+          </button>
+          <button onClick={zoomOut} title="Zoom out"
+            style={{ padding: '4px 12px', background: 'transparent',
+                     border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)', borderRadius: 6 }}>
+            −
+          </button>
+          <button onClick={zoomReset} title="Reset zoom"
+            style={{ padding: '4px 10px', background: 'transparent',
+                     border: '1px solid var(--clr-text-soft)', color: 'var(--clr-text-soft)', borderRadius: 6, fontSize: '0.85rem' }}>
+            1:1
+          </button>
+          <button onClick={zoomFit} title="Fit both points"
+            style={{ padding: '4px 10px', background: 'transparent',
+                     border: '1px solid var(--clr-text-soft)', color: 'var(--clr-text-soft)', borderRadius: 6, fontSize: '0.85rem' }}>
+            Fit
+          </button>
+          <span style={{ fontSize: '0.8rem', color: 'var(--clr-text-soft)', marginLeft: 6 }}>
+            view ±{zoom}
+          </span>
+        </div>
+
         {/* SVG plot */}
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${PLOT} ${PLOT}`}
           style={{
             width: 'min(92vw, 460px)',
@@ -15984,6 +16056,8 @@ function TatsavitLineApp({ onBack }) {
             background: 'var(--clr-bg-soft, rgba(128,128,128,0.06))',
             border: '1px solid var(--clr-text-soft)',
             borderRadius: 8,
+            touchAction: 'none',
+            overflow: 'hidden',
           }}
         >
           {/* Grid lines */}
@@ -16004,8 +16078,13 @@ function TatsavitLineApp({ onBack }) {
               </g>
             )
           })}
-          {/* Axis tick labels (every 2 units) */}
-          {gridTicks.filter(g => g !== 0 && g % 2 === 0).map(g => {
+          {/* Axis tick labels (spacing adapts to zoom) */}
+          {gridTicks.filter(g => {
+            if (g === 0) return false
+            // Show a label when g is (close to) a multiple of labelStep
+            const q = g / labelStep
+            return Math.abs(q - Math.round(q)) < 1e-9
+          }).map(g => {
             const { x: gx } = toPx(g, 0)
             const { y: gy } = toPx(0, g)
             const origin = toPx(0, 0)

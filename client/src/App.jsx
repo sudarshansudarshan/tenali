@@ -28,8 +28,8 @@ import './App.css'
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
 // App version — increment with each commit
-const TENALI_VERSION = '1.0.23'
-const TENALI_BUILD_DATE = '2026-04-24 10:05 IST'
+const TENALI_VERSION = '1.0.25'
+const TENALI_BUILD_DATE = '2026-04-24 10:32 IST'
 
 // Inject version badge into DOM once (appears on all routes)
 ;(() => {
@@ -15645,7 +15645,6 @@ function RiyaApp({ onBack }) {
   const [unitIdx, setUnitIdx] = useState(0)
   const [phase, setPhase] = useState('lesson')           // 'lesson' | 'quiz' | 'complete'
   const [quizIdx, setQuizIdx] = useState(0)
-  const [unitAnswers, setUnitAnswers] = useState([])     // array of booleans for current unit
   const [selected, setSelected] = useState(null)
   const [revealed, setRevealed] = useState(false)
   const [showSolve, setShowSolve] = useState(false)
@@ -15657,22 +15656,36 @@ function RiyaApp({ onBack }) {
   // Updated when the student advances to a new question so the correct
   // option is not always in position A.
   const [optionOrder, setOptionOrder] = useState([0, 1, 2, 3])
+  // Adaptive retry — activeIndices holds the subset of the unit's question
+  // pool that is actually being asked in the current practice round. On a
+  // fresh unit it's [0..n-1]; on a failed retry it shrinks to just the
+  // questions the student got wrong.
+  const [activeIndices, setActiveIndices] = useState(() => RIYA_UNITS[0].questions.map((_, i) => i))
+  // Per-question state for the current practice round (indexed by position
+  // within activeIndices): { selected, revealed }. Lets Back navigation
+  // restore the student's earlier picks so they can review what they did.
+  const [perQuestion, setPerQuestion] = useState([])
 
   const totalUnits = RIYA_UNITS.length
   const unit = RIYA_UNITS[unitIdx]
-  const passThreshold = 4  // need >= 4 of 5 correct to advance
+  const passThreshold = 4  // need >= 4 of 5 correct to advance on first pass
+
+  // Current question in the active round
+  const currentOrigIdx = activeIndices[quizIdx]
+  const currentQuestion = unit && currentOrigIdx !== undefined ? unit.questions[currentOrigIdx] : null
 
   // Reshuffle options whenever the displayed question changes (new unit,
-  // new quiz index, or returning to quiz phase). Fisher–Yates, in place.
+  // new active-round index, or returning to quiz phase). Fisher–Yates.
   useEffect(() => {
-    const n = unit && unit.questions[quizIdx] ? unit.questions[quizIdx].options.length : 4
+    const n = currentQuestion ? currentQuestion.options.length : 4
     const order = Array.from({ length: n }, (_, i) => i)
     for (let i = order.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       ;[order[i], order[j]] = [order[j], order[i]]
     }
     setOptionOrder(order)
-  }, [unitIdx, quizIdx, phase])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitIdx, quizIdx, phase, currentOrigIdx])
 
   // ── Keyboard navigation ────────────────────────────────────────
   // Arrow keys move between options; Enter submits or advances;
@@ -15700,6 +15713,20 @@ function RiyaApp({ onBack }) {
       }
 
       // phase === 'quiz'
+      // Backspace / PageUp navigate to the previous question in either
+      // answered or unanswered state.
+      if ((e.key === 'Backspace' || e.key === 'PageUp') && !isTyping) {
+        if (quizIdx > 0) {
+          e.preventDefault()
+          handleBack()
+          return
+        }
+      }
+      if (e.key === 'PageDown' && !isTyping && revealed) {
+        e.preventDefault()
+        handleNext()
+        return
+      }
       if (revealed) {
         if (e.key === 'Enter' && !isTyping) {
           e.preventDefault()
@@ -15742,59 +15769,127 @@ function RiyaApp({ onBack }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, revealed, selected, optionOrder, quizIdx, unitIdx, unitAnswers])
+  }, [phase, revealed, selected, optionOrder, quizIdx, unitIdx, perQuestion, activeIndices])
 
   // ── Helpers ─────────────────────────────────────────────────────
   const startQuiz = () => {
     setPhase('quiz')
     setQuizIdx(0)
-    setUnitAnswers([])
+    setPerQuestion([])
     setSelected(null); setRevealed(false); setShowSolve(false)
   }
 
   const handleSubmit = () => {
     if (selected === null || revealed) return
-    const q = unit.questions[quizIdx]
+    const q = currentQuestion
+    if (!q) return
     const ok = selected === q.correctIndex
     setRevealed(true)
-    setUnitAnswers(a => [...a, ok])
+    // Record this question's outcome
+    setPerQuestion(prev => {
+      const next = [...prev]
+      next[quizIdx] = { selected, revealed: true }
+      return next
+    })
     setTotalAttempted(n => n + 1)
     if (ok) setTotalCorrect(n => n + 1)
   }
 
+  // Go to a given position in activeIndices. Snapshots current state into
+  // perQuestion and loads whatever the student had for the destination
+  // (so Back lets them review the answer they submitted).
+  const goTo = (newIdx) => {
+    if (newIdx < 0 || newIdx >= activeIndices.length) return
+    const snapshot = { selected, revealed }
+    const nextPQ = [...perQuestion]
+    nextPQ[quizIdx] = snapshot
+    setPerQuestion(nextPQ)
+    const dest = nextPQ[newIdx]
+    if (dest) {
+      setSelected(dest.selected)
+      setRevealed(dest.revealed)
+    } else {
+      setSelected(null)
+      setRevealed(false)
+    }
+    setShowSolve(false)
+    setQuizIdx(newIdx)
+  }
+
+  const handleBack = () => {
+    if (quizIdx === 0) return
+    goTo(quizIdx - 1)
+  }
+
   const handleNext = () => {
-    const last = quizIdx + 1 >= unit.questions.length
+    const last = quizIdx + 1 >= activeIndices.length
     if (!last) {
-      setQuizIdx(i => i + 1)
-      setSelected(null); setRevealed(false); setShowSolve(false)
+      goTo(quizIdx + 1)
       return
     }
-    // Unit finished — evaluate
-    const correctInUnit = unitAnswers.filter(Boolean).length
-    const pass = correctInUnit >= passThreshold
-    setUnitResults(r => [...r, { title: unit.title, correct: correctInUnit, total: unit.questions.length, passed: pass, reviewed: reviewMode }])
-    if (pass) {
+    // Last question of the current round. Snapshot the last answer first.
+    const finalPQ = [...perQuestion]
+    finalPQ[quizIdx] = { selected, revealed }
+
+    // Count correct in this round
+    const correctThisRound = finalPQ.reduce((n, s, i) => {
+      if (!s || !s.revealed) return n
+      const origIdx = activeIndices[i]
+      const q = unit.questions[origIdx]
+      return s.selected === q.correctIndex ? n + 1 : n
+    }, 0)
+
+    // Pass rule:
+    //   First pass through the unit (reviewMode=false): ≥ passThreshold.
+    //   Retry (reviewMode=true): must get all re-asked questions correct.
+    const passed = reviewMode
+      ? correctThisRound === activeIndices.length
+      : correctThisRound >= passThreshold
+
+    setUnitResults(r => [...r, {
+      title: unit.title,
+      correct: correctThisRound,
+      total: activeIndices.length,
+      passed,
+      reviewed: reviewMode,
+    }])
+
+    if (passed) {
       if (unitIdx + 1 >= totalUnits) {
         setPhase('complete')
       } else {
-        setUnitIdx(i => i + 1)
+        const nextUnitIdx = unitIdx + 1
+        setUnitIdx(nextUnitIdx)
         setPhase('lesson')
         setReviewMode(false)
+        setActiveIndices(RIYA_UNITS[nextUnitIdx].questions.map((_, i) => i))
       }
     } else {
+      // Adaptive retry: re-ask only the wrong ones
+      const wrongIdxsInRound = []
+      finalPQ.forEach((s, i) => {
+        if (!s || !s.revealed) { wrongIdxsInRound.push(i); return }
+        const q = unit.questions[activeIndices[i]]
+        if (s.selected !== q.correctIndex) wrongIdxsInRound.push(i)
+      })
+      const newActive = wrongIdxsInRound.length > 0
+        ? wrongIdxsInRound.map(i => activeIndices[i])
+        : activeIndices    // safety net — should not normally happen
+      setActiveIndices(newActive)
       setPhase('lesson')
       setReviewMode(true)
     }
     setQuizIdx(0)
-    setUnitAnswers([])
+    setPerQuestion([])
     setSelected(null); setRevealed(false); setShowSolve(false)
   }
 
   const handleRestart = () => {
-    setUnitIdx(0); setPhase('lesson'); setQuizIdx(0); setUnitAnswers([])
+    setUnitIdx(0); setPhase('lesson'); setQuizIdx(0); setPerQuestion([])
     setSelected(null); setRevealed(false); setShowSolve(false)
     setTotalCorrect(0); setTotalAttempted(0); setReviewMode(false)
     setUnitResults([])
+    setActiveIndices(RIYA_UNITS[0].questions.map((_, i) => i))
   }
 
   // ── Rendering ───────────────────────────────────────────────────
@@ -15887,21 +15982,34 @@ function RiyaApp({ onBack }) {
   }
 
   // Quiz phase
-  const q = unit.questions[quizIdx]
-  const isCorrect = selected === q.correctIndex
-  const correctSoFar = unitAnswers.filter(Boolean).length
+  const q = currentQuestion
+  const isCorrect = q && selected === q.correctIndex
+  // Count answered + correct so far in this round, based on perQuestion
+  // plus whatever the student has just selected for the current slot.
+  const snapshotForCount = perQuestion.map((s, i) => (i === quizIdx ? { selected, revealed } : s))
+  const roundAnswered = snapshotForCount.filter(s => s && s.revealed).length
+  const roundCorrect = snapshotForCount.reduce((n, s, i) => {
+    if (!s || !s.revealed) return n
+    const qq = unit.questions[activeIndices[i]]
+    return qq && s.selected === qq.correctIndex ? n + 1 : n
+  }, 0)
+  const roundTotal = activeIndices.length
+  // Pass rule for the subtitle text
+  const needText = reviewMode
+    ? `need all ${roundTotal} correct to pass`
+    : `need ${Math.min(passThreshold, roundTotal)} correct to advance`
   return (
     <QuizLayout
       title={`Practice: ${unit.title}`}
-      subtitle={`Question ${quizIdx + 1} of ${unit.questions.length} · need ${passThreshold} correct to advance`}
+      subtitle={`Question ${quizIdx + 1} of ${roundTotal} · ${needText}${reviewMode ? ' · retry round' : ''}`}
       onBack={onBack}
     >
       {renderProgress()}
       <div className="progress-pill center" style={{ marginBottom: 12 }}>
-        Correct in this unit: {correctSoFar} / {unitAnswers.length}
+        Correct in this round: {roundCorrect} / {roundAnswered}
       </div>
       <div style={{ fontSize: '0.78rem', color: 'var(--clr-text-soft)', textAlign: 'center', marginBottom: 6, opacity: 0.7 }}>
-        keyboard: ↑ ↓ to move · A–D or 1–4 to pick · Enter to {revealed ? 'continue' : 'submit'}
+        keyboard: ↑ ↓ to move · A–D or 1–4 to pick · Backspace back · Enter to {revealed ? 'continue' : 'submit'}
       </div>
       <div className="question-box" style={{ whiteSpace: 'pre-wrap', textAlign: 'center', marginBottom: 16 }}>
         {q.prompt}
@@ -15943,9 +16051,19 @@ function RiyaApp({ onBack }) {
       })()}
       {showSolve && renderFeedback(q.explanation, false)}
       <div className="button-row" style={{ marginTop: 16 }}>
+        <button onClick={handleBack} disabled={quizIdx === 0}
+          style={{
+            background: 'transparent',
+            border: '1px solid var(--clr-text-soft)',
+            color: 'var(--clr-text-soft)',
+            opacity: quizIdx === 0 ? 0.4 : 1,
+            cursor: quizIdx === 0 ? 'not-allowed' : 'pointer',
+          }}>
+          ← Back
+        </button>
         {!revealed
           ? <button onClick={handleSubmit} disabled={selected === null}>Submit</button>
-          : <button onClick={handleNext}>{quizIdx + 1 >= unit.questions.length ? 'Finish unit' : 'Next →'}</button>}
+          : <button onClick={handleNext}>{quizIdx + 1 >= roundTotal ? 'Finish round' : 'Next →'}</button>}
         <button onClick={() => setShowSolve(s => !s)}
           style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>
           {showSolve ? 'Hide Explanation' : 'Explanation'}

@@ -28,8 +28,8 @@ import './App.css'
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
 // App version — increment with each commit
-const TENALI_VERSION = '1.0.17'
-const TENALI_BUILD_DATE = '2026-04-24 09:14 IST'
+const TENALI_VERSION = '1.0.18'
+const TENALI_BUILD_DATE = '2026-04-24 09:20 IST'
 
 // Inject version badge into DOM once (appears on all routes)
 ;(() => {
@@ -5256,8 +5256,20 @@ function App() {
     )
   }
 
-  // Route: /tatsavit → Tatsavit's 9-level progressive math drill
+  // Route: /tatsavit → interactive "fit the line" exercise (two random points)
   if (pathname === '/tatsavit') {
+    return (
+      <>
+        <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+        <TatsavitLineApp onBack={() => { window.location.href = '/' }} />
+      </>
+    )
+  }
+
+  // Route: /tatsavit0 → legacy 9-level progressive math drill (kept for reference)
+  if (pathname === '/tatsavit0') {
     return (
       <>
         <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
@@ -15843,6 +15855,268 @@ function RiyaApp({ onBack }) {
           style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>
           {showSolve ? 'Hide Explanation' : 'Explanation'}
         </button>
+      </div>
+    </QuizLayout>
+  )
+}
+
+/**
+ * TatsavitLineApp — interactive line-fitting exercise at /tatsavit.
+ * Two random integer points (p1, p2) appear on an XY plane. The student
+ * types values for slope m and intercept C; the line y = m·x + C redraws
+ * live. When the line passes through both points (within a small epsilon)
+ * a "Correct" banner appears. "Next" generates a fresh pair of points.
+ *
+ * Point generation strategy:
+ *   - Pick a target slope m ∈ {-3,...,3} (integer) and intercept
+ *     C ∈ {-4,...,4}; pick two distinct x-values in [-6, 6]; compute
+ *     y = mx + C for each. If either y is out of the plot window [-7, 7],
+ *     retry. This guarantees a tidy integer answer and visible points.
+ */
+function TatsavitLineApp({ onBack }) {
+  // `round` is just a counter that forces regeneration on Next
+  const [round, setRound] = useState(0)
+  const [p1, setP1] = useState({ x: 0, y: 0 })
+  const [p2, setP2] = useState({ x: 1, y: 0 })
+  const [targetM, setTargetM] = useState(0)
+  const [targetC, setTargetC] = useState(0)
+  const [mInput, setMInput] = useState('')
+  const [cInput, setCInput] = useState('')
+  const [showAnswer, setShowAnswer] = useState(false)
+  const [solvedCount, setSolvedCount] = useState(0)
+  const [justSolved, setJustSolved] = useState(false)
+
+  // Regenerate random points when `round` changes
+  useEffect(() => {
+    const mChoices = [-3, -2, -1, 0, 1, 2, 3]
+    const cChoices = [-4, -3, -2, -1, 0, 1, 2, 3, 4]
+    let chosen = null
+    for (let attempt = 0; attempt < 40 && !chosen; attempt++) {
+      const m = mChoices[Math.floor(Math.random() * mChoices.length)]
+      const c = cChoices[Math.floor(Math.random() * cChoices.length)]
+      // Pick two distinct x-values in [-6, 6]
+      const x1 = Math.floor(Math.random() * 13) - 6
+      let x2 = Math.floor(Math.random() * 13) - 6
+      while (x2 === x1) x2 = Math.floor(Math.random() * 13) - 6
+      const y1 = m * x1 + c
+      const y2 = m * x2 + c
+      if (Math.abs(y1) <= 7 && Math.abs(y2) <= 7) {
+        chosen = { m, c, p1: { x: x1, y: y1 }, p2: { x: x2, y: y2 } }
+      }
+    }
+    if (!chosen) {
+      // Ultra-safe fallback
+      chosen = { m: 1, c: 0, p1: { x: -2, y: -2 }, p2: { x: 3, y: 3 } }
+    }
+    setTargetM(chosen.m)
+    setTargetC(chosen.c)
+    setP1(chosen.p1)
+    setP2(chosen.p2)
+    setMInput('')
+    setCInput('')
+    setShowAnswer(false)
+    setJustSolved(false)
+  }, [round])
+
+  // Derived state: parsed inputs and correctness
+  const mVal = mInput === '' || mInput === '-' ? NaN : parseFloat(mInput)
+  const cVal = cInput === '' || cInput === '-' ? NaN : parseFloat(cInput)
+  const hasValidInputs = !Number.isNaN(mVal) && !Number.isNaN(cVal)
+  const EPS = 1e-6
+  const isCorrect =
+    hasValidInputs &&
+    Math.abs(mVal - targetM) < EPS &&
+    Math.abs(cVal - targetC) < EPS
+
+  // Flip `justSolved` once, when the student first hits the right answer
+  // for the current round. This lets us briefly show a success banner
+  // without blocking typing corrections afterwards.
+  useEffect(() => {
+    if (isCorrect && !justSolved) {
+      setJustSolved(true)
+      setSolvedCount(n => n + 1)
+    }
+  }, [isCorrect, justSolved])
+
+  // ── Plot geometry ───────────────────────────────────────────────
+  const PLOT = 440                     // SVG viewBox size (square)
+  const DOMAIN = 10                    // ±10 on each axis
+  const scale = PLOT / (2 * DOMAIN)    // px per unit
+  const toPx = (px, py) => ({
+    x: PLOT / 2 + px * scale,
+    y: PLOT / 2 - py * scale,          // SVG y grows downward; flip
+  })
+
+  // Endpoints of the user's line at x = ±DOMAIN (clipped by SVG bounds)
+  const userStart = hasValidInputs ? toPx(-DOMAIN, mVal * -DOMAIN + cVal) : null
+  const userEnd = hasValidInputs ? toPx(DOMAIN, mVal * DOMAIN + cVal) : null
+  const answerStart = toPx(-DOMAIN, targetM * -DOMAIN + targetC)
+  const answerEnd = toPx(DOMAIN, targetM * DOMAIN + targetC)
+
+  // ── Rendering helpers ───────────────────────────────────────────
+  const gridTicks = []
+  for (let g = -DOMAIN; g <= DOMAIN; g++) gridTicks.push(g)
+
+  const formatEq = () => {
+    if (!hasValidInputs) return 'y = ?·x + ?'
+    const mStr = Number.isInteger(mVal) ? String(mVal) : String(mVal)
+    if (cVal === 0) return `y = ${mStr}·x`
+    const sign = cVal >= 0 ? '+' : '−'
+    return `y = ${mStr}·x ${sign} ${Math.abs(cVal)}`
+  }
+
+  const handleNext = () => setRound(r => r + 1)
+  const handleReset = () => { setMInput(''); setCInput(''); setShowAnswer(false) }
+
+  return (
+    <QuizLayout
+      title="Tatsavit — Fit the Line"
+      subtitle={`Find m and C so y = m·x + C passes through both points · solved: ${solvedCount}`}
+      onBack={onBack}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, maxWidth: 560, margin: '0 auto' }}>
+        {/* SVG plot */}
+        <svg
+          viewBox={`0 0 ${PLOT} ${PLOT}`}
+          style={{
+            width: 'min(92vw, 460px)',
+            height: 'min(92vw, 460px)',
+            background: 'var(--clr-bg-soft, rgba(128,128,128,0.06))',
+            border: '1px solid var(--clr-text-soft)',
+            borderRadius: 8,
+          }}
+        >
+          {/* Grid lines */}
+          {gridTicks.map(g => {
+            const { x: gx } = toPx(g, 0)
+            const { y: gy } = toPx(0, g)
+            const axis = g === 0
+            return (
+              <g key={`grid-${g}`}>
+                <line x1={gx} y1={0} x2={gx} y2={PLOT}
+                  stroke="currentColor"
+                  strokeOpacity={axis ? 0.55 : 0.12}
+                  strokeWidth={axis ? 1.5 : 0.6} />
+                <line x1={0} y1={gy} x2={PLOT} y2={gy}
+                  stroke="currentColor"
+                  strokeOpacity={axis ? 0.55 : 0.12}
+                  strokeWidth={axis ? 1.5 : 0.6} />
+              </g>
+            )
+          })}
+          {/* Axis tick labels (every 2 units) */}
+          {gridTicks.filter(g => g !== 0 && g % 2 === 0).map(g => {
+            const { x: gx } = toPx(g, 0)
+            const { y: gy } = toPx(0, g)
+            const origin = toPx(0, 0)
+            return (
+              <g key={`lbl-${g}`} style={{ fontSize: 10, fill: 'currentColor', opacity: 0.55 }}>
+                <text x={gx} y={origin.y + 13} textAnchor="middle">{g}</text>
+                <text x={origin.x - 6} y={gy + 3} textAnchor="end">{g}</text>
+              </g>
+            )
+          })}
+          {/* Show-answer dashed line */}
+          {showAnswer && !isCorrect && (
+            <line x1={answerStart.x} y1={answerStart.y} x2={answerEnd.x} y2={answerEnd.y}
+              stroke="var(--clr-correct, #26de81)" strokeWidth={2}
+              strokeDasharray="6 4" strokeOpacity={0.7} />
+          )}
+          {/* User's line */}
+          {hasValidInputs && userStart && userEnd && (
+            <line
+              x1={userStart.x} y1={userStart.y}
+              x2={userEnd.x} y2={userEnd.y}
+              stroke={isCorrect ? 'var(--clr-correct, #26de81)' : 'var(--clr-accent, #4a90e2)'}
+              strokeWidth={3}
+              strokeOpacity={0.9}
+            />
+          )}
+          {/* Target points */}
+          {[p1, p2].map((p, i) => {
+            const { x, y } = toPx(p.x, p.y)
+            return (
+              <g key={i}>
+                <circle cx={x} cy={y} r={7}
+                  fill="var(--clr-wrong, #ff6b6b)"
+                  stroke="var(--clr-bg, #fff)"
+                  strokeWidth={2} />
+                <text x={x + 10} y={y - 10}
+                  style={{ fontSize: 12, fill: 'currentColor', fontWeight: 600 }}>
+                  ({p.x}, {p.y})
+                </text>
+              </g>
+            )
+          })}
+        </svg>
+
+        {/* Inputs for m and C */}
+        <div style={{ display: 'flex', gap: 18, alignItems: 'flex-end', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--clr-text-soft)' }}>slope m</span>
+            <input
+              type="number"
+              value={mInput}
+              onChange={e => setMInput(e.target.value)}
+              step="0.1"
+              placeholder="?"
+              style={{
+                width: 110, padding: '8px 12px', borderRadius: 8,
+                border: '1px solid var(--clr-text-soft)',
+                background: 'transparent', color: 'inherit',
+                textAlign: 'center', fontSize: '1.15rem', fontFamily: 'monospace',
+              }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--clr-text-soft)' }}>intercept C</span>
+            <input
+              type="number"
+              value={cInput}
+              onChange={e => setCInput(e.target.value)}
+              step="0.1"
+              placeholder="?"
+              style={{
+                width: 110, padding: '8px 12px', borderRadius: 8,
+                border: '1px solid var(--clr-text-soft)',
+                background: 'transparent', color: 'inherit',
+                textAlign: 'center', fontSize: '1.15rem', fontFamily: 'monospace',
+              }}
+            />
+          </label>
+        </div>
+
+        <div style={{ fontSize: '1.05rem', fontFamily: 'monospace', marginTop: 4, color: 'var(--clr-text-soft)' }}>
+          {formatEq()}
+        </div>
+
+        {isCorrect && (
+          <div className="feedback correct" style={{
+            textAlign: 'center', fontSize: '1.05rem',
+            color: 'var(--clr-correct, #26de81)', fontWeight: 600,
+            padding: '8px 16px', borderRadius: 8,
+            background: 'var(--clr-correct-bg, rgba(38,222,129,0.12))',
+          }}>
+            ✓ The line passes through both points.
+          </div>
+        )}
+        {showAnswer && !isCorrect && (
+          <div style={{ fontSize: '0.95rem', color: 'var(--clr-text-soft)', textAlign: 'center' }}>
+            Answer: m = {targetM}, C = {targetC}
+          </div>
+        )}
+
+        <div className="button-row" style={{ marginTop: 6 }}>
+          <button onClick={handleNext} className="submit-btn">Next →</button>
+          <button onClick={handleReset}
+            style={{ background: 'transparent', border: '1px solid var(--clr-text-soft)', color: 'var(--clr-text-soft)' }}>
+            Reset
+          </button>
+          <button onClick={() => setShowAnswer(s => !s)}
+            style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>
+            {showAnswer ? 'Hide answer' : 'Show answer'}
+          </button>
+        </div>
       </div>
     </QuizLayout>
   )

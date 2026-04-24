@@ -28,8 +28,8 @@ import './App.css'
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
 // App version — increment with each commit
-const TENALI_VERSION = '1.0.22'
-const TENALI_BUILD_DATE = '2026-04-24 09:56 IST'
+const TENALI_VERSION = '1.0.23'
+const TENALI_BUILD_DATE = '2026-04-24 10:05 IST'
 
 // Inject version badge into DOM once (appears on all routes)
 ;(() => {
@@ -15653,10 +15653,96 @@ function RiyaApp({ onBack }) {
   const [totalAttempted, setTotalAttempted] = useState(0)
   const [reviewMode, setReviewMode] = useState(false)    // shows "let's review" banner on replay
   const [unitResults, setUnitResults] = useState([])     // per-unit pass record, for summary
+  // Permutation that maps display slot (A, B, C, D) → original option index.
+  // Updated when the student advances to a new question so the correct
+  // option is not always in position A.
+  const [optionOrder, setOptionOrder] = useState([0, 1, 2, 3])
 
   const totalUnits = RIYA_UNITS.length
   const unit = RIYA_UNITS[unitIdx]
   const passThreshold = 4  // need >= 4 of 5 correct to advance
+
+  // Reshuffle options whenever the displayed question changes (new unit,
+  // new quiz index, or returning to quiz phase). Fisher–Yates, in place.
+  useEffect(() => {
+    const n = unit && unit.questions[quizIdx] ? unit.questions[quizIdx].options.length : 4
+    const order = Array.from({ length: n }, (_, i) => i)
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[order[i], order[j]] = [order[j], order[i]]
+    }
+    setOptionOrder(order)
+  }, [unitIdx, quizIdx, phase])
+
+  // ── Keyboard navigation ────────────────────────────────────────
+  // Arrow keys move between options; Enter submits or advances;
+  // A–D or 1–4 jump directly to that option slot. On lesson and
+  // complete screens, Enter is the "continue" button.
+  useEffect(() => {
+    const onKey = (e) => {
+      // Don't steal keys while the user is typing in a text/number field
+      const tag = (e.target && e.target.tagName) || ''
+      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+
+      if (phase === 'lesson') {
+        if (e.key === 'Enter' && !isTyping) {
+          e.preventDefault()
+          startQuiz()
+        }
+        return
+      }
+      if (phase === 'complete') {
+        if (e.key === 'Enter' && !isTyping) {
+          e.preventDefault()
+          handleRestart()
+        }
+        return
+      }
+
+      // phase === 'quiz'
+      if (revealed) {
+        if (e.key === 'Enter' && !isTyping) {
+          e.preventDefault()
+          handleNext()
+        }
+        return
+      }
+
+      // Not revealed → arrows navigate, Enter submits, A-D/1-4 jump
+      const n = optionOrder.length
+      if (n === 0) return
+      const currentDisplayIdx = selected === null ? -1 : optionOrder.indexOf(selected)
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault()
+        const nextIdx = ((currentDisplayIdx < 0 ? -1 : currentDisplayIdx) + 1 + n) % n
+        setSelected(optionOrder[nextIdx])
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault()
+        const prevIdx = ((currentDisplayIdx < 0 ? 0 : currentDisplayIdx) - 1 + n) % n
+        setSelected(optionOrder[prevIdx])
+      } else if (e.key === 'Enter') {
+        if (selected !== null && !isTyping) {
+          e.preventDefault()
+          handleSubmit()
+        }
+      } else if (!isTyping) {
+        // A/B/C/D or 1/2/3/4 → select that slot directly
+        const k = e.key.toLowerCase()
+        const letterIdx = { a: 0, b: 1, c: 2, d: 3 }[k]
+        const numIdx = { '1': 0, '2': 1, '3': 2, '4': 3 }[k]
+        const targetDisplay = letterIdx !== undefined ? letterIdx
+                            : numIdx !== undefined ? numIdx : -1
+        if (targetDisplay >= 0 && targetDisplay < n) {
+          e.preventDefault()
+          setSelected(optionOrder[targetDisplay])
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, revealed, selected, optionOrder, quizIdx, unitIdx, unitAnswers])
 
   // ── Helpers ─────────────────────────────────────────────────────
   const startQuiz = () => {
@@ -15814,38 +15900,47 @@ function RiyaApp({ onBack }) {
       <div className="progress-pill center" style={{ marginBottom: 12 }}>
         Correct in this unit: {correctSoFar} / {unitAnswers.length}
       </div>
+      <div style={{ fontSize: '0.78rem', color: 'var(--clr-text-soft)', textAlign: 'center', marginBottom: 6, opacity: 0.7 }}>
+        keyboard: ↑ ↓ to move · A–D or 1–4 to pick · Enter to {revealed ? 'continue' : 'submit'}
+      </div>
       <div className="question-box" style={{ whiteSpace: 'pre-wrap', textAlign: 'center', marginBottom: 16 }}>
         {q.prompt}
       </div>
       <div className="options-list">
-        {q.options.map((opt, i) => {
-          const letter = String.fromCharCode(65 + i)
-          const isSel = selected === i
-          const isRight = revealed && i === q.correctIndex
-          const isWrongPick = revealed && isSel && i !== q.correctIndex
+        {optionOrder.map((origIdx, displayIdx) => {
+          const opt = q.options[origIdx]
+          const letter = String.fromCharCode(65 + displayIdx)
+          const isSel = selected === origIdx
+          const isRight = revealed && origIdx === q.correctIndex
+          const isWrongPick = revealed && isSel && origIdx !== q.correctIndex
           let extra = ''
           if (isRight) extra = 'selected'
           else if (isSel && !revealed) extra = 'selected'
           return (
-            <label key={i} className={`option-card ${extra}`} style={{
+            <label key={origIdx} className={`option-card ${extra}`} style={{
               borderColor: isRight ? 'var(--clr-correct)' : isWrongPick ? 'var(--clr-wrong)' : undefined,
               background: isRight ? 'var(--clr-correct-bg)' : isWrongPick ? 'var(--clr-wrong-bg)' : undefined,
               opacity: revealed && !isRight && !isWrongPick ? 0.7 : 1,
             }}>
               <input type="radio" name="riya" checked={isSel}
-                onChange={() => !revealed && setSelected(i)} disabled={revealed} />
+                onChange={() => !revealed && setSelected(origIdx)} disabled={revealed} />
               <span><strong>{letter})</strong> {opt}</span>
             </label>
           )
         })}
       </div>
-      {revealed && !showSolve && (
-        <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`} style={{ marginTop: 14, textAlign: 'center' }}>
-          {isCorrect
-            ? 'Correct!'
-            : `Correct answer: ${String.fromCharCode(65 + q.correctIndex)}) ${q.options[q.correctIndex]}`}
-        </div>
-      )}
+      {revealed && !showSolve && (() => {
+        // Find which display position currently holds the correct option
+        const correctDisplayIdx = optionOrder.indexOf(q.correctIndex)
+        const correctLetter = String.fromCharCode(65 + (correctDisplayIdx >= 0 ? correctDisplayIdx : 0))
+        return (
+          <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`} style={{ marginTop: 14, textAlign: 'center' }}>
+            {isCorrect
+              ? 'Correct!'
+              : `Correct answer: ${correctLetter}) ${q.options[q.correctIndex]}`}
+          </div>
+        )
+      })()}
       {showSolve && renderFeedback(q.explanation, false)}
       <div className="button-row" style={{ marginTop: 16 }}>
         {!revealed

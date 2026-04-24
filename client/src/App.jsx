@@ -28,8 +28,8 @@ import './App.css'
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
 // App version — increment with each commit
-const TENALI_VERSION = '1.0.14'
-const TENALI_BUILD_DATE = '2026-04-20 14:18 IST'
+const TENALI_VERSION = '1.0.15'
+const TENALI_BUILD_DATE = '2026-04-24 08:50 IST'
 
 // Inject version badge into DOM once (appears on all routes)
 ;(() => {
@@ -5280,6 +5280,18 @@ function App() {
     )
   }
 
+  // Route: /riya → Riya's NIOS 311 Chapter 2 (Relations & Functions I) MCQ drill
+  if (pathname === '/riya') {
+    return (
+      <>
+        <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+        <RiyaApp onBack={() => { window.location.href = '/' }} />
+      </>
+    )
+  }
+
   // Route: /intervalscheduling → Interval Scheduling algorithm quiz
   if (pathname === '/intervalscheduling') {
     return <IntervalSchedulingApp />
@@ -8247,12 +8259,15 @@ const generateNegativeExponentQuestion = (level) => {
   }
 
   if (level === 9) {
-    // (x^-2 y^3)^2 = y^6 / x^4
+    // (x^-2 y^3)^2 = y^6 / x^4  (equivalently x^-4 y^6 — so that form must NOT appear as a distractor)
     const exp = 2
     const questionJSX = <span>(<Sup base="x" exp={-2} /><Sup base="y" exp={3} /><sup style={{ fontSize: '0.7em' }}>)</sup><sup style={{ fontSize: '0.7em' }}>{exp}</sup> = ?</span>
     const distractors = [
-      { jsx: <span><Sup base="x" exp={-4} /><Sup base="y" exp={6} /></span>, isCorrect: false },
+      // Common error: applied outer exponent only to y, left x^-2 alone
+      { jsx: <span><Sup base="x" exp={-2} /><Sup base="y" exp={6} /></span>, isCorrect: false },
+      // Error: forgot to double the x exponent (kept x^2 in the denominator)
       { jsx: <Frac n={<Sup base="y" exp={6} />} d={<Sup base="x" exp={2} />} />, isCorrect: false },
+      // Error: flipped the fraction the wrong way
       { jsx: <Frac n={<Sup base="x" exp={4} />} d={<Sup base="y" exp={6} />} />, isCorrect: false }
     ]
     const choices = [{ jsx: <Frac n={<Sup base="y" exp={6} />} d={<Sup base="x" exp={4} />} />, isCorrect: true }, ...distractors].sort(() => Math.random() - 0.5)
@@ -15236,6 +15251,584 @@ function Tatsavit1App({ onBack }) {
               opacity: revealed && !isRight && !isWrongPick ? 0.7 : 1,
             }}>
               <input type="radio" name="tatsavit1" checked={isSel}
+                onChange={() => !revealed && setSelected(i)} disabled={revealed} />
+              <span><strong>{letter})</strong> {opt}</span>
+            </label>
+          )
+        })}
+      </div>
+      {revealed && !showSolve && (
+        <div className={`feedback ${isCorrect ? 'correct' : 'wrong'}`} style={{ marginTop: 14, textAlign: 'center' }}>
+          {isCorrect
+            ? '✓ Correct!'
+            : `✗ Correct answer: ${String.fromCharCode(65 + q.correctIndex)}) ${q.options[q.correctIndex]}`}
+        </div>
+      )}
+      {showSolve && renderFeedback(q.explanation, false)}
+      <div className="button-row" style={{ marginTop: 16 }}>
+        {!revealed
+          ? <button onClick={handleSubmit} disabled={selected === null}>Submit</button>
+          : <button onClick={handleNext}>{idx + 1 >= total ? 'Finish Quiz' : 'Next →'}</button>}
+        <button onClick={() => setShowSolve(s => !s)}
+          style={{ background: 'transparent', border: '1px solid var(--clr-accent)', color: 'var(--clr-accent)' }}>
+          {showSolve ? 'Hide Explanation' : 'Explanation'}
+        </button>
+        {idx > 0 && !revealed && (
+          <button onClick={handleJumpPrev}
+            style={{ background: 'transparent', border: '1px solid var(--clr-text-soft)', color: 'var(--clr-text-soft)' }}>
+            ← Previous
+          </button>
+        )}
+      </div>
+    </QuizLayout>
+  )
+}
+
+/**
+ * RIYA_QUESTIONS — MCQ bank for /riya.
+ * Source: Cambridge IGCSE Additional Mathematics 0606 syllabus (2028–2030).
+ * Original practice problems written to cover the 14 syllabus topics:
+ * Functions; Quadratic functions; Factors of polynomials; Equations,
+ * inequalities & graphs (modulus); Simultaneous equations; Logarithmic &
+ * exponential functions; Straight-line graphs; Coordinate geometry of the
+ * circle; Circular measure; Trigonometry; Permutations & combinations;
+ * Series (binomial, AP, GP); Vectors in two dimensions; Calculus
+ * (differentiation & integration).
+ */
+const RIYA_QUESTIONS = [
+  // ── 1 Functions ──────────────────────────────────────────────────────
+  { section: '1 Functions',
+    prompt: '1. Which of the following describes a one–one function?',
+    options: [
+      'Every element of the domain maps to a distinct element of the range',
+      'Every element of the codomain has at least one pre-image',
+      'Some elements of the domain may map to the same image',
+      'The graph is symmetric about the y-axis'
+    ],
+    correctIndex: 0,
+    explanation: 'Solution: Every element of the domain maps to a distinct element of the range\nStep 1: A one–one (injective) function sends distinct inputs to distinct outputs.\nStep 2: So no two different inputs share the same image.' },
+
+  { section: '1 Functions',
+    prompt: '2. For f(x) = 3x − 5 with domain ℝ, f⁻¹(x) =',
+    options: ['(x + 5) / 3', '(x − 5) / 3', '1 / (3x − 5)', '3x + 5'],
+    correctIndex: 0,
+    explanation: 'Solution: (x + 5) / 3\nStep 1: Let y = 3x − 5 and swap roles: x = 3y − 5.\nStep 2: Solve for y: y = (x + 5)/3. That is f⁻¹(x).' },
+
+  { section: '1 Functions',
+    prompt: '3. For f(x) = √(x − 2), the smallest domain that lets f be a real function is:',
+    options: ['[2, ∞)', '(2, ∞)', 'ℝ', '(−∞, 2]'],
+    correctIndex: 0,
+    explanation: 'Solution: [2, ∞)\nStep 1: A real square root needs its argument ≥ 0.\nStep 2: x − 2 ≥ 0 ⇒ x ≥ 2, so the domain is [2, ∞).' },
+
+  { section: '1 Functions',
+    prompt: '4. For f(x) = 2x + 1 and g(x) = x², the value of fg(3) is:',
+    options: ['19', '49', '7', '37'],
+    correctIndex: 0,
+    explanation: 'Solution: 19\nStep 1: fg(x) = f(g(x)) = f(x²) = 2x² + 1.\nStep 2: At x = 3: 2·9 + 1 = 19.' },
+
+  { section: '1 Functions',
+    prompt: '5. For f(x) = x² on ℝ, an inverse does NOT exist because f is:',
+    options: [
+      'Many–one (not one–one)',
+      'Not defined at x = 0',
+      'Unbounded',
+      'Discontinuous'
+    ],
+    correctIndex: 0,
+    explanation: 'Solution: Many–one (not one–one)\nStep 1: f(−a) = f(a) = a², so two different inputs share the same image.\nStep 2: Only one–one functions have inverses, so f fails the test.' },
+
+  { section: '1 Functions',
+    prompt: '6. The graph of y = f⁻¹(x) is the graph of y = f(x) reflected in the line:',
+    options: ['y = x', 'x = 0', 'y = 0', 'y = −x'],
+    correctIndex: 0,
+    explanation: 'Solution: y = x\nStep 1: Reflecting across y = x swaps x and y coordinates.\nStep 2: If (a, b) lies on y = f(x), then (b, a) lies on y = f⁻¹(x).' },
+
+  // ── 2 Quadratic functions ───────────────────────────────────────────
+  { section: '2 Quadratics',
+    prompt: '7. The minimum value of f(x) = x² − 6x + 11 is:',
+    options: ['2', '11', '−3', '3'],
+    correctIndex: 0,
+    explanation: 'Solution: 2\nStep 1: Complete the square: x² − 6x + 11 = (x − 3)² + 2.\nStep 2: Minimum occurs at x = 3 with value 2.' },
+
+  { section: '2 Quadratics',
+    prompt: '8. For which values of k does x² + kx + 9 = 0 have two equal real roots?',
+    options: ['k = ±6', 'k = 6 only', 'k = 0', 'k = ±3'],
+    correctIndex: 0,
+    explanation: 'Solution: k = ±6\nStep 1: Equal roots need discriminant = 0: k² − 4·1·9 = 0.\nStep 2: k² = 36, so k = ±6.' },
+
+  { section: '2 Quadratics',
+    prompt: '9. The line y = mx + 1 is tangent to y = x² + 3 when m equals:',
+    options: ['±2√2', '±2', '0', '±1'],
+    correctIndex: 0,
+    explanation: 'Solution: ±2√2\nStep 1: x² + 3 = mx + 1 ⇒ x² − mx + 2 = 0.\nStep 2: For tangency, discriminant 0: m² − 8 = 0.\nStep 3: m = ±2√2.' },
+
+  { section: '2 Quadratics',
+    prompt: '10. The solution of x² − x − 6 < 0 is:',
+    options: ['−2 < x < 3', 'x < −2 or x > 3', 'x < 3', '−3 < x < 2'],
+    correctIndex: 0,
+    explanation: 'Solution: −2 < x < 3\nStep 1: Factorise: (x − 3)(x + 2) < 0.\nStep 2: The product is negative between the roots, so −2 < x < 3.' },
+
+  { section: '2 Quadratics',
+    prompt: '11. If f(x) = 2x² − 8x + 3 is written in completed-square form a(x − h)² + k, then (h, k) =',
+    options: ['(2, −5)', '(2, 5)', '(−2, −5)', '(4, 3)'],
+    correctIndex: 0,
+    explanation: 'Solution: (2, −5)\nStep 1: Factor 2 from the x-terms: 2(x² − 4x) + 3.\nStep 2: Complete the square inside: x² − 4x = (x − 2)² − 4.\nStep 3: 2[(x − 2)² − 4] + 3 = 2(x − 2)² − 5. Hence h = 2, k = −5.' },
+
+  // ── 3 Factors of polynomials ────────────────────────────────────────
+  { section: '3 Polynomial factors',
+    prompt: '12. The remainder when f(x) = x³ − 4x + 1 is divided by (x − 2) is:',
+    options: ['1', '−1', '0', '9'],
+    correctIndex: 0,
+    explanation: 'Solution: 1\nStep 1: By the Remainder Theorem, remainder = f(2).\nStep 2: f(2) = 8 − 8 + 1 = 1.' },
+
+  { section: '3 Polynomial factors',
+    prompt: '13. Which is a factor of f(x) = x³ − 3x² − x + 3?',
+    options: ['x − 1', 'x − 2', 'x + 2', 'x − 4'],
+    correctIndex: 0,
+    explanation: 'Solution: x − 1\nStep 1: f(1) = 1 − 3 − 1 + 3 = 0.\nStep 2: By the Factor Theorem, (x − 1) is a factor.' },
+
+  { section: '3 Polynomial factors',
+    prompt: '14. After dividing x³ − 3x² − x + 3 by (x − 1), the quotient is:',
+    options: ['x² − 2x − 3', 'x² − 4x + 3', 'x² + 2x − 3', 'x² − 3x − 3'],
+    correctIndex: 0,
+    explanation: 'Solution: x² − 2x − 3\nStep 1: Polynomial/synthetic division by (x − 1) gives x² − 2x − 3 remainder 0.\nStep 2: Check: (x − 1)(x² − 2x − 3) = x³ − 3x² − x + 3. ✓' },
+
+  { section: '3 Polynomial factors',
+    prompt: '15. The real solutions of x³ − 3x² − x + 3 = 0 are:',
+    options: ['x = 1, −1, 3', 'x = 1, 2, 3', 'x = −1, 0, 3', 'x = 1, 3 only'],
+    correctIndex: 0,
+    explanation: 'Solution: x = 1, −1, 3\nStep 1: From Q13–14, x³ − 3x² − x + 3 = (x − 1)(x² − 2x − 3).\nStep 2: x² − 2x − 3 = (x − 3)(x + 1), giving x = 3 or x = −1, plus x = 1.' },
+
+  // ── 4 Equations, inequalities & graphs (modulus) ────────────────────
+  { section: '4 Modulus',
+    prompt: '16. The solutions of |2x − 3| = 5 are:',
+    options: ['x = 4 and x = −1', 'x = 4 only', 'x = 1 and x = −4', 'x = 4 and x = 1'],
+    correctIndex: 0,
+    explanation: 'Solution: x = 4 and x = −1\nStep 1: |2x − 3| = 5 ⇒ 2x − 3 = 5 or 2x − 3 = −5.\nStep 2: Case A: 2x = 8 ⇒ x = 4. Case B: 2x = −2 ⇒ x = −1.' },
+
+  { section: '4 Modulus',
+    prompt: '17. Solve |x + 1| = 2x − 4 (valid real solutions):',
+    options: ['x = 5', 'x = 5 or x = 1', 'x = 1', 'No solution'],
+    correctIndex: 0,
+    explanation: 'Solution: x = 5\nStep 1: Need 2x − 4 ≥ 0, so x ≥ 2.\nStep 2: Case A (x + 1 ≥ 0): x + 1 = 2x − 4 ⇒ x = 5. ✓ satisfies x ≥ 2.\nStep 3: Case B: −(x + 1) = 2x − 4 ⇒ x = 1, but this violates x ≥ 2. Reject.' },
+
+  { section: '4 Modulus',
+    prompt: '18. The solution of |x − 2| < 3 is:',
+    options: ['−1 < x < 5', 'x > 5', 'x < −1', 'x ≤ −1 or x ≥ 5'],
+    correctIndex: 0,
+    explanation: 'Solution: −1 < x < 5\nStep 1: |x − 2| < 3 ⇔ −3 < x − 2 < 3.\nStep 2: Add 2 throughout: −1 < x < 5.' },
+
+  { section: '4 Modulus',
+    prompt: '19. The graph of y = |x² − 4| touches the x-axis at:',
+    options: ['x = ±2', 'x = 0', 'x = ±1', 'x = 4'],
+    correctIndex: 0,
+    explanation: 'Solution: x = ±2\nStep 1: |x² − 4| = 0 iff x² − 4 = 0.\nStep 2: So x² = 4, giving x = ±2.' },
+
+  // ── 5 Simultaneous equations ────────────────────────────────────────
+  { section: '5 Simultaneous',
+    prompt: '20. Solve  y = x + 1  and  y = x² − 1.',
+    options: [
+      '(x, y) = (−1, 0) or (2, 3)',
+      '(x, y) = (1, 2) only',
+      '(x, y) = (0, 1) or (1, 2)',
+      'No real solution'
+    ],
+    correctIndex: 0,
+    explanation: 'Solution: (−1, 0) and (2, 3)\nStep 1: Set equal: x + 1 = x² − 1 ⇒ x² − x − 2 = 0.\nStep 2: (x − 2)(x + 1) = 0 ⇒ x = 2 or x = −1.\nStep 3: y = x + 1 gives (2, 3) and (−1, 0).' },
+
+  { section: '5 Simultaneous',
+    prompt: '21. Solve  xy = 6  and  x + y = 5.',
+    options: ['(x, y) = (2, 3) or (3, 2)', '(x, y) = (1, 5)', '(x, y) = (6, 1) only', 'No real solution'],
+    correctIndex: 0,
+    explanation: 'Solution: (2, 3) and (3, 2)\nStep 1: From x + y = 5 take y = 5 − x and substitute.\nStep 2: x(5 − x) = 6 ⇒ x² − 5x + 6 = 0 ⇒ (x − 2)(x − 3) = 0.\nStep 3: x = 2 gives y = 3; x = 3 gives y = 2.' },
+
+  { section: '5 Simultaneous',
+    prompt: '22. The number of real solutions of  y = 2x − 1  and  x² + y² = 5 is:',
+    options: ['2', '1', '0', 'Infinite'],
+    correctIndex: 0,
+    explanation: 'Solution: 2\nStep 1: Substitute: x² + (2x − 1)² = 5 ⇒ 5x² − 4x − 4 = 0.\nStep 2: Discriminant = 16 + 80 = 96 > 0, so two real x-values.' },
+
+  // ── 6 Logarithmic & exponential ─────────────────────────────────────
+  { section: '6 Log / Exp',
+    prompt: '23. The graph of y = eˣ has a horizontal asymptote at:',
+    options: ['y = 0', 'y = 1', 'x = 0', 'y = e'],
+    correctIndex: 0,
+    explanation: 'Solution: y = 0\nStep 1: As x → −∞, eˣ → 0.\nStep 2: So the line y = 0 is a horizontal asymptote.' },
+
+  { section: '6 Log / Exp',
+    prompt: '24. Solve  e^(2x) − 3eˣ + 2 = 0  for real x.',
+    options: [
+      'x = 0 or x = ln 2',
+      'x = ln 2 only',
+      'x = 1 or x = 2',
+      'No real solution'
+    ],
+    correctIndex: 0,
+    explanation: 'Solution: x = 0 or x = ln 2\nStep 1: Let u = eˣ. Then u² − 3u + 2 = 0.\nStep 2: (u − 1)(u − 2) = 0 ⇒ u = 1 or u = 2.\nStep 3: eˣ = 1 ⇒ x = 0; eˣ = 2 ⇒ x = ln 2.' },
+
+  { section: '6 Log / Exp',
+    prompt: '25. Write 2 log₁₀ a − log₁₀ b as a single logarithm.',
+    options: ['log₁₀(a² / b)', 'log₁₀(a² · b)', 'log₁₀(2a − b)', '2 log₁₀(a / b)'],
+    correctIndex: 0,
+    explanation: 'Solution: log₁₀(a² / b)\nStep 1: 2 log₁₀ a = log₁₀ a².\nStep 2: log₁₀ a² − log₁₀ b = log₁₀(a² / b).' },
+
+  { section: '6 Log / Exp',
+    prompt: '26. Solve 3ˣ = 10, giving x to 3 significant figures.',
+    options: ['2.10', '3.00', '1.00', '4.32'],
+    correctIndex: 0,
+    explanation: 'Solution: 2.10\nStep 1: Take logs: x = log 10 / log 3 = 1 / 0.4771…\nStep 2: x ≈ 2.0959… ≈ 2.10 (3 s.f.).' },
+
+  { section: '6 Log / Exp',
+    prompt: '27. Using change of base, log₂ 5 equals (to 3 s.f.):',
+    options: ['2.32', '0.699', '3.32', '1.61'],
+    correctIndex: 0,
+    explanation: 'Solution: 2.32\nStep 1: log₂ 5 = ln 5 / ln 2 = 1.6094 / 0.6931.\nStep 2: ≈ 2.3219 ≈ 2.32 (3 s.f.).' },
+
+  // ── 7 Straight-line graphs ──────────────────────────────────────────
+  { section: '7 Straight lines',
+    prompt: '28. The line through A(1, 2) and B(5, 14) has gradient:',
+    options: ['3', '4', '1/3', '12'],
+    correctIndex: 0,
+    explanation: 'Solution: 3\nStep 1: Gradient = (y₂ − y₁)/(x₂ − x₁) = (14 − 2)/(5 − 1).\nStep 2: = 12/4 = 3.' },
+
+  { section: '7 Straight lines',
+    prompt: '29. A line perpendicular to y = 2x + 3 has gradient:',
+    options: ['−1/2', '2', '−2', '1/2'],
+    correctIndex: 0,
+    explanation: 'Solution: −1/2\nStep 1: Perpendicular gradients multiply to −1.\nStep 2: If m₁ = 2 then m₂ = −1/2.' },
+
+  { section: '7 Straight lines',
+    prompt: '30. The midpoint of A(−2, 5) and B(6, −1) is:',
+    options: ['(2, 2)', '(4, 4)', '(2, −2)', '(4, −6)'],
+    correctIndex: 0,
+    explanation: 'Solution: (2, 2)\nStep 1: Midpoint = ((−2+6)/2, (5+(−1))/2).\nStep 2: = (2, 2).' },
+
+  { section: '7 Straight lines',
+    prompt: '31. The relation y = A xⁿ becomes a straight line when plotted as:',
+    options: [
+      'lg y against lg x',
+      'y against xⁿ',
+      'lg y against x',
+      'y against lg x'
+    ],
+    correctIndex: 0,
+    explanation: 'Solution: lg y against lg x\nStep 1: Take logs of y = A xⁿ: lg y = lg A + n lg x.\nStep 2: That is a straight line in (lg x, lg y) with gradient n and intercept lg A.' },
+
+  // ── 8 Coordinate geometry of the circle ─────────────────────────────
+  { section: '8 Circles',
+    prompt: '32. The circle x² + y² − 4x + 6y − 3 = 0 has centre and radius:',
+    options: [
+      'Centre (2, −3), radius 4',
+      'Centre (−2, 3), radius 4',
+      'Centre (2, −3), radius √3',
+      'Centre (4, −6), radius √3'
+    ],
+    correctIndex: 0,
+    explanation: 'Solution: Centre (2, −3), radius 4\nStep 1: Compare with x² + y² + 2gx + 2fy + c = 0: g = −2, f = 3, c = −3.\nStep 2: Centre = (−g, −f) = (2, −3); radius = √(g² + f² − c) = √(4 + 9 + 3) = √16 = 4.' },
+
+  { section: '8 Circles',
+    prompt: '33. The equation of the circle with centre (1, −2) and radius 5 is:',
+    options: [
+      '(x − 1)² + (y + 2)² = 25',
+      '(x + 1)² + (y − 2)² = 25',
+      '(x − 1)² + (y − 2)² = 5',
+      'x² + y² = 25'
+    ],
+    correctIndex: 0,
+    explanation: 'Solution: (x − 1)² + (y + 2)² = 25\nStep 1: Standard form: (x − a)² + (y − b)² = r².\nStep 2: With (a, b) = (1, −2) and r = 5: (x − 1)² + (y + 2)² = 25.' },
+
+  { section: '8 Circles',
+    prompt: '34. The line y = x + 1 relative to the circle x² + y² = 1 is:',
+    options: ['A chord', 'A tangent', 'Does not meet the circle', 'A diameter'],
+    correctIndex: 0,
+    explanation: 'Solution: A chord\nStep 1: Substitute: x² + (x + 1)² = 1 ⇒ 2x² + 2x = 0.\nStep 2: x(2x + 2) = 0 ⇒ x = 0 or x = −1. Two intersections, so the line is a chord.' },
+
+  { section: '8 Circles',
+    prompt: '35. The tangent to the circle x² + y² = 25 at the point (3, 4) has equation:',
+    options: ['3x + 4y = 25', '3x + 4y = 5', '4x − 3y = 0', '3x + 4y = 0'],
+    correctIndex: 0,
+    explanation: 'Solution: 3x + 4y = 25\nStep 1: Radius to (3, 4) has gradient 4/3, so tangent gradient is −3/4.\nStep 2: Tangent: y − 4 = −3/4 (x − 3) ⇒ 4y − 16 = −3x + 9 ⇒ 3x + 4y = 25.' },
+
+  // ── 9 Circular measure ──────────────────────────────────────────────
+  { section: '9 Circular measure',
+    prompt: '36. Convert 120° to radians.',
+    options: ['2π/3', 'π/3', '3π/2', '120π/180'],
+    correctIndex: 0,
+    explanation: 'Solution: 2π/3\nStep 1: radians = degrees × π/180 = 120 × π/180.\nStep 2: = 120π/180 = 2π/3.' },
+
+  { section: '9 Circular measure',
+    prompt: '37. A circle of radius 6 cm has an arc subtending an angle of π/3 radians at the centre. Arc length =',
+    options: ['2π cm', 'π cm', '6π cm', 'π/2 cm'],
+    correctIndex: 0,
+    explanation: 'Solution: 2π cm\nStep 1: Arc length s = r θ.\nStep 2: = 6 × π/3 = 2π cm.' },
+
+  { section: '9 Circular measure',
+    prompt: '38. The area of a sector of radius 4 cm with angle π/2 radians is:',
+    options: ['4π cm²', '2π cm²', '8π cm²', '16 cm²'],
+    correctIndex: 0,
+    explanation: 'Solution: 4π cm²\nStep 1: Sector area = ½ r² θ.\nStep 2: = ½ × 16 × π/2 = 4π cm².' },
+
+  { section: '9 Circular measure',
+    prompt: '39. If an arc of length 10 cm subtends 2 radians at the centre, the radius is:',
+    options: ['5 cm', '20 cm', '2 cm', 'π cm'],
+    correctIndex: 0,
+    explanation: 'Solution: 5 cm\nStep 1: s = r θ ⇒ r = s/θ.\nStep 2: r = 10/2 = 5 cm.' },
+
+  // ── 10 Trigonometry ─────────────────────────────────────────────────
+  { section: '10 Trigonometry',
+    prompt: '40. The period of y = 3 sin 2x is:',
+    options: ['π', '2π', 'π/2', '3π'],
+    correctIndex: 0,
+    explanation: 'Solution: π\nStep 1: Period of sin(bx) is 2π/|b|.\nStep 2: With b = 2, period = 2π/2 = π.' },
+
+  { section: '10 Trigonometry',
+    prompt: '41. The amplitude of y = 4 cos(3x) is:',
+    options: ['4', '3', '12', '1'],
+    correctIndex: 0,
+    explanation: 'Solution: 4\nStep 1: Amplitude is the coefficient of the cosine.\nStep 2: |4| = 4.' },
+
+  { section: '10 Trigonometry',
+    prompt: '42. Using the identity sin²A + cos²A = 1, if sin A = 3/5 and A is acute, cos A =',
+    options: ['4/5', '−4/5', '5/4', '3/4'],
+    correctIndex: 0,
+    explanation: 'Solution: 4/5\nStep 1: cos²A = 1 − (3/5)² = 1 − 9/25 = 16/25.\nStep 2: For A acute, cos A > 0, so cos A = 4/5.' },
+
+  { section: '10 Trigonometry',
+    prompt: '43. Solve 2 sin x = 1 for 0 ≤ x < 2π.',
+    options: ['x = π/6, 5π/6', 'x = π/3, 2π/3', 'x = π/6 only', 'x = π/6, 11π/6'],
+    correctIndex: 0,
+    explanation: 'Solution: x = π/6 and x = 5π/6\nStep 1: sin x = 1/2.\nStep 2: In [0, 2π), sin x = 1/2 at x = π/6 and its supplement x = π − π/6 = 5π/6.' },
+
+  { section: '10 Trigonometry',
+    prompt: '44. Simplify sec²A − tan²A.',
+    options: ['1', '0', '2 tan²A', 'sin²A'],
+    correctIndex: 0,
+    explanation: 'Solution: 1\nStep 1: The identity sec²A = 1 + tan²A gives sec²A − tan²A = 1.' },
+
+  // ── 11 Permutations & combinations ──────────────────────────────────
+  { section: '11 Perms / Combs',
+    prompt: '45. The number of ways to arrange 5 distinct books on a shelf is:',
+    options: ['120', '25', '60', '720'],
+    correctIndex: 0,
+    explanation: 'Solution: 120\nStep 1: Arrangements of n distinct objects in a line = n!.\nStep 2: 5! = 120.' },
+
+  { section: '11 Perms / Combs',
+    prompt: '46. How many ways to pick a committee of 3 from 8 people?',
+    options: ['56', '336', '24', '512'],
+    correctIndex: 0,
+    explanation: 'Solution: 56\nStep 1: Order does not matter, so use C(8, 3).\nStep 2: 8!/(3!·5!) = (8·7·6)/(3·2·1) = 56.' },
+
+  { section: '11 Perms / Combs',
+    prompt: '47. The value of ⁷P₃ (permutations) is:',
+    options: ['210', '35', '343', '5040'],
+    correctIndex: 0,
+    explanation: 'Solution: 210\nStep 1: ⁿPᵣ = n!/(n − r)!.\nStep 2: ⁷P₃ = 7·6·5 = 210.' },
+
+  { section: '11 Perms / Combs',
+    prompt: '48. How many 4-letter arrangements of the word NUMBER are possible (no repeats)?',
+    options: ['360', '720', '60', '24'],
+    correctIndex: 0,
+    explanation: 'Solution: 360\nStep 1: NUMBER has 6 distinct letters; choose and arrange 4.\nStep 2: ⁶P₄ = 6·5·4·3 = 360.' },
+
+  // ── 12 Series (binomial, AP, GP) ────────────────────────────────────
+  { section: '12 Series',
+    prompt: '49. In the expansion of (1 + x)⁶, the coefficient of x² is:',
+    options: ['15', '20', '6', '30'],
+    correctIndex: 0,
+    explanation: 'Solution: 15\nStep 1: Coefficient of xʳ in (1 + x)ⁿ is C(n, r).\nStep 2: C(6, 2) = 15.' },
+
+  { section: '12 Series',
+    prompt: '50. In the expansion of (2 + x)⁵, the coefficient of x³ is:',
+    options: ['40', '10', '80', '20'],
+    correctIndex: 0,
+    explanation: 'Solution: 40\nStep 1: Term is C(5, 3) · 2^(5−3) · x³.\nStep 2: = 10 · 4 · x³ = 40 x³.' },
+
+  { section: '12 Series',
+    prompt: '51. The sum of the first 20 terms of 3, 7, 11, 15, … is:',
+    options: ['820', '800', '740', '400'],
+    correctIndex: 0,
+    explanation: 'Solution: 820\nStep 1: AP with a = 3, d = 4. Sₙ = n/2 · [2a + (n − 1)d].\nStep 2: S₂₀ = 10 · [6 + 19·4] = 10 · 82 = 820.' },
+
+  { section: '12 Series',
+    prompt: '52. A geometric progression has first term 4 and common ratio 1/2. Sum to infinity =',
+    options: ['8', '4', '2', 'Does not converge'],
+    correctIndex: 0,
+    explanation: 'Solution: 8\nStep 1: |r| = 1/2 < 1, so sum to infinity exists: S∞ = a/(1 − r).\nStep 2: = 4 / (1 − 1/2) = 4 / (1/2) = 8.' },
+
+  { section: '12 Series',
+    prompt: '53. The 10th term of the GP 2, 6, 18, 54, … is:',
+    options: ['2 · 3⁹', '2 · 3¹⁰', '3⁹', '6⁹'],
+    correctIndex: 0,
+    explanation: 'Solution: 2 · 3⁹\nStep 1: aₙ = a · r^(n−1). Here a = 2, r = 3.\nStep 2: a₁₀ = 2 · 3⁹.' },
+
+  // ── 13 Vectors in 2D ────────────────────────────────────────────────
+  { section: '13 Vectors',
+    prompt: '54. The magnitude of the vector a = 3i − 4j is:',
+    options: ['5', '7', '1', '25'],
+    correctIndex: 0,
+    explanation: 'Solution: 5\nStep 1: |a| = √(3² + (−4)²).\nStep 2: = √(9 + 16) = √25 = 5.' },
+
+  { section: '13 Vectors',
+    prompt: '55. The unit vector in the direction of a = 3i − 4j is:',
+    options: ['(3/5)i − (4/5)j', '(1/5)i − (1/5)j', '3i − 4j', '(3/7)i − (4/7)j'],
+    correctIndex: 0,
+    explanation: 'Solution: (3/5)i − (4/5)j\nStep 1: â = a / |a|.\nStep 2: |a| = 5, so â = (3i − 4j)/5 = (3/5)i − (4/5)j.' },
+
+  { section: '13 Vectors',
+    prompt: '56. If p = 2i + j and q = −i + 3j, then 2p − q =',
+    options: ['5i − j', '3i + 5j', '5i + 5j', '3i − j'],
+    correctIndex: 0,
+    explanation: 'Solution: 5i − j\nStep 1: 2p = 4i + 2j.\nStep 2: 2p − q = (4i + 2j) − (−i + 3j) = 5i − j.' },
+
+  { section: '13 Vectors',
+    prompt: '57. A boat has velocity 5i + 12j km/h. Its speed (magnitude) is:',
+    options: ['13 km/h', '17 km/h', '7 km/h', '60 km/h'],
+    correctIndex: 0,
+    explanation: 'Solution: 13 km/h\nStep 1: Speed = √(5² + 12²).\nStep 2: = √(25 + 144) = √169 = 13.' },
+
+  // ── 14 Calculus ─────────────────────────────────────────────────────
+  { section: '14 Calculus',
+    prompt: '58. If y = x³ − 5x + 7, then dy/dx =',
+    options: ['3x² − 5', 'x² − 5', '3x³ − 5', '3x² − 5x'],
+    correctIndex: 0,
+    explanation: 'Solution: 3x² − 5\nStep 1: d/dx (xⁿ) = n x^(n−1).\nStep 2: d/dx (x³) = 3x²; d/dx (−5x) = −5; d/dx (7) = 0.' },
+
+  { section: '14 Calculus',
+    prompt: '59. If y = sin x, then dy/dx at x = 0 is:',
+    options: ['1', '0', '−1', 'Undefined'],
+    correctIndex: 0,
+    explanation: 'Solution: 1\nStep 1: dy/dx = cos x.\nStep 2: cos 0 = 1.' },
+
+  { section: '14 Calculus',
+    prompt: '60. The stationary points of f(x) = x³ − 3x occur at:',
+    options: ['x = 1 and x = −1', 'x = 0 only', 'x = 3 and x = −3', 'x = 0 and x = 3'],
+    correctIndex: 0,
+    explanation: 'Solution: x = 1 and x = −1\nStep 1: f′(x) = 3x² − 3.\nStep 2: Set f′ = 0: 3x² = 3 ⇒ x² = 1 ⇒ x = ±1.' },
+
+  { section: '14 Calculus',
+    prompt: '61. At x = 1, f(x) = x³ − 3x has a:',
+    options: ['Local minimum', 'Local maximum', 'Point of inflexion', 'Horizontal asymptote'],
+    correctIndex: 0,
+    explanation: 'Solution: Local minimum\nStep 1: f″(x) = 6x, so f″(1) = 6 > 0.\nStep 2: Positive second derivative means a local minimum.' },
+
+  { section: '14 Calculus',
+    prompt: '62. ∫ (3x² + 2) dx =',
+    options: ['x³ + 2x + C', 'x³ + 2 + C', '6x + C', '3x³ + 2x + C'],
+    correctIndex: 0,
+    explanation: 'Solution: x³ + 2x + C\nStep 1: ∫ xⁿ dx = x^(n+1)/(n+1) + C.\nStep 2: ∫ 3x² dx = x³; ∫ 2 dx = 2x. Add the arbitrary constant C.' },
+
+  { section: '14 Calculus',
+    prompt: '63. ∫₀¹ (2x + 1) dx =',
+    options: ['2', '3', '1', '0'],
+    correctIndex: 0,
+    explanation: 'Solution: 2\nStep 1: Antiderivative is x² + x.\nStep 2: Evaluate: [1² + 1] − [0² + 0] = 2.' },
+
+  { section: '14 Calculus',
+    prompt: '64. If y = e^(2x), then dy/dx =',
+    options: ['2 e^(2x)', 'e^(2x)', '2x e^(2x)', 'e^(2x)/2'],
+    correctIndex: 0,
+    explanation: 'Solution: 2 e^(2x)\nStep 1: Chain rule: d/dx e^(u) = e^(u) · u′.\nStep 2: With u = 2x, u′ = 2, so dy/dx = 2 e^(2x).' },
+
+  { section: '14 Calculus',
+    prompt: '65. ∫ 1/(2x + 3) dx =',
+    options: ['(1/2) ln|2x + 3| + C', 'ln|2x + 3| + C', '2 ln|2x + 3| + C', '(1/2)(2x + 3) + C'],
+    correctIndex: 0,
+    explanation: 'Solution: (1/2) ln|2x + 3| + C\nStep 1: ∫ 1/(ax + b) dx = (1/a) ln|ax + b| + C.\nStep 2: With a = 2, b = 3: (1/2) ln|2x + 3| + C.' },
+]
+
+/**
+ * RiyaApp — Practice MCQ drill for Riya covering Cambridge IGCSE
+ * Additional Mathematics 0606 (2028–2030 syllabus). One question at a
+ * time → select → Submit → Explanation → Next. Covers all 14 topics.
+ */
+function RiyaApp({ onBack }) {
+  const [idx, setIdx] = useState(0)
+  const [selected, setSelected] = useState(null)
+  const [revealed, setRevealed] = useState(false)
+  const [showSolve, setShowSolve] = useState(false)
+  const [score, setScore] = useState(0)
+  const [results, setResults] = useState([])
+  const [finished, setFinished] = useState(false)
+
+  const total = RIYA_QUESTIONS.length
+  const q = RIYA_QUESTIONS[idx]
+
+  const handleSubmit = () => {
+    if (selected === null || revealed) return
+    const ok = selected === q.correctIndex
+    setRevealed(true)
+    if (ok) setScore(s => s + 1)
+    setResults(r => [...r, {
+      question: q.prompt.replace(/\s+/g, ' ').slice(0, 90),
+      userAnswer: q.options[selected],
+      correctAnswer: q.options[q.correctIndex],
+      correct: ok,
+      time: 0,
+    }])
+  }
+
+  const handleNext = () => {
+    if (idx + 1 >= total) { setFinished(true); return }
+    setIdx(i => i + 1)
+    setSelected(null); setRevealed(false); setShowSolve(false)
+  }
+
+  const handleRestart = () => {
+    setIdx(0); setSelected(null); setRevealed(false); setShowSolve(false)
+    setScore(0); setResults([]); setFinished(false)
+  }
+
+  const handleJumpPrev = () => {
+    if (idx === 0) return
+    setIdx(i => i - 1)
+    setSelected(null); setRevealed(false); setShowSolve(false)
+  }
+
+  if (finished) {
+    return (
+      <QuizLayout
+        title="Riya — IGCSE Add Math 0606"
+        subtitle={`Score: ${score} / ${total} (${Math.round(100 * score / total)}%)`}
+        onBack={onBack}
+      >
+        <div style={{ textAlign: 'center', marginTop: 16, marginBottom: 16 }}>
+          <button className="submit-btn" onClick={handleRestart}>Play Again</button>
+        </div>
+        {results.length > 0 && <ResultsTable results={results} />}
+      </QuizLayout>
+    )
+  }
+
+  const isCorrect = selected === q.correctIndex
+
+  return (
+    <QuizLayout
+      title="Riya — Relations & Functions I"
+      subtitle={`Question ${idx + 1} of ${total} · ${q.section}`}
+      onBack={onBack}
+    >
+      <div className="progress-pill center" style={{ marginBottom: 12 }}>
+        Score: {score} · Answered: {results.length}
+      </div>
+      <div className="question-box" style={{ whiteSpace: 'pre-wrap', textAlign: 'center', marginBottom: 16 }}>
+        {q.prompt}
+      </div>
+      <div className="options-list">
+        {q.options.map((opt, i) => {
+          const letter = String.fromCharCode(65 + i)
+          const isSel = selected === i
+          const isRight = revealed && i === q.correctIndex
+          const isWrongPick = revealed && isSel && i !== q.correctIndex
+          let extra = ''
+          if (isRight) extra = 'selected'
+          else if (isSel && !revealed) extra = 'selected'
+          return (
+            <label key={i} className={`option-card ${extra}`} style={{
+              borderColor: isRight ? 'var(--clr-correct)' : isWrongPick ? 'var(--clr-wrong)' : undefined,
+              background: isRight ? 'var(--clr-correct-bg)' : isWrongPick ? 'var(--clr-wrong-bg)' : undefined,
+              opacity: revealed && !isRight && !isWrongPick ? 0.7 : 1,
+            }}>
+              <input type="radio" name="riya" checked={isSel}
                 onChange={() => !revealed && setSelected(i)} disabled={revealed} />
               <span><strong>{letter})</strong> {opt}</span>
             </label>
